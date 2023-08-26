@@ -27,11 +27,14 @@ js-sys = "0.3.64"
 serde = { version = "1.0.183", features = ["derive"] }
 serde-wasm-bindgen = "0.5.0"
 serde_json = "1.0.105"
-#surrealdb = { git = "https://github.com/surrealdb/surrealdb", default-features = false, rev = "b1275ed56525be88bce36a5a7651e0ada15b48c6" }
-#surrealdb = { git = "https://github.com/surrealdb/surrealdb", default-features = false, rev = "9cd25566ac2f202315aa29a090bfb50e5d76c4eb" }
+surrealdb = { git = "https://github.com/surrealdb/surrealdb", default-features = false, rev = "fb6f1caa6b19c46181273bfebef33dcfddcff6bf" }
 thiserror = "1.0.47"
-surrealdb = { version = "1.0.0-beta.9+20230402", default-features = false }
+#surrealdb = { version = "1.0.0-beta.9+20230402", default-features = false }
 wasm-bindgen = { version = "0.2.87", features = ["serde", "serde_json"] }
 wasm-bindgen-futures = "0.4.37"
 web-sys = { version = "0.3.64", features = ["AbortSignal"] }
-tokio = { version = "1.32.0", features = ["time"] }
+tokio = { version = "1.32.0", features = ["time", "macros"] }
+serde_ipld_dagcbor = "0.4.0"
+multihash = "0.19.0"
+multihash-codetable = { version = "0.1.0", features = ["sha2", "digest", "serde"] }
+cid = "0.10.1"
