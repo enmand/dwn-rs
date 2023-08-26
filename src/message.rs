@@ -1,9 +1,10 @@
 use std::{collections::TryReserveError, sync::Arc};
 
 use async_trait::async_trait;
+use base64::{engine::general_purpose, Engine as _};
 use cid::multihash::{Code, MultihashDigest};
 use jose_jws::General as JWS;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use surrealdb::engine::any::Any;
 use thiserror::Error;
 
@@ -28,14 +29,34 @@ pub enum Filter {
     Filter(/* filter types */),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Index {
     Key(String),
     Value(IndexValue),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub enum IndexValue {
     Bool(bool),
     String(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct EncodedMessage {
+    // serialize as a string
+    #[serde(serialize_with = "serialize_base64")]
+    encoded_message: Vec<u8>,
+    #[serde(serialize_with = "serialize_cid")]
+    cid: cid::Cid,
+    //indexes: Vec<Index>,
+}
+
+fn serialize_base64<T: Serializer>(bytes: &[u8], serializer: T) -> Result<T::Ok, T::Error> {
+    serializer.serialize_str(&general_purpose::STANDARD.encode(bytes))
+}
+
+fn serialize_cid<T: Serializer>(cid: &cid::Cid, serializer: T) -> Result<T::Ok, T::Error> {
+    serializer.serialize_str(&cid.to_string())
 }
 
 #[async_trait]
@@ -114,19 +135,29 @@ impl MessageStore for SurrealDB {
         &self,
         tenant: &str,
         message: &Message,
-        _indexes: Vec<Index>,
+        indexes: Vec<Index>,
     ) -> Result<(), SurrealDBError> {
         let tdb = self.db.clone();
         tdb.use_ns(tenant).use_db(DBNAME).await?;
 
         // todo this should be a multiformat custom code for Block
-        let encodedMessage = serde_ipld_dagcbor::to_vec(message)?;
-        let hash = Code::Sha2_256.digest(&encodedMessage);
+        let encoded_message = serde_ipld_dagcbor::to_vec(message)?;
+        let hash = Code::Sha2_256.digest(&encoded_message);
         let cid = cid::Cid::new_v1(CBOR_TAGS_CID, hash);
 
+        println!("cid: {}", cid.to_string());
+        println!(
+            "encoded_message: {}",
+            general_purpose::STANDARD.encode(&encoded_message)
+        );
+
         self.db
-            .create(("message", cid.to_string()))
-            .content(encodedMessage)
+            .create::<Option<EncodedMessage>>(("message", cid.to_string()))
+            .content(EncodedMessage {
+                encoded_message,
+                cid,
+                //indexes,
+            })
             .await?;
 
         Ok(())
@@ -158,10 +189,9 @@ mod tests {
         let mut db = crate::SurrealDB::new();
         let cwd = std::env::current_dir().unwrap().join("file.db");
         db.connect(format!("file://{file}", file = cwd.to_string_lossy()).as_str())
-            .await
-            .unwrap();
+            .await;
         db.open().await;
-        db.put("", &crate::Message::default(), vec![]).await;
+        db.put("did", &crate::Message::default(), vec![]).await;
         db.close().await;
     }
 }
