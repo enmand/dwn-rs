@@ -1,11 +1,18 @@
-use std::{collections::TryReserveError, convert::Infallible, sync::Arc};
+use std::{
+    collections::{HashMap, TryReserveError},
+    convert::Infallible,
+    sync::Arc,
+};
 
-use crate::message::{Descriptor, EncodedMessage, Filter, Index, IndexValue, Message};
+use crate::{
+    indexes::IndexValue,
+    message::{EncodedMessage, Message},
+    Filters,
+};
 use async_trait::async_trait;
-use base64::{engine::general_purpose, Engine as _};
+
 use cid::multihash::{Code, MultihashDigest};
-use jose_jws::General as JWS;
-use serde::{Deserialize, Serialize, Serializer};
+
 use surrealdb::engine::any::Any;
 use thiserror::Error;
 
@@ -22,16 +29,16 @@ pub trait MessageStore {
         &self,
         tenant: &str,
         message: Message,
-        indexes: Vec<Index>,
+        indexes: HashMap<String, IndexValue>,
     ) -> Result<cid::Cid, SurrealDBError>;
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError>;
 
-    async fn query(&self, tenant: &str, filter: Vec<Filter>) -> Vec<Message>;
+    async fn query(&self, tenant: &str, filter: Filters) -> Result<Vec<Message>, SurrealDBError>;
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError>;
 
-    async fn clear(&self);
+    async fn clear(&self) -> Result<(), SurrealDBError>;
 }
 
 #[derive(Error, Debug)]
@@ -95,7 +102,7 @@ impl MessageStore for SurrealDB {
         &self,
         tenant: &str,
         message: Message,
-        indexes: Vec<Index>,
+        indexes: HashMap<String, IndexValue>,
     ) -> Result<cid::Cid, SurrealDBError> {
         let encoded_message = serde_ipld_dagcbor::to_vec(&message)?;
         let hash = Code::Sha2_256.digest(&encoded_message);
@@ -107,7 +114,6 @@ impl MessageStore for SurrealDB {
         tdb.create::<Option<EncodedMessage>>(("message", cid.to_string()))
             .content(EncodedMessage {
                 encoded_message,
-                cid,
                 indexes,
             })
             .await?;
@@ -129,8 +135,13 @@ impl MessageStore for SurrealDB {
             .map_err(Into::into)
     }
 
-    async fn query(&self, _tenant: &str, _filter: Vec<Filter>) -> Vec<Message> {
-        todo!()
+    async fn query(&self, tenant: &str, filters: Filters) -> Result<Vec<Message>, SurrealDBError> {
+        let tdb = self.db.clone();
+        tdb.use_ns(tenant).use_db(DBNAME).await.unwrap();
+
+        println!("query: {:#?}", filters);
+
+        Ok(vec![])
     }
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError> {
@@ -143,14 +154,17 @@ impl MessageStore for SurrealDB {
         Ok(())
     }
 
-    async fn clear(&self) {
-        todo!()
+    async fn clear(&self) -> Result<(), SurrealDBError> {
+        let _: Vec<EncodedMessage> = self.db.delete(DBNAME).await?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Index, IndexValue, MessageStore, SurrealDB};
+    use std::collections::HashMap;
+
+    use crate::{indexes::IndexValue, EqualFilter, Filter, Filters, MessageStore, SurrealDB};
 
     #[tokio::test]
     async fn test_surrealdb() {
@@ -160,6 +174,8 @@ mod tests {
             .connect(format!("file://{file}", file = cwd.to_string_lossy()).as_str())
             .await;
         let _ = db.open().await;
+        let map: HashMap<String, IndexValue> =
+            HashMap::from([("key".into(), "value".into()), ("key2".into(), true.into())]);
         let cid = db
             .put(
                 "did",
@@ -174,17 +190,19 @@ mod tests {
                     },
                     authroization: None,
                 },
-                vec![Index {
-                    key: "something".into(),
-                    value: IndexValue::Bool(false),
-                }],
+                map,
             )
             .await
             .unwrap();
 
-        let m = db.get("did", cid.to_string()).await.unwrap();
-        println!("cid: {}, m: {:?}", cid.to_string(), m);
+        let _ = db.get("did", cid.to_string()).await.unwrap();
+        db.query(
+            "did",
+            Filters::from([("key", Filter::from("value")), ("key2", Filter::from(true))]),
+        )
+        .await
+        .unwrap();
         //let _ = db.delete("did", cid.to_string()).await;
-        let _ = db.close().await;
+        //let _ = db.close().await;
     }
 }
