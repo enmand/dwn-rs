@@ -164,7 +164,10 @@ impl MessageStore for SurrealDB {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{indexes::IndexValue, EqualFilter, Filter, Filters, MessageStore, SurrealDB};
+    use crate::{
+        indexes::IndexValue, EqualFilter, Filter, Filters, MessageStore, OneOfFilter, RangeValue,
+        SurrealDB, GT, LT,
+    };
 
     #[tokio::test]
     async fn test_surrealdb() {
@@ -198,7 +201,19 @@ mod tests {
         let _ = db.get("did", cid.to_string()).await.unwrap();
         db.query(
             "did",
-            Filters::from([("key", Filter::from("value")), ("key2", Filter::from(true))]),
+            Filters::from([
+                ("key", Filter::from(GT::GTE(RangeValue::from(3)))),
+                ("key2", Filter::from(true)),
+                ("key3", Filter::from("value")),
+                ("key5", Filter::from(LT::LTE(RangeValue::from(3)))),
+                (
+                    "key6",
+                    Filter::from(OneOfFilter::from(vec![
+                        EqualFilter::from(1),
+                        EqualFilter::from(2),
+                    ])),
+                ),
+            ]),
         )
         .await
         .unwrap();
