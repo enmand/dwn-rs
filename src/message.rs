@@ -53,6 +53,7 @@ impl<const N: usize> From<[(&str, Filter); N]> for Filters {
 pub enum Filter {
     Equal(EqualFilter),
     Range(RangeFilter),
+    OneOf(OneOfFilter),
 }
 
 impl From<&str> for Filter {
@@ -116,6 +117,12 @@ impl From<bool> for EqualFilter {
 }
 
 pub type OneOfFilter = Vec<EqualFilter>;
+
+impl From<OneOfFilter> for Filter {
+    fn from(f: OneOfFilter) -> Self {
+        Filter::OneOf(f)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct RangeFilter {
