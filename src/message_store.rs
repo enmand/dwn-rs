@@ -4,10 +4,10 @@ use std::{
     sync::Arc,
 };
 
+use crate::filters::Filters;
 use crate::{
     indexes::IndexValue,
     message::{EncodedMessage, Message},
-    Filters,
 };
 use async_trait::async_trait;
 
@@ -165,8 +165,9 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        indexes::IndexValue, EqualFilter, Filter, Filters, MessageStore, OneOfFilter, RangeValue,
-        SurrealDB, GT, LT,
+        filters::{EqualFilter, Filter, Filters, OneOfFilter, RangeValue, GT, LT},
+        indexes::IndexValue,
+        MessageStore, SurrealDB,
     };
 
     #[tokio::test]
@@ -202,7 +203,7 @@ mod tests {
         db.query(
             "did",
             Filters::from([
-                ("key", Filter::from(GT::GTE(RangeValue::from(3)))),
+                ("key", Filter::from(GT::from(3))),
                 ("key2", Filter::from(true)),
                 ("key3", Filter::from("value")),
                 ("key5", Filter::from(LT::LTE(RangeValue::from(3)))),
@@ -213,6 +214,7 @@ mod tests {
                         EqualFilter::from(2),
                     ])),
                 ),
+                ("key7", Filter::from(GT::GTE(RangeValue::from("3")))),
             ]),
         )
         .await
