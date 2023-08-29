@@ -64,7 +64,7 @@ pub enum SurrealDBError {
 
 pub struct SurrealDB {
     db: Arc<surrealdb::Surreal<Any>>,
-    tentant: String,
+    tenant: String,
     _constr: String,
 }
 
@@ -72,13 +72,13 @@ impl SurrealDB {
     pub fn new() -> Self {
         Self {
             db: Arc::new(surrealdb::Surreal::init()),
-            tentant: String::default(),
+            tenant: String::default(),
             _constr: String::default(),
         }
     }
 
     pub async fn with_tenant(&mut self, tenant: &str) -> Result<(), SurrealDBError> {
-        self.tentant = tenant.into();
+        self.tenant = tenant.into();
         self.db.use_ns(tenant).await.map_err(Into::into)
     }
 
