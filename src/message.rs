@@ -154,6 +154,21 @@ impl From<i64> for GT {
     }
 }
 
+impl From<GT> for RangeFilter {
+    fn from(gt: GT) -> Self {
+        Self {
+            lt: None,
+            gt: Some(gt),
+        }
+    }
+}
+
+impl From<GT> for Filter {
+    fn from(gt: GT) -> Self {
+        Filter::Range(RangeFilter::from(gt))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum LT {
     LT(RangeValue),
@@ -169,6 +184,21 @@ impl From<RangeValue> for LT {
 impl From<i64> for LT {
     fn from(i: i64) -> Self {
         LT::LT(i.into())
+    }
+}
+
+impl From<LT> for RangeFilter {
+    fn from(lt: LT) -> Self {
+        Self {
+            lt: Some(lt),
+            gt: None,
+        }
+    }
+}
+
+impl From<LT> for Filter {
+    fn from(lt: LT) -> Self {
+        Filter::Range(RangeFilter::from(lt))
     }
 }
 
