@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use from_variants::FromVariants;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug)]
 pub struct Filters {
-    filters: HashMap<String, Filter>,
+    pub(crate) filters: HashMap<String, Filter>,
 }
 
 impl From<HashMap<String, Filter>> for Filters {
@@ -11,27 +12,22 @@ impl From<HashMap<String, Filter>> for Filters {
     }
 }
 
-impl<const N: usize> From<[(String, Filter); N]> for Filters {
-    fn from(filters: [(String, Filter); N]) -> Self {
-        Self {
-            filters: HashMap::from(filters),
-        }
-    }
-}
-
-impl<const N: usize> From<[(&str, Filter); N]> for Filters {
-    fn from(filters: [(&str, Filter); N]) -> Self {
+impl<const N: usize, S, T> From<[(S, T); N]> for Filters
+where
+    S: Into<String> + Clone,
+    T: Into<Filter> + Clone,
+{
+    fn from(filters: [(S, T); N]) -> Self {
         Self {
             filters: filters
-                .to_vec()
                 .iter()
-                .map(|(k, v)| (k.to_string(), v.clone()))
+                .map(|(k, v)| ((k.clone().into(), v.clone().into())))
                 .collect::<HashMap<String, Filter>>(),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromVariants)]
 pub enum Filter {
     Equal(EqualFilter),
     Range(RangeFilter),
@@ -62,21 +58,20 @@ impl From<bool> for Filter {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromVariants)]
 pub enum EqualFilter {
     String(String),
     Number(i64),
     Bool(bool),
 }
-impl From<EqualFilter> for Filter {
-    fn from(f: EqualFilter) -> Self {
-        Filter::Equal(f)
-    }
-}
 
-impl From<String> for EqualFilter {
-    fn from(s: String) -> Self {
-        EqualFilter::String(s)
+impl Display for EqualFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EqualFilter::String(s) => write!(f, "{}", s),
+            EqualFilter::Number(i) => write!(f, "{}", i),
+            EqualFilter::Bool(b) => write!(f, "{}", b),
+        }
     }
 }
 
@@ -86,25 +81,7 @@ impl From<&str> for EqualFilter {
     }
 }
 
-impl From<i64> for EqualFilter {
-    fn from(i: i64) -> Self {
-        EqualFilter::Number(i)
-    }
-}
-
-impl From<bool> for EqualFilter {
-    fn from(b: bool) -> Self {
-        EqualFilter::Bool(b)
-    }
-}
-
 pub type OneOfFilter = Vec<EqualFilter>;
-
-impl From<OneOfFilter> for Filter {
-    fn from(f: OneOfFilter) -> Self {
-        Filter::OneOf(f)
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct RangeFilter {
@@ -112,9 +89,14 @@ pub struct RangeFilter {
     gt: Option<GT>,
 }
 
-impl From<RangeFilter> for Filter {
-    fn from(f: RangeFilter) -> Self {
-        Filter::Range(f)
+impl Display for RangeFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match (&self.lt, &self.gt) {
+            (Some(lt), None) => write!(f, "{}", lt),
+            (None, Some(gt)) => write!(f, "{}", gt),
+            (Some(lt), Some(gt)) => write!(f, "{} x {}", lt, gt),
+            (None, None) => write!(f, ""),
+        }
     }
 }
 
@@ -122,6 +104,15 @@ impl From<RangeFilter> for Filter {
 pub enum GT {
     GT(RangeValue),
     GTE(RangeValue),
+}
+
+impl Display for GT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GT::GT(v) => write!(f, "< {}", v),
+            GT::GTE(v) => write!(f, "<= {}", v),
+        }
+    }
 }
 
 impl From<RangeValue> for GT {
@@ -163,6 +154,15 @@ pub enum LT {
     LTE(RangeValue),
 }
 
+impl Display for LT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LT::LT(v) => write!(f, "> {}", v),
+            LT::LTE(v) => write!(f, ">= {}", v),
+        }
+    }
+}
+
 impl From<RangeValue> for LT {
     fn from(v: RangeValue) -> Self {
         LT::LT(v)
@@ -196,10 +196,19 @@ impl From<LT> for Filter {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromVariants)]
 pub enum RangeValue {
     String(String),
     Number(i64),
+}
+
+impl Display for RangeValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RangeValue::String(s) => write!(f, "{}", s),
+            RangeValue::Number(i) => write!(f, "{}", i),
+        }
+    }
 }
 
 impl From<RangeValue> for Filter {
@@ -211,20 +220,8 @@ impl From<RangeValue> for Filter {
     }
 }
 
-impl From<String> for RangeValue {
-    fn from(s: String) -> Self {
-        RangeValue::String(s)
-    }
-}
-
 impl From<&str> for RangeValue {
     fn from(s: &str) -> Self {
         RangeValue::String(s.into())
-    }
-}
-
-impl From<i64> for RangeValue {
-    fn from(i: i64) -> Self {
-        RangeValue::Number(i)
     }
 }
