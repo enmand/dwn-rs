@@ -173,9 +173,9 @@ mod tests {
     #[tokio::test]
     async fn test_surrealdb() {
         let mut db = SurrealDB::new();
-        let cwd = std::env::current_dir().unwrap().join("file.db");
+        let cwd = std::env::current_dir().unwrap().join("build/file.db");
         let _ = db
-            .connect(format!("file://{file}", file = cwd.to_string_lossy()).as_str())
+            .connect(format!("speedb://{file}", file = cwd.to_string_lossy()).as_str())
             .await;
         let _ = db.open().await;
         let map: HashMap<String, IndexValue> =

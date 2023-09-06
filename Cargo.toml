@@ -16,7 +16,7 @@ codegen-units = 1
 [features]
 default = ["rustls", "kv-mem", "kv-indxdb"]
 kv-indxdb = ["surrealdb/kv-indxdb"]
-kv-rocksdb = ["surrealdb/kv-rocksdb"]
+kv-speedb = ["surrealdb/kv-speedb"]
 kv-mem = ["surrealdb/kv-mem"]
 rustls = ["surrealdb/rustls"]
 
