@@ -1,7 +1,9 @@
 use from_variants::FromVariants;
 use std::{collections::HashMap, fmt::Display};
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Filters {
     pub(crate) filters: HashMap<String, Filter>,
 }
@@ -27,7 +29,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, FromVariants)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
 pub enum Filter {
     Equal(EqualFilter),
     Range(RangeFilter),
@@ -58,7 +60,7 @@ impl From<bool> for Filter {
     }
 }
 
-#[derive(Clone, Debug, FromVariants)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
 pub enum EqualFilter {
     String(String),
     Number(i64),
@@ -68,7 +70,7 @@ pub enum EqualFilter {
 impl Display for EqualFilter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EqualFilter::String(s) => write!(f, "{}", s),
+            EqualFilter::String(s) => write!(f, "\"{}\"", s),
             EqualFilter::Number(i) => write!(f, "{}", i),
             EqualFilter::Bool(b) => write!(f, "{}", b),
         }
@@ -83,7 +85,7 @@ impl From<&str> for EqualFilter {
 
 pub type OneOfFilter = Vec<EqualFilter>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RangeFilter {
     lt: Option<LT>,
     gt: Option<GT>,
@@ -100,7 +102,7 @@ impl Display for RangeFilter {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum GT {
     GT(RangeValue),
     GTE(RangeValue),
@@ -109,8 +111,8 @@ pub enum GT {
 impl Display for GT {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GT::GT(v) => write!(f, "< {}", v),
-            GT::GTE(v) => write!(f, "<= {}", v),
+            GT::GT(v) => write!(f, "> {}", v),
+            GT::GTE(v) => write!(f, ">= {}", v),
         }
     }
 }
@@ -148,7 +150,7 @@ impl From<GT> for Filter {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LT {
     LT(RangeValue),
     LTE(RangeValue),
@@ -157,8 +159,8 @@ pub enum LT {
 impl Display for LT {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LT::LT(v) => write!(f, "> {}", v),
-            LT::LTE(v) => write!(f, ">= {}", v),
+            LT::LT(v) => write!(f, "< {}", v),
+            LT::LTE(v) => write!(f, "<= {}", v),
         }
     }
 }
@@ -196,7 +198,7 @@ impl From<LT> for Filter {
     }
 }
 
-#[derive(Clone, Debug, FromVariants)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
 pub enum RangeValue {
     String(String),
     Number(i64),
