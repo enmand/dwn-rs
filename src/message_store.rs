@@ -138,8 +138,6 @@ impl MessageStore for SurrealDB {
         let (wheres, binds) = filters.query();
         let query = format!("SELECT * FROM {} WHERE {}", TABLENAME, wheres);
 
-        print!("query: {}\n", query);
-
         let mut results = tdb.query(query).bind(binds).await?;
 
         let ms: Vec<Vec<u8>> = results.take((0, "encoded_message"))?;
@@ -241,7 +239,6 @@ mod tests {
             )
             .await
             .unwrap();
-
         println!("ms: {:?}", ms);
 
         let _ = db.delete("did", cid.to_string()).await;
