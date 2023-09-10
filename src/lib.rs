@@ -2,6 +2,7 @@
 
 pub mod filters;
 pub mod indexes;
+mod js;
 pub mod message;
 pub mod message_store;
 

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@tbd54566975/dwn-sdk-js": "^v0.2.1"
+  }
+}

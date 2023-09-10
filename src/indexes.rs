@@ -18,7 +18,7 @@ impl From<&str> for IndexValue {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Indexes {
     #[serde(flatten)]
     pub indexes: HashMap<String, IndexValue>,

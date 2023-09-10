@@ -14,27 +14,40 @@ panic = 'abort'
 codegen-units = 1
 
 [features]
-default = ["rustls", "kv-mem", "kv-indxdb"]
+default = ["rustls", "kv-mem", "kv-speedb"]
+wasm = ["rustls", "kv-mem", "kv-indxdb"]
 kv-indxdb = ["surrealdb/kv-indxdb"]
 kv-speedb = ["surrealdb/kv-speedb"]
+kv-rocksdb = ["surrealdb/kv-rocksdb"]
 kv-mem = ["surrealdb/kv-mem"]
 rustls = ["surrealdb/rustls"]
 
 [dependencies]
 async-trait = "0.1.73"
 jose-jws = "0.1.0"
-js-sys = "0.3.64"
 serde = { version = "1.0.183", features = ["derive"] }
-serde-wasm-bindgen = "0.5.0"
 serde_json = { version = "1.0.105", features = ["raw_value"] }
 thiserror = "1.0.47"
 surrealdb = { version = "1.0.0-beta.10", default-features = false}
-wasm-bindgen = { version = "0.2.87", features = ["serde", "serde_json"] }
-wasm-bindgen-futures = "0.4.37"
-web-sys = { version = "0.3.64", features = ["AbortSignal"] }
-tokio = { version = "1.32.0", features = ["time", "macros", "rt-multi-thread"] }
+tokio = { version = "1.32.0", features = ["time", "macros"] }
 serde_cbor = "0.11.2"
 multihash = "0.19.0"
 multihash-codetable = { version = "0.1.0", features = ["sha2", "digest", "serde"] }
 cid = "0.10.1"
 from_variants = "1.0.2"
+
+#[target.'cfg(target_family = "wasm")'.dependencies]
+web-sys = { version = "0.3.64", features = ["AbortSignal"] }
+wasm-bindgen = { version = "0.2.87", features = ["serde", "serde_json"] }
+wasm-bindgen-futures = "0.4.37"
+serde-wasm-bindgen = "0.5.0"
+js-sys = "0.3.64"
+console_error_panic_hook = "0.1.7"
+
+[target.'cfg(target_family = "wasm")'.dependencies.tokio]
+version = "1.32.0"
+features = ["time", "macros"]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies.tokio]
+version = "1.32.0"
+features = ["time", "macros", "rt-multi-thread"]
