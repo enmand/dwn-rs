@@ -7,11 +7,10 @@ use crate::{
 };
 use crate::{GetEncodedMessage, Query};
 use async_trait::async_trait;
-
 use cid::multihash::{Code, MultihashDigest};
-
 use surrealdb::engine::any::Any;
 use thiserror::Error;
+
 
 const DBNAME: &str = "messages";
 const TABLENAME: &str = "message";
@@ -70,6 +69,11 @@ impl SurrealDB {
             tenant: String::default(),
             _constr: String::default(),
         }
+    }
+
+    pub fn with_db(&mut self, db: surrealdb::Surreal<Any>) -> &mut Self {
+        self.db = Arc::new(db);
+        self
     }
 
     pub async fn with_tenant(&mut self, tenant: &str) -> Result<(), SurrealDBError> {
