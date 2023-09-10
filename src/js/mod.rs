@@ -1,14 +1,15 @@
+pub mod errors;
 pub mod filter;
 pub mod message;
 
+pub use errors::*;
 pub use filter::*;
 pub use message::*;
 
-use crate::{Filters, IndexValue, Indexes};
+use crate::{IndexValue, Indexes};
 use crate::{MessageStore, SurrealDB as RealSurreal};
+
 use std::collections::HashMap;
-use std::default::Default;
-use thiserror::Error;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
 
@@ -19,11 +20,6 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(s: &str);
 }
-
-#[wasm_bindgen]
-#[derive(Error, Debug)]
-#[error(transparent)]
-pub struct JSError(#[from] surrealdb::Error);
 
 #[wasm_bindgen]
 pub struct MessageStoreOptions {
@@ -54,8 +50,11 @@ impl JSSurrealDB {
     }
 
     #[wasm_bindgen]
-    pub async fn connect(&mut self, connstr: &str) -> Result<(), JsError> {
-        self.store.connect(&connstr).await.map_err(Into::into)
+    pub async fn connect(&mut self, connstr: &str) -> Result<(), StoreError> {
+        self.store
+            .connect(&connstr)
+            .await
+            .map_err(Into::<StoreError>::into)
     }
 
     #[wasm_bindgen]
@@ -69,10 +68,8 @@ impl JSSurrealDB {
         tenant: String,
         message: &GenericMessage,
         indexes: IndexMap,
-        opts: Option<MessageStoreOptions>,
-    ) -> Result<(), JsError> {
-        // Convert IndexMap, which is an external TypeScript type, represented by a JSValue Object
-        // into a HashMap<String, IndexValue> which is a Rust type.
+        _opts: Option<MessageStoreOptions>,
+    ) -> Result<(), StoreError> {
         let indexes: Indexes =
             serde_wasm_bindgen::from_value::<HashMap<String, IndexValue>>(indexes.into())
                 .unwrap()
@@ -82,7 +79,7 @@ impl JSSurrealDB {
             .store
             .put(&tenant, message.into(), indexes)
             .await
-            .map_err(Into::<JsError>::into)?;
+            .map_err(Into::<StoreError>::into)?;
 
         Ok(())
     }
@@ -92,7 +89,7 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         cid: String,
-        opts: Option<MessageStoreOptions>,
+        _opts: Option<MessageStoreOptions>,
     ) -> Result<Option<GenericMessage>, JsError> {
         match self.store.get(tenant, cid).await {
             Ok(m) => match serde_wasm_bindgen::to_value(&m) {
@@ -107,12 +104,12 @@ impl JSSurrealDB {
     pub async fn query(
         &self,
         tenant: &str,
-        filter: Filter,
-        opts: Option<MessageStoreOptions>,
+        filter: &Filter,
+        _opts: Option<MessageStoreOptions>,
     ) -> Result<GenericMessageArray, String> {
         let messages = self
             .store
-            .query(tenant, Filters::default())
+            .query(tenant, filter.into())
             .await
             .map_err(|e| e.to_string())?;
 
@@ -124,7 +121,7 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         cid: String,
-        opts: Option<MessageStoreOptions>,
+        _opts: Option<MessageStoreOptions>,
     ) -> Result<(), JsError> {
         self.store.delete(tenant, cid).await.map_err(Into::into)
     }

@@ -30,6 +30,7 @@ where
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
+#[serde(untagged)]
 pub enum Filter {
     Equal(EqualFilter),
     Range(RangeFilter),
@@ -61,6 +62,7 @@ impl From<bool> for Filter {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
+#[serde(untagged)]
 pub enum EqualFilter {
     String(String),
     Number(i64),
@@ -103,6 +105,7 @@ impl Display for RangeFilter {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum GT {
     GT(RangeValue),
     GTE(RangeValue),
@@ -151,6 +154,7 @@ impl From<GT> for Filter {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum LT {
     LT(RangeValue),
     LTE(RangeValue),
@@ -199,6 +203,7 @@ impl From<LT> for Filter {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
+#[serde(untagged)]
 pub enum RangeValue {
     String(String),
     Number(i64),
