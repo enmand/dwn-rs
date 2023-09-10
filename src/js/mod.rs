@@ -16,12 +16,6 @@ use web_sys::AbortSignal;
 extern crate console_error_panic_hook;
 
 #[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    pub fn log(s: &str);
-}
-
-#[wasm_bindgen]
 pub struct MessageStoreOptions {
     signal: Option<AbortSignal>,
 }
