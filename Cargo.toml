@@ -14,8 +14,9 @@ panic = 'abort'
 codegen-units = 1
 
 [features]
-default = ["rustls", "kv-mem", "kv-speedb"]
-wasm = ["rustls", "kv-mem", "kv-indxdb"]
+default = ["rustls", "kv-mem", "kv-speedb", "remote"]
+wasm = ["rustls", "kv-mem", "kv-indxdb", "remote"]
+remote = ["surrealdb/protocol-ws", "surrealdb/protocol-http"]
 kv-indxdb = ["surrealdb/kv-indxdb"]
 kv-speedb = ["surrealdb/kv-speedb"]
 kv-rocksdb = ["surrealdb/kv-rocksdb"]
