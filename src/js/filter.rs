@@ -2,9 +2,6 @@ use std::collections::HashMap;
 
 use crate::{Filter as DBFilter, Filters};
 use wasm_bindgen::prelude::*;
-use web_sys::console;
-
-use super::StoreError;
 
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filters } from "@tbd54566975/dwn-sdk-js/types/message-types";
@@ -37,7 +34,7 @@ impl From<&Filter> for Filters {
 }
 
 impl TryFrom<Filter> for Filters {
-    type Error = StoreError;
+    type Error = JsError;
 
     fn try_from(value: Filter) -> Result<Self, Self::Error> {
         serde_wasm_bindgen::from_value::<HashMap<String, DBFilter>>(value.into())

@@ -1,8 +1,6 @@
-pub mod errors;
 pub mod filter;
 pub mod message;
 
-pub use errors::*;
 pub use filter::*;
 pub use message::*;
 
@@ -44,11 +42,8 @@ impl JSSurrealDB {
     }
 
     #[wasm_bindgen]
-    pub async fn connect(&mut self, connstr: &str) -> Result<(), StoreError> {
-        self.store
-            .connect(&connstr)
-            .await
-            .map_err(Into::<StoreError>::into)
+    pub async fn connect(&mut self, connstr: &str) -> Result<(), JsError> {
+        self.store.connect(&connstr).await.map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -63,17 +58,20 @@ impl JSSurrealDB {
         message: &GenericMessage,
         indexes: IndexMap,
         _opts: Option<MessageStoreOptions>,
-    ) -> Result<(), StoreError> {
+    ) -> Result<(), JsError> {
         let indexes: Indexes =
             serde_wasm_bindgen::from_value::<HashMap<String, IndexValue>>(indexes.into())
                 .unwrap()
                 .into();
 
-        let _ = self
+        if let Err(e) = self
             .store
             .put(&tenant, message.into(), indexes)
             .await
-            .map_err(Into::<StoreError>::into)?;
+            .map_err(Into::into)
+        {
+            return Err(e);
+        }
 
         Ok(())
     }
