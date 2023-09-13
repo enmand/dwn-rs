@@ -233,10 +233,7 @@ mod tests {
                     descriptor: crate::Descriptor {
                         interface: "lorempsum doral ip sadsadaslj esflksd sdf".into(),
                         method: "sdfl;kjdsaflksdafj elf;jsdf s".into(),
-                        timestamp: std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs(),
+                        timestamp: chrono::Utc::now(),
                         extra: BTreeMap::from([(
                             "key4".into(),
                             String::from(
