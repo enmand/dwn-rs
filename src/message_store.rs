@@ -122,8 +122,11 @@ impl MessageStore for SurrealDB {
         indexes: Indexes,
     ) -> Result<Cid, SurrealDBError> {
         // an implementation detail in dwn-sdk-js, which the WASM version of this library interfaces
-        // with sometimes has encodedMessage as part of the message object. If so, we need to
-        // remove it from the extra Hashmap.
+        // with sometimes has encodedData as part of the message object. If so, we need to
+        // remove it from the extra map.
+        let mut message = message;
+        message.remove("encodedData");
+
         let ipld = to_ipld(&message)?;
         let block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &ipld)?;
 
