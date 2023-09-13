@@ -42,6 +42,11 @@ impl JSSurrealDB {
     }
 
     #[wasm_bindgen]
+    pub async fn with_tenant(&mut self, tenant: &str) -> Result<(), JsError> {
+        self.store.with_tenant(tenant).await.map_err(Into::into)
+    }
+
+    #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsError> {
         self.store.connect(&connstr).await.map_err(Into::into)
     }
@@ -49,6 +54,11 @@ impl JSSurrealDB {
     #[wasm_bindgen]
     pub async fn close(&mut self) {
         self.store.close().await;
+    }
+
+    #[wasm_bindgen]
+    pub async fn open(&mut self) -> Result<(), JsError> {
+        self.store.open().await.map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -64,14 +74,11 @@ impl JSSurrealDB {
                 .unwrap()
                 .into();
 
-        if let Err(e) = self
+        let _ = self
             .store
             .put(&tenant, message.into(), indexes)
             .await
-            .map_err(Into::into)
-        {
-            return Err(e);
-        }
+            .map_err(Into::<JsError>::into)?;
 
         Ok(())
     }
@@ -82,12 +89,9 @@ impl JSSurrealDB {
         tenant: &str,
         cid: String,
         _opts: Option<MessageStoreOptions>,
-    ) -> Result<Option<GenericMessage>, JsError> {
+    ) -> Result<GenericMessage, JsError> {
         match self.store.get(tenant, cid).await {
-            Ok(m) => match serde_wasm_bindgen::to_value(&m) {
-                Ok(v) => Ok(Some(v.into())),
-                Err(e) => Err(e.into()),
-            },
+            Ok(m) => Ok(m.into()),
             Err(e) => Err(e.into()),
         }
     }

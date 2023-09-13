@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
 use crate::{Filter as DBFilter, Filters};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(typescript_custom_section)]
-const INDEX_MAP: &'static str = r#"import { Filters } from "@tbd54566975/dwn-sdk-js/types/message-types";
+const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";
 
 type IndexMap = {
     [key: string]: string | boolean;
 };"#;
 
-#[wasm_bindgen(module = "@tbd54566975/dwn-sdk-js/types/message-types")]
+#[wasm_bindgen(module = "@tbd54566975/dwn-sdk-js")]
 extern "C" {
     #[wasm_bindgen(typescript_type = "Filter")]
     pub type Filter;
@@ -45,10 +46,15 @@ impl TryFrom<Filter> for Filters {
 
 impl From<Filters> for Filter {
     fn from(value: Filters) -> Self {
-        if let Ok(m) = serde_wasm_bindgen::to_value(&value) {
+        if let Ok(m) = value.serialize(&serializer()) {
             return m.into();
         }
 
         wasm_bindgen::JsValue::default().into()
     }
+}
+
+#[inline]
+fn serializer() -> serde_wasm_bindgen::Serializer {
+    serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true)
 }
