@@ -18,14 +18,13 @@ use libipld_core::{
 use surrealdb::engine::any::Any;
 use thiserror::Error;
 
-
 const DBNAME: &str = "messages";
 const TABLENAME: &str = "message";
 const CBOR_TAGS_CID: u64 = 42;
 
 #[async_trait]
 pub trait MessageStore {
-    async fn open(&self) -> Result<(), SurrealDBError>;
+    async fn open(&mut self) -> Result<(), SurrealDBError>;
 
     async fn close(&mut self);
 
@@ -94,13 +93,20 @@ impl SurrealDB {
     }
 
     pub async fn connect(&mut self, connstr: &str) -> Result<(), SurrealDBError> {
+        self._constr = connstr.into();
         self.db.connect(connstr).await.map_err(Into::into)
     }
 }
 
 #[async_trait]
 impl MessageStore for SurrealDB {
-    async fn open(&self) -> Result<(), SurrealDBError> {
+    async fn open(&mut self) -> Result<(), SurrealDBError> {
+        if self._constr.is_empty() {
+            return Err(SurrealDBError::NoInitError);
+        } else {
+            self.db.connect(&self._constr).await?;
+            self.with_tenant(&self.tenant.clone()).await?;
+        }
         self.db.health().await.map_err(Into::into)
     }
 
@@ -182,7 +188,13 @@ impl MessageStore for SurrealDB {
     }
 
     async fn clear(&self) -> Result<(), SurrealDBError> {
-        let _: Vec<CreateEncodedMessage> = self.db.delete(DBNAME).await?;
+        if self.tenant.is_empty() {
+            return Err(SurrealDBError::NoInitError);
+        }
+        let tdb = self.db.clone();
+        tdb.use_ns(&self.tenant).use_db(DBNAME).await?;
+
+        let _: Vec<CreateEncodedMessage> = tdb.delete(TABLENAME).await?;
         Ok(())
     }
 }
