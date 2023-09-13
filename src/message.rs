@@ -1,25 +1,47 @@
 use std::collections::BTreeMap;
 
-use jose_jws::General as JWS;
+use libipld_core::ipld::Ipld;
+//use jose_jws::General as JWS;
 use serde::{Deserialize, Serialize};
-use serde_cbor::Value;
 use surrealdb::sql::Thing;
 
 use crate::Indexes;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Message {
-    pub descriptor: Descriptor,
-    pub authroization: Option<JWS>,
+pub struct JWS {
+    pub payload: String,
+    pub signatures: Vec<SignatureEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header: Option<BTreeMap<String, Ipld>>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
+pub struct SignatureEntry {
+    pub protected: String,
+    pub signature: String,
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Ipld>,
+}
+
+// #[derive(Serialize, Deserialize, Debug, Default)]
+// pub struct Message {
+//     pub descriptor: Descriptor,
+//     pub authorization: Option<JWS>,
+//     #[serde(flatten)]
+//     pub extra: BTreeMap<String, Ipld>,
+// }
+pub type Message = BTreeMap<String, Ipld>;
+
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Descriptor {
     pub interface: String,
     pub method: String,
-    pub timestamp: u64,
+    #[serde(rename = "dataSize")]
+    pub data_size: u32,
+    #[serde(rename = "messageTimestamp")]
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
 }

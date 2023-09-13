@@ -7,7 +7,14 @@ use crate::{
 };
 use crate::{GetEncodedMessage, Query};
 use async_trait::async_trait;
-use cid::multihash::{Code, MultihashDigest};
+use libipld::{block::Block, store::DefaultParams};
+use libipld_cbor::DagCborCodec;
+use libipld_core::ipld::Ipld;
+use libipld_core::{
+    cid::Cid,
+    multihash::Code,
+    serde::{from_ipld, to_ipld},
+};
 use surrealdb::engine::any::Any;
 use thiserror::Error;
 
@@ -27,7 +34,7 @@ pub trait MessageStore {
         tenant: &str,
         message: Message,
         indexes: Indexes,
-    ) -> Result<cid::Cid, SurrealDBError>;
+    ) -> Result<Cid, SurrealDBError>;
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError>;
 
@@ -47,10 +54,13 @@ pub enum SurrealDBError {
     NoInitError,
 
     #[error("failed to encode message: {0}")]
-    MessageEncodeError(#[from] serde_cbor::error::Error),
+    MessageEncodeError(#[from] libipld_core::error::Error),
+
+    #[error("failed to serde encode message: {0}")]
+    SerdeEncodeError(#[from] libipld_core::error::SerdeError),
 
     #[error("failed to encode cid")]
-    CidEncodeError(#[from] multihash::Error),
+    CidEncodeError(#[from] libipld_core::cid::Error),
 
     #[error("unable to find record")]
     NotFound,
@@ -104,22 +114,24 @@ impl MessageStore for SurrealDB {
         tenant: &str,
         message: Message,
         indexes: Indexes,
-    ) -> Result<cid::Cid, SurrealDBError> {
-        let encoded_message = serde_cbor::to_vec(&message)?;
-        let hash = Code::Sha2_256.digest(&encoded_message);
-        let cid = cid::Cid::new_v1(CBOR_TAGS_CID, hash);
+    ) -> Result<Cid, SurrealDBError> {
+        // an implementation detail in dwn-sdk-js, which the WASM version of this library interfaces
+        // with sometimes has encodedMessage as part of the message object. If so, we need to
+        // remove it from the extra Hashmap.
+        let ipld = to_ipld(&message)?;
+        let block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &ipld)?;
 
         let tdb = self.db.clone();
         tdb.use_ns(tenant).use_db(DBNAME).await?;
 
-        tdb.create::<Option<GetEncodedMessage>>((TABLENAME, cid.to_string()))
+        tdb.create::<Option<GetEncodedMessage>>((TABLENAME, block.cid().to_string()))
             .content(CreateEncodedMessage {
-                encoded_message,
+                encoded_message: block.data().to_vec(),
                 indexes,
             })
             .await?;
 
-        Ok(cid)
+        Ok(block.cid().to_owned())
     }
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError> {
@@ -128,11 +140,16 @@ impl MessageStore for SurrealDB {
 
         // fetch and decode the message from the db
         let encoded_message = tdb
-            .select::<Option<GetEncodedMessage>>((TABLENAME, cid))
+            .select::<Option<GetEncodedMessage>>((TABLENAME, &cid))
             .await?
             .ok_or(SurrealDBError::NotFound)?;
 
-        serde_cbor::from_slice::<Message>(&encoded_message.encoded_message).map_err(Into::into)
+        let block =
+            Block::<DefaultParams>::new(Cid::try_from(cid)?, encoded_message.encoded_message)?;
+
+        let from = from_ipld::<Message>(block.decode::<DagCborCodec, Ipld>()?);
+
+        Ok(from?)
     }
 
     async fn query(&self, tenant: &str, filters: Filters) -> Result<Vec<Message>, SurrealDBError> {
