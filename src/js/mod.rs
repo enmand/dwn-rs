@@ -7,7 +7,7 @@ pub use message::*;
 use crate::{IndexValue, Indexes};
 use crate::{MessageStore, SurrealDB as RealSurreal};
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
 
@@ -60,7 +60,7 @@ impl JSSurrealDB {
         _opts: Option<MessageStoreOptions>,
     ) -> Result<(), JsError> {
         let indexes: Indexes =
-            serde_wasm_bindgen::from_value::<HashMap<String, IndexValue>>(indexes.into())
+            serde_wasm_bindgen::from_value::<BTreeMap<String, IndexValue>>(indexes.into())
                 .unwrap()
                 .into();
 

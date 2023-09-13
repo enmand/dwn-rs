@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use jose_jws::General as JWS;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ pub struct Message {
     pub descriptor: Descriptor,
     pub authroization: Option<JWS>,
     #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    pub extra: BTreeMap<String, Ipld>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -21,7 +21,7 @@ pub struct Descriptor {
     pub method: String,
     pub timestamp: u64,
     #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    pub extra: BTreeMap<String, Ipld>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

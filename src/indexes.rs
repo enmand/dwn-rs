@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use from_variants::FromVariants;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,7 @@ pub enum IndexValue {
     String(String),
     Number(i64),
     Float(f64),
+    Map(BTreeMap<String, IndexValue>),
 }
 
 impl From<&str> for IndexValue {
@@ -21,11 +22,11 @@ impl From<&str> for IndexValue {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Indexes {
     #[serde(flatten)]
-    pub indexes: HashMap<String, IndexValue>,
+    pub indexes: BTreeMap<String, IndexValue>,
 }
 
-impl From<HashMap<String, IndexValue>> for Indexes {
-    fn from(indexes: HashMap<String, IndexValue>) -> Self {
+impl From<BTreeMap<String, IndexValue>> for Indexes {
+    fn from(indexes: BTreeMap<String, IndexValue>) -> Self {
         Self { indexes }
     }
 }

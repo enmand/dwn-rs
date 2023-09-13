@@ -172,7 +172,7 @@ impl MessageStore for SurrealDB {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use crate::{
         filters::{EqualFilter, Filter, Filters, OneOfFilter, RangeValue, GT, LT},
@@ -208,7 +208,7 @@ mod tests {
                             .duration_since(std::time::UNIX_EPOCH)
                             .unwrap()
                             .as_secs(),
-                        extra: HashMap::from([(
+                        extra: BTreeMap::from([(
                             "key4".into(),
                             String::from(
                                 "silhiofbrvnrews;;ljdlkhglsdkfvbcueiaj;dlksjdsllkhfdksfdajflhdsa",
