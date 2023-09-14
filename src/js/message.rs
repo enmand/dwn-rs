@@ -16,6 +16,10 @@ extern "C" {
 
 impl From<&GenericMessage> for Message {
     fn from(value: &GenericMessage) -> Self {
+        if value.is_undefined() {
+            return Message::default();
+        }
+
         if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
             return m;
         }
@@ -24,21 +28,15 @@ impl From<&GenericMessage> for Message {
     }
 }
 
-impl TryFrom<GenericMessage> for Message {
-    type Error = serde_wasm_bindgen::Error;
-
-    fn try_from(value: GenericMessage) -> Result<Self, Self::Error> {
-        serde_wasm_bindgen::from_value(value.into())
-    }
-}
-
 impl From<Message> for GenericMessage {
     fn from(value: Message) -> Self {
-        if let Ok(m) = value.serialize(&serializer()) {
-            return m.into();
+        if value != Message::default() {
+            if let Ok(m) = value.serialize(&serializer()) {
+                return m.into();
+            }
         }
 
-        wasm_bindgen::JsValue::default().into()
+        wasm_bindgen::JsValue::undefined().into()
     }
 }
 
