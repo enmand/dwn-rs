@@ -101,11 +101,13 @@ impl SurrealDB {
 #[async_trait]
 impl MessageStore for SurrealDB {
     async fn open(&mut self) -> Result<(), SurrealDBError> {
-        if self._constr.is_empty() {
-            return Err(SurrealDBError::NoInitError);
-        } else {
-            self.db.connect(&self._constr).await?;
-            self.with_tenant(&self.tenant.clone()).await?;
+        if self.db.health().await.is_err() {
+            if self._constr.is_empty() {
+                return Err(SurrealDBError::NoInitError);
+            } else {
+                self.db.connect(&self._constr).await?;
+                self.with_tenant(&self.tenant.clone()).await?;
+            }
         }
         self.db.health().await.map_err(Into::into)
     }
