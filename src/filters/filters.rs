@@ -1,15 +1,15 @@
 use from_variants::FromVariants;
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::BTreeMap, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Filters {
-    pub(crate) filters: HashMap<String, Filter>,
+    pub(crate) filters: BTreeMap<String, Filter>,
 }
 
-impl From<HashMap<String, Filter>> for Filters {
-    fn from(filters: HashMap<String, Filter>) -> Self {
+impl From<BTreeMap<String, Filter>> for Filters {
+    fn from(filters: BTreeMap<String, Filter>) -> Self {
         Self { filters }
     }
 }
@@ -24,7 +24,7 @@ where
             filters: filters
                 .iter()
                 .map(|(k, v)| ((k.clone().into(), v.clone().into())))
-                .collect::<HashMap<String, Filter>>(),
+                .collect::<BTreeMap<String, Filter>>(),
         }
     }
 }

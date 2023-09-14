@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::{Filter as DBFilter, Filters};
 use serde::Serialize;
@@ -25,7 +25,7 @@ extern "C" {
 
 impl From<&Filter> for Filters {
     fn from(value: &Filter) -> Self {
-        match serde_wasm_bindgen::from_value::<HashMap<String, DBFilter>>(value.into()) {
+        match serde_wasm_bindgen::from_value::<BTreeMap<String, DBFilter>>(value.into()) {
             Ok(m) => {
                 return m.into();
             }
@@ -38,7 +38,7 @@ impl TryFrom<Filter> for Filters {
     type Error = JsError;
 
     fn try_from(value: Filter) -> Result<Self, Self::Error> {
-        serde_wasm_bindgen::from_value::<HashMap<String, DBFilter>>(value.into())
+        serde_wasm_bindgen::from_value::<BTreeMap<String, DBFilter>>(value.into())
             .map(|m| m.into())
             .map_err(Into::into)
     }
