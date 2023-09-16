@@ -2,9 +2,9 @@ pub mod filter;
 pub mod message;
 
 pub use filter::*;
+use js_sys::Reflect;
 pub use message::*;
 
-use crate::{IndexValue, Indexes};
 use crate::{IndexValue, Indexes, SurrealDBError};
 use crate::{MessageStore, SurrealDB as RealSurreal};
 
@@ -14,16 +14,12 @@ use web_sys::AbortSignal;
 
 extern crate console_error_panic_hook;
 
-#[wasm_bindgen]
-pub struct MessageStoreOptions {
-    signal: Option<AbortSignal>,
-}
+const INDEX_MAP: &'static str = r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
 
 #[wasm_bindgen]
-impl MessageStoreOptions {
-    pub fn new(signal: Option<AbortSignal>) -> Self {
-        Self { signal }
-    }
+extern "C" {
+    #[wasm_bindgen(typescript_type = "MessageStoreOptions")]
+    pub type MessageStoreOptions;
 }
 
 #[wasm_bindgen(js_name = SurrealDB)]
@@ -69,18 +65,18 @@ impl JSSurrealDB {
         tenant: &str,
         message: &GenericMessage,
         indexes: IndexMap,
-        _opts: Option<MessageStoreOptions>,
+        options: Option<MessageStoreOptions>,
     ) -> Result<(), JsValue> {
+        check_aborted(options)?;
+
         let indexes: Indexes =
-            serde_wasm_bindgen::from_value::<BTreeMap<String, IndexValue>>(indexes.into())
-                .unwrap()
-                .into();
+            serde_wasm_bindgen::from_value::<BTreeMap<String, IndexValue>>(indexes.into())?.into();
 
         let _ = self
             .store
-            .put(&tenant, message.into(), indexes)
+            .put(tenant.into(), message.into(), indexes)
             .await
-            .map_err(Into::<JsError>::into)?;
+            .map_err(Into::<JsValue>::into)?;
 
         Ok(())
     }
@@ -90,8 +86,10 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         cid: String,
-        _opts: Option<MessageStoreOptions>,
+        options: Option<MessageStoreOptions>,
     ) -> Result<GenericMessage, JsValue> {
+        check_aborted(options)?;
+
         match self.store.get(tenant.into(), cid).await {
             Ok(m) => Ok(m.into()),
             Err(_) => Ok(JsValue::undefined().into()),
@@ -103,8 +101,10 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         filter: &Filter,
-        _opts: Option<MessageStoreOptions>,
+        options: Option<MessageStoreOptions>,
     ) -> Result<GenericMessageArray, JsValue> {
+        check_aborted(options)?;
+
         let messages = self
             .store
             .query(tenant.into(), filter.into())
@@ -119,8 +119,9 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         cid: String,
-        _opts: Option<MessageStoreOptions>,
+        options: Option<MessageStoreOptions>,
     ) -> Result<(), JsValue> {
+        check_aborted(options)?;
 
         self.store
             .delete(tenant.into(), cid)
@@ -132,4 +133,18 @@ impl JSSurrealDB {
     pub async fn clear(&mut self) -> Result<(), JsValue> {
         self.store.clear().await.map_err(Into::into)
     }
+}
+
+fn check_aborted(options: Option<MessageStoreOptions>) -> Result<(), JsValue> {
+    if let Some(signal) = options {
+        let sig = Reflect::get(&signal.into(), &JsValue::from_str("signal")).expect("signal");
+        let sig = AbortSignal::from(sig);
+        if sig.aborted() {
+            let reason = Reflect::get(&sig.into(), &JsValue::from_str("reason")).expect("reason");
+
+            return Err(reason);
+        }
+    }
+
+    Ok(())
 }
