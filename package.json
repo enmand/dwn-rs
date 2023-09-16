@@ -10,6 +10,7 @@
     "chai": "^4.3.8",
     "chai-as-promised": "^7.1.1",
     "sinon": "^15.2.0",
-    "ts-sinon": "^2.0.2"
+    "ts-sinon": "^2.0.2",
+    "fake-indexeddb": "^4.0.2"
   }
 }
