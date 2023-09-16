@@ -121,8 +121,11 @@ impl RangeFilter {
             if self.gt.is_some() || self.lt.is_some() {
                 s.push_str(" AND ");
             }
+
             s.push_str(&format!("{} >= {}", key, gte));
         }
+
+        s
     }
 }
 
