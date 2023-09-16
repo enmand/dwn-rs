@@ -7,7 +7,7 @@ use surrealdb::sql::Thing;
 
 use crate::Indexes;
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct JWS {
     pub payload: String,
     pub signatures: Vec<SignatureEntry>,
@@ -17,7 +17,7 @@ pub struct JWS {
     pub extra: BTreeMap<String, Ipld>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct SignatureEntry {
     pub protected: String,
     pub signature: String,
@@ -25,26 +25,76 @@ pub struct SignatureEntry {
     pub extra: BTreeMap<String, Ipld>,
 }
 
-// #[derive(Serialize, Deserialize, Debug, Default)]
-// pub struct Message {
-//     pub descriptor: Descriptor,
-//     pub authorization: Option<JWS>,
-//     #[serde(flatten)]
-//     pub extra: BTreeMap<String, Ipld>,
-// }
-pub type Message = BTreeMap<String, Ipld>;
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Descriptor {
-    pub interface: String,
-    pub method: String,
-    #[serde(rename = "dataSize")]
-    pub data_size: u32,
-    #[serde(rename = "messageTimestamp")]
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct Message {
+    pub descriptor: Descriptor,
+    #[serde(rename = "recordId", skip_serializing_if = "Option::is_none")]
+    pub record_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authorization: Option<JWS>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attestation: Option<JWS>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct Descriptor {
+    pub interface: String,
+    pub method: String,
+    #[serde(rename = "dataSize", skip_serializing_if = "Option::is_none")]
+    pub data_size: Option<u32>,
+    #[serde(
+        rename = "messageTimestamp",
+        serialize_with = "serialize_str",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(
+        rename = "dateCreated",
+        serialize_with = "serialize_str",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub date_created: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(
+        rename = "datePublished",
+        serialize_with = "serialize_str",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub date_published: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<MessageFilter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub published: Option<bool>,
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Ipld>,
+}
+
+fn serialize_str<S>(
+    date: &Option<chrono::DateTime<chrono::Utc>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match date {
+        Some(date) => {
+            serializer.serialize_str(&date.to_rfc3339_opts(chrono::SecondsFormat::Micros, true))
+        }
+        None => serializer.serialize_none(),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct MessageFilter {
+    #[serde(rename = "dateCreated", skip_serializing_if = "Option::is_none")]
+    pub date_created: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Ipld>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct DateRange {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEncodedMessage {

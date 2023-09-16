@@ -20,11 +20,10 @@ impl From<&GenericMessage> for Message {
             return Message::default();
         }
 
-        if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
-            return m;
+        match serde_wasm_bindgen::from_value(value.into()) {
+            Ok(m) => m,
+            Err(_) => Message::default(),
         }
-
-        Message::default()
     }
 }
 
