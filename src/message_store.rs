@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::filters::Filters;
@@ -16,10 +17,10 @@ use libipld_core::{
     serde::{from_ipld, to_ipld},
 };
 use surrealdb::engine::any::Any;
-use thiserror::Error;
+use surrealdb::sql::{Table, Thing};
 
+const NAMESPACE: &str = "dwn-store";
 const DBNAME: &str = "messages";
-const TABLENAME: &str = "message";
 const CBOR_TAGS_CID: u64 = 42;
 
 #[async_trait]
@@ -46,7 +47,6 @@ pub trait MessageStore {
 
 pub struct SurrealDB {
     db: Arc<surrealdb::Surreal<Any>>,
-    tenant: String,
     _constr: String,
 }
 
@@ -54,7 +54,6 @@ impl SurrealDB {
     pub fn new() -> Self {
         Self {
             db: Arc::new(surrealdb::Surreal::init()),
-            tenant: String::default(),
             _constr: String::default(),
         }
     }
@@ -64,31 +63,35 @@ impl SurrealDB {
         self
     }
 
-    pub async fn with_tenant(&mut self, tenant: &str) -> Result<(), SurrealDBError> {
-        self.tenant = tenant.into();
-        self.db.query("DEFINE NAMESPACE did").await?;
-
-        self.db.use_ns(tenant).await.map_err(Into::into)
-    }
-
     pub async fn connect(&mut self, connstr: &str) -> Result<(), SurrealDBError> {
         self._constr = connstr.into();
-        self.db.connect(connstr).await.map_err(Into::into)
+        self.db.connect(connstr).await?;
+        self.db
+            .health()
+            .await
+            .map_err(Into::<SurrealDBError>::into)?;
+        self.db
+            .use_ns(NAMESPACE)
+            .use_db(DBNAME)
+            .await
+            .map_err(Into::into)
     }
 }
 
 #[async_trait]
 impl MessageStore for SurrealDB {
     async fn open(&mut self) -> Result<(), SurrealDBError> {
-        if self.db.health().await.is_err() {
+        let health = self.db.health().await;
+        if health.is_err() {
             if self._constr.is_empty() {
                 return Err(SurrealDBError::NoInitError);
             } else {
-                self.db.connect(&self._constr).await?;
-                self.with_tenant(&self.tenant.clone()).await?;
+                let connstr = self._constr.clone();
+                self.connect(&connstr).await?;
             }
         }
-        self.db.health().await.map_err(Into::into)
+
+        Ok(())
     }
 
     async fn close(&mut self) {
@@ -102,19 +105,12 @@ impl MessageStore for SurrealDB {
         message: Message,
         indexes: Indexes,
     ) -> Result<Cid, SurrealDBError> {
-        // an implementation detail in dwn-sdk-js, which the WASM version of this library interfaces
-        // with sometimes has encodedData as part of the message object. If so, we need to
-        // remove it from the extra map.
-        let mut message = message;
-        message.remove("encodedData");
-
         let ipld = to_ipld(&message)?;
         let block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &ipld)?;
 
-        let tdb = self.db.clone();
-        tdb.use_ns(tenant).use_db(DBNAME).await?;
-
-        tdb.create::<Option<GetEncodedMessage>>((TABLENAME, block.cid().to_string()))
+        let id = Thing::from((tenant.to_string(), block.cid().to_string()));
+        self.db
+            .create::<Option<GetEncodedMessage>>(id)
             .content(CreateEncodedMessage {
                 encoded_message: block.data().to_vec(),
                 indexes,
@@ -125,12 +121,12 @@ impl MessageStore for SurrealDB {
     }
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError> {
-        let tdb = self.db.clone();
-        tdb.use_ns(tenant).use_db(DBNAME).await?;
+        let id = Thing::from((tenant.to_string(), cid.clone()));
 
         // fetch and decode the message from the db
-        let encoded_message = tdb
-            .select::<Option<GetEncodedMessage>>((TABLENAME, &cid))
+        let encoded_message = self
+            .db
+            .select::<Option<GetEncodedMessage>>(id)
             .await?
             .ok_or(SurrealDBError::NotFound)?;
 
@@ -143,42 +139,47 @@ impl MessageStore for SurrealDB {
     }
 
     async fn query(&self, tenant: &str, filters: Filters) -> Result<Vec<Message>, SurrealDBError> {
-        let tdb = self.db.clone();
-        tdb.use_ns(tenant).use_db(DBNAME).await.unwrap();
+        let tenant = Table::from(tenant);
 
         let (wheres, binds) = filters.query();
-        let query = format!("SELECT * FROM {} WHERE {}", TABLENAME, wheres);
+        let query = format!("SELECT * FROM {} WHERE {}", tenant, wheres);
 
-        let mut results = tdb.query(query).bind(binds).await?;
-
-        let ms: Vec<Vec<u8>> = results.take((0, "encoded_message"))?;
+        let mut results = self.db.query(query).bind(binds).await?;
+        let ms: Vec<GetEncodedMessage> = results.take(0)?;
 
         let r = ms
             .into_iter()
-            .map(|m: Vec<u8>| serde_cbor::from_slice::<Message>(&m))
-            .collect::<Result<Vec<Message>, _>>()?;
+            .map(|m: GetEncodedMessage| {
+                Cid::from_str(&m.id.id.to_string())
+                    .map_err(|e| SurrealDBError::CidDecodeError(e))
+                    .and_then(|cid| {
+                        Block::<DefaultParams>::new(cid, m.encoded_message)
+                            .map_err(|e| SurrealDBError::MessageDecodeError(e))
+                    })
+                    .and_then(|ipld| {
+                        from_ipld::<Message>(ipld.decode::<DagCborCodec, Ipld>()?)
+                            .map_err(|e| SurrealDBError::SerdeDecodeError(e))
+                    })
+                    .unwrap_or_else(|_| Message::default())
+            })
+            .collect::<Vec<Message>>();
 
         Ok(r)
     }
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError> {
-        let tdb = self.db.clone();
-        tdb.use_ns(tenant).use_db(DBNAME).await?;
+        let tenant = Thing::from((tenant.to_string(), cid.clone()));
 
-        tdb.delete::<Option<CreateEncodedMessage>>((TABLENAME, cid))
+        self.db
+            .delete::<Option<CreateEncodedMessage>>(tenant)
             .await?;
 
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), SurrealDBError> {
-        if self.tenant.is_empty() {
-            return Err(SurrealDBError::NoInitError);
-        }
-        let tdb = self.db.clone();
-        tdb.use_ns(&self.tenant).use_db(DBNAME).await?;
+        self.db.query(format!("REMOVE DATABASE {}", DBNAME)).await?;
 
-        let _: Vec<CreateEncodedMessage> = tdb.delete(TABLENAME).await?;
         Ok(())
     }
 }
@@ -200,7 +201,6 @@ mod tests {
         let _ = db
             .connect(format!("speedb://{file}", file = cwd.to_string_lossy()).as_str())
             .await;
-        db.with_tenant("did").await.unwrap();
         let _ = db.open().await;
         let map: Indexes = Indexes::from([
             ("key", IndexValue::from(8)),
