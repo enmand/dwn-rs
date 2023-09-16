@@ -16,7 +16,7 @@ impl Query for Filters {
                 Filter::Equal(f) => {
                     query.push(format!("{} = {}", k, f));
                 }
-                Filter::Range(f) => query.push(format!("{} {}", k, f)),
+                Filter::Range(f) => query.push(f.range_with(k)),
                 Filter::OneOf(f) => {
                     let f = f
                         .iter()
