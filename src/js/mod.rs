@@ -5,6 +5,7 @@ pub use filter::*;
 pub use message::*;
 
 use crate::{IndexValue, Indexes};
+use crate::{IndexValue, Indexes, SurrealDBError};
 use crate::{MessageStore, SurrealDB as RealSurreal};
 
 use std::collections::BTreeMap;
@@ -28,6 +29,12 @@ impl MessageStoreOptions {
 #[wasm_bindgen(js_name = SurrealDB)]
 pub struct JSSurrealDB {
     store: RealSurreal,
+}
+
+impl From<SurrealDBError> for JsValue {
+    fn from(err: SurrealDBError) -> Self {
+        JsValue::from_str(&format!("{:?}", err.to_string()))
+    }
 }
 
 #[wasm_bindgen(js_class = SurrealDB)]

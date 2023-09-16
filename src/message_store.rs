@@ -5,7 +5,7 @@ use crate::{
     indexes::Indexes,
     message::{CreateEncodedMessage, Message},
 };
-use crate::{GetEncodedMessage, Query};
+use crate::{GetEncodedMessage, Query, SurrealDBError};
 use async_trait::async_trait;
 use libipld::{block::Block, store::DefaultParams};
 use libipld_cbor::DagCborCodec;
@@ -42,27 +42,6 @@ pub trait MessageStore {
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError>;
 
     async fn clear(&self) -> Result<(), SurrealDBError>;
-}
-
-#[derive(Error, Debug)]
-pub enum SurrealDBError {
-    #[error("SurrealDBError: {0}")]
-    ConnectionError(#[from] surrealdb::Error),
-
-    #[error("no database initialized")]
-    NoInitError,
-
-    #[error("failed to encode message: {0}")]
-    MessageEncodeError(#[from] libipld_core::error::Error),
-
-    #[error("failed to serde encode message: {0}")]
-    SerdeEncodeError(#[from] libipld_core::error::SerdeError),
-
-    #[error("failed to encode cid")]
-    CidEncodeError(#[from] libipld_core::cid::Error),
-
-    #[error("unable to find record")]
-    NotFound,
 }
 
 pub struct SurrealDB {
