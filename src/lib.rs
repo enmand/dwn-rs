@@ -3,7 +3,6 @@
 pub mod errors;
 pub mod filters;
 pub mod indexes;
-pub mod errors;
 mod js;
 pub mod message;
 pub mod message_store;
