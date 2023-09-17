@@ -140,8 +140,8 @@ impl Display for RangeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RangeValue::String(s) => {
-                if chrono::DateTime::parse_from_rfc3339(s).is_ok() {
-                    write!(f, "\"{}\"", s)
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+                    write!(f, "\"{}\"", dt)
                 } else {
                     write!(f, "{}", s)
                 }

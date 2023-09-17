@@ -1,17 +1,16 @@
 use std::collections::BTreeMap;
 
 use from_variants::FromVariants;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 
-#[derive(Serialize, Debug, Clone, FromVariants)]
-#[serde(untagged)]
+#[derive(Debug, Clone, FromVariants)]
 pub enum IndexValue {
     Bool(bool),
     String(String),
     Number(i64),
     Float(f64),
     Map(BTreeMap<String, IndexValue>),
-    Datetime(chrono::DateTime<chrono::Utc>),
+    DateTime(chrono::DateTime<chrono::Utc>),
 }
 
 impl From<&str> for IndexValue {
@@ -52,9 +51,44 @@ impl<const N: usize> From<[(&str, IndexValue); N]> for Indexes {
     }
 }
 
-// implement a custom Deserialize for IndexValue that will deserialize a string into a DateTime<Utc>
-// if the passed string is a valid RFC3339 time. Otherwise, deserialize to the proper IndexValue
-// variant.
+impl serde::Serialize for IndexValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            IndexValue::Bool(b) => serializer.serialize_bool(*b),
+            IndexValue::String(s) => {
+                // something weird with how filter is passed between js -> wasm -> rust for dates?
+
+                // if string is rfc3339 datetime, serialize as datetime
+                match chrono::DateTime::parse_from_rfc3339(s) {
+                    Ok(dt) => {
+                        return serializer.serialize_str(
+                            &dt.to_rfc3339_opts(chrono::SecondsFormat::Micros, true),
+                        );
+                    }
+                    Err(_) => {}
+                };
+
+                serializer.serialize_str(s)
+            }
+            IndexValue::Number(n) => serializer.serialize_i64(*n),
+            IndexValue::Float(f) => serializer.serialize_f64(*f),
+            IndexValue::Map(m) => {
+                let mut map = serializer.serialize_map(Some(m.len()))?;
+                for (k, v) in m.iter() {
+                    map.serialize_entry(k, v)?;
+                }
+                map.end()
+            }
+            IndexValue::DateTime(dt) => {
+                serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::Micros, true))
+            }
+        }
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for IndexValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -74,7 +108,7 @@ impl<'de> serde::Deserialize<'de> for IndexValue {
                 E: serde::de::Error,
             {
                 match chrono::DateTime::parse_from_rfc3339(value) {
-                    Ok(dt) => Ok(IndexValue::Datetime(dt.with_timezone(&chrono::Utc))),
+                    Ok(dt) => Ok(IndexValue::DateTime(dt.with_timezone(&chrono::Utc))),
                     Err(_) => Ok(IndexValue::String(value.to_string())),
                 }
             }
