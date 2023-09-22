@@ -5,26 +5,43 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Filters {
-    pub(crate) filters: BTreeMap<String, Filter>,
+    pub(crate) filters: Vec<BTreeMap<String, Filter>>,
 }
 
-impl From<BTreeMap<String, Filter>> for Filters {
-    fn from(filters: BTreeMap<String, Filter>) -> Self {
-        Self { filters }
+impl From<Vec<BTreeMap<String, Filter>>> for Filters {
+    fn from(filters: Vec<BTreeMap<String, Filter>>) -> Self {
+        Self {
+            filters,
+            ..Default::default()
+        }
     }
 }
 
-impl<const N: usize, S, T> From<[(S, T); N]> for Filters
+impl IntoIterator for Filters {
+    type Item = BTreeMap<String, Filter>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.filters.into_iter()
+    }
+}
+
+impl<const N: usize, const M: usize, S, T> From<[[(S, T); N]; M]> for Filters
 where
     S: Into<String> + Clone,
     T: Into<Filter> + Clone,
 {
-    fn from(filters: [(S, T); N]) -> Self {
+    fn from(filters: [[(S, T); N]; M]) -> Self {
         Self {
             filters: filters
                 .iter()
-                .map(|(k, v)| ((k.clone().into(), v.clone().into())))
-                .collect::<BTreeMap<String, Filter>>(),
+                .map(|f| {
+                    f.iter()
+                        .map(|(k, v)| (k.clone().into(), v.clone().into()))
+                        .collect::<BTreeMap<String, Filter>>()
+                })
+                .collect::<Vec<BTreeMap<String, Filter>>>(),
+            ..Default::default()
         }
     }
 }

@@ -13,7 +13,7 @@ type IndexMap = {
 
 #[wasm_bindgen(module = "@tbd54566975/dwn-sdk-js")]
 extern "C" {
-    #[wasm_bindgen(typescript_type = "Filter")]
+    #[wasm_bindgen(typescript_type = "Filter[]")]
     pub type Filter;
 }
 
@@ -25,7 +25,7 @@ extern "C" {
 
 impl From<&Filter> for Filters {
     fn from(value: &Filter) -> Self {
-        match serde_wasm_bindgen::from_value::<BTreeMap<String, DBFilter>>(value.into()) {
+        match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, DBFilter>>>(value.into()) {
             Ok(m) => {
                 return m.into();
             }
@@ -38,7 +38,7 @@ impl TryFrom<Filter> for Filters {
     type Error = JsError;
 
     fn try_from(value: Filter) -> Result<Self, Self::Error> {
-        serde_wasm_bindgen::from_value::<BTreeMap<String, DBFilter>>(value.into())
+        serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, DBFilter>>>(value.into())
             .map(|m| m.into())
             .map_err(Into::into)
     }
