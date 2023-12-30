@@ -1,5 +1,28 @@
 use thiserror::Error;
 
+use crate::{FilterError, QueryError};
+
+#[derive(Error, Debug)]
+pub enum ValueError {
+    #[error("invalid value: {0}")]
+    InvalidValue(#[from] surrealdb::error::Db),
+
+    #[error("invalid filter: {0}")]
+    FiltersError(#[from] FilterError),
+}
+
+impl From<ValueError> for FilterError {
+    fn from(e: ValueError) -> Self {
+        Self::UnparseableFilter(e.to_string())
+    }
+}
+
+impl From<surrealdb::Error> for QueryError {
+    fn from(e: surrealdb::Error) -> Self {
+        Self::DbError(e.to_string())
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum SurrealDBError {
     #[error("SurrealDBError: {0}")]
@@ -28,4 +51,10 @@ pub enum SurrealDBError {
 
     #[error("unable to find record")]
     NotFound,
+
+    #[error("unable to perform query")]
+    QueryError(#[from] QueryError),
+
+    #[error("unable to create filters")]
+    FilterError(#[from] FilterError),
 }

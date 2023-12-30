@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use libipld_core::ipld::Ipld;
-//use jose_jws::General as JWS;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
@@ -9,8 +8,11 @@ use crate::Indexes;
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct JWS {
-    pub payload: String,
-    pub signatures: Vec<SignatureEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<String>,
+    pub signature: Option<SignatureEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signatures: Option<Vec<SignatureEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub header: Option<BTreeMap<String, Ipld>>,
     #[serde(flatten)]
@@ -19,8 +21,12 @@ pub struct JWS {
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct SignatureEntry {
-    pub protected: String,
-    pub signature: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protected: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
 }
@@ -98,6 +104,8 @@ pub struct DateRange {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEncodedMessage {
+    pub(super) cid: String,
+    pub(super) tenant: String,
     pub(super) encoded_message: Vec<u8>,
     #[serde(flatten)]
     pub(super) indexes: Indexes,
@@ -106,5 +114,7 @@ pub(crate) struct CreateEncodedMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct GetEncodedMessage {
     pub(super) id: Thing,
+    pub(super) cid: String,
+    pub(super) tenant: String,
     pub(super) encoded_message: Vec<u8>,
 }

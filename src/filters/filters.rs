@@ -107,43 +107,13 @@ pub type OneOfFilter = Vec<EqualFilter>;
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RangeFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    lt: Option<RangeValue>,
+    pub lt: Option<RangeValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    gt: Option<RangeValue>,
+    pub gt: Option<RangeValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    lte: Option<RangeValue>,
+    pub lte: Option<RangeValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    gte: Option<RangeValue>,
-}
-
-impl RangeFilter {
-    pub fn range_with(&self, key: &String) -> String {
-        let mut s = String::new();
-
-        if let Some(lt) = &self.lt {
-            s.push_str(&format!("{} < {}", key, lt));
-        } else if let Some(gt) = &self.gt {
-            s.push_str(&format!("{} > {}", key, gt));
-        }
-
-        if let Some(lte) = &self.lte {
-            if self.gt.is_some() || self.lt.is_some() {
-                s.push_str(" AND ");
-            }
-
-            s.push_str(&format!("{} <= {}", key, lte));
-        }
-
-        if let Some(gte) = &self.gte {
-            if self.gt.is_some() || self.lt.is_some() {
-                s.push_str(" AND ");
-            }
-
-            s.push_str(&format!("{} >= {}", key, gte));
-        }
-
-        s
-    }
+    pub gte: Option<RangeValue>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]

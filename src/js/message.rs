@@ -3,7 +3,7 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(typescript_custom_section)]
-const INDEX_MAP: &'static str = r#"import { GenericMessage } from "@tbd54566975/dwn-sdk-js";"#;
+const MESSAGE_IMPORT: &'static str = r#"import { GenericMessage } from "@tbd54566975/dwn-sdk-js";"#;
 
 #[wasm_bindgen(module = "@tbd54566975/dwn-sdk-js")]
 extern "C" {
@@ -22,7 +22,7 @@ impl From<&GenericMessage> for Message {
 
         match serde_wasm_bindgen::from_value(value.into()) {
             Ok(m) => m,
-            Err(_) => Message::default(),
+            Err(e) => Message::default(),
         }
     }
 }

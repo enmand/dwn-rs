@@ -1,5 +1,6 @@
 pub mod filter;
 pub mod message;
+pub mod query;
 
 pub use filter::*;
 use js_sys::Reflect;
@@ -16,6 +17,8 @@ extern crate console_error_panic_hook;
 
 use cfg_if::cfg_if;
 
+use self::query::{JSMessageSort, JSPagination, JSQueryReturn};
+
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
         #[global_allocator]
@@ -23,7 +26,8 @@ cfg_if! {
     }
 }
 
-const INDEX_MAP: &'static str = r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
+const MESSAGE_STORE_OPTIONS_IMPORT: &'static str =
+    r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
 
 #[wasm_bindgen]
 extern "C" {
@@ -110,17 +114,30 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         filter: &Filter,
+        message_sort: Option<JSMessageSort>,
+        pagination: Option<JSPagination>,
         options: Option<MessageStoreOptions>,
-    ) -> Result<GenericMessageArray, JsValue> {
+    ) -> Result<JSQueryReturn, JsValue> {
         check_aborted(options)?;
 
-        let messages = self
+        let qr = self
             .store
-            .query(tenant.into(), filter.into())
+            .query(
+                tenant.into(),
+                filter.into(),
+                match message_sort {
+                    Some(sort) => Some(sort.into()),
+                    None => None,
+                },
+                match pagination {
+                    Some(p) => Some(p.into()),
+                    None => None,
+                },
+            )
             .await
             .map_err(Into::<JsValue>::into)?;
 
-        Ok(messages.into())
+        Ok(qr.into())
     }
 
     #[wasm_bindgen]

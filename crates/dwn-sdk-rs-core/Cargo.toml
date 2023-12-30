@@ -1,0 +1,21 @@
+[package]
+name = "dwn-sdk-rs-core"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+lto = true
+opt-level = 'z'
+strip = true
+panic = 'abort'
+codegen-units = 1
+
+
+[dependencies]
+async-trait = "0.1.73"
+serde = { version = "1.0.183", features = ["derive"] }
+
+
+[lib]
+name = "dwn-sdk-rs-core"
+path = "src/main.rs"
