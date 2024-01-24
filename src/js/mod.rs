@@ -1,11 +1,12 @@
 pub mod filter;
 pub mod message;
+pub mod query;
 
 pub use filter::*;
 use js_sys::Reflect;
 pub use message::*;
 
-use crate::{IndexValue, Indexes, SurrealDBError};
+use crate::{Indexes, QueryReturn, SurrealDBError, Value};
 use crate::{MessageStore, SurrealDB as RealSurreal};
 
 use std::collections::BTreeMap;
@@ -16,6 +17,8 @@ extern crate console_error_panic_hook;
 
 use cfg_if::cfg_if;
 
+use self::query::{JSMessageSort, JSPagination, JSQueryReturn};
+
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
         #[global_allocator]
@@ -23,7 +26,8 @@ cfg_if! {
     }
 }
 
-const INDEX_MAP: &'static str = r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
+const MESSAGE_STORE_OPTIONS_IMPORT: &'static str =
+    r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
 
 #[wasm_bindgen]
 extern "C" {
@@ -79,7 +83,7 @@ impl JSSurrealDB {
         check_aborted(options)?;
 
         let indexes: Indexes =
-            serde_wasm_bindgen::from_value::<BTreeMap<String, IndexValue>>(indexes.into())?.into();
+            serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
 
         let _ = self
             .store
@@ -110,17 +114,36 @@ impl JSSurrealDB {
         &self,
         tenant: &str,
         filter: &Filter,
+        message_sort: Option<JSMessageSort>,
+        pagination: Option<JSPagination>,
         options: Option<MessageStoreOptions>,
-    ) -> Result<GenericMessageArray, JsValue> {
+    ) -> Result<JSQueryReturn, JsValue> {
         check_aborted(options)?;
 
-        let messages = self
-            .store
-            .query(tenant.into(), filter.into())
-            .await
-            .map_err(Into::<JsValue>::into)?;
+        let page = match pagination {
+            Some(p) => Some(match p.try_into() {
+                Ok(p) => p,
+                Err(_) => {
+                    return Ok(QueryReturn::default().into());
+                }
+            }),
+            None => None,
+        };
 
-        Ok(messages.into())
+        Ok(self
+            .store
+            .query(
+                tenant.into(),
+                filter.into(),
+                match message_sort {
+                    Some(sort) => Some(sort.into()),
+                    None => None,
+                },
+                page,
+            )
+            .await
+            .map_err(Into::<JsValue>::into)?
+            .into())
     }
 
     #[wasm_bindgen]

@@ -1,16 +1,17 @@
 {
   "type": "module",
   "dependencies": {
-    "@tbd54566975/dwn-sdk-js": "^0.2.1"
+    "@tbd54566975/dwn-sdk-js": "^0.2.13",
+    "isomorphic-ws": "^5.0.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.1",
-    "mocha": "^10.2.0",
-    "typescript": "^5.2.2",
     "chai": "^4.3.8",
     "chai-as-promised": "^7.1.1",
+    "fake-indexeddb": "^4.0.2",
+    "mocha": "^10.2.0",
     "sinon": "^15.2.0",
     "ts-sinon": "^2.0.2",
-    "fake-indexeddb": "^4.0.2"
+    "typescript": "^5.2.2"
   }
 }

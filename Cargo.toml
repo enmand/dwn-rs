@@ -7,11 +7,11 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [profile.release]
-lto = true
-opt-level = 'z'
-strip = true
-panic = 'abort'
-codegen-units = 1
+# lto = true
+# opt-level = 'z'
+# strip = true
+# panic = 'abort'
+# codegen-units = 1
 
 [features]
 default = ["rustls", "kv-mem", "kv-speedb", "remote"]
@@ -28,31 +28,50 @@ async-trait = "0.1.73"
 serde = { version = "1.0.183", features = ["derive"] }
 serde_json = { version = "1.0.105", features = ["raw_value"] }
 thiserror = "1.0.47"
-surrealdb = { version = "1.0.0", default-features = false}
-tokio = { version = "1.32.0", features = ["time", "macros"] }
+surrealdb = { version = "1.1.1", default-features = false }
+# tokio = { version = "1.32.0", features = ["time", "macros"] }
 serde_cbor = "0.11.2"
 from_variants = "1.0.2"
 libipld-cbor = "0.16.0"
-libipld-core = { version = "0.16.0", features = ["serde", "serde-codec", "multibase"] }
+libipld-core = { version = "0.16.0", features = [
+    "serde",
+    "serde-codec",
+    "multibase",
+] }
 chrono = { version = "0.4.30", features = ["serde"] }
 multihash = { version = "0.19.1", features = ["serde", "serde-codec"] }
-cid = { version = "0.10.1", features = ["serde-codec", "serde"] }
+cid = { version = "0.11.0", features = ["serde-codec", "serde", "alloc"] }
 libipld = { version = "0.16.0", features = ["serde-codec"] }
-
 #[target.'cfg(target_family = "wasm")'.dependencies]
-web-sys = { version = "0.3.64", features = ["AbortSignal", "console", "AbortController"] }
-wasm-bindgen = { version = "0.2.87", features = ["serde", "serde_json", "serde-serialize", "enable-interning"] }
+web-sys = { version = "0.3.64", features = [
+    "AbortSignal",
+    "console",
+    "AbortController",
+    "WebSocket",
+] }
+wasm-bindgen = { version = "0.2.87", features = [
+    "serde",
+    "serde_json",
+    "serde-serialize",
+    "enable-interning",
+] }
 wasm-bindgen-futures = "0.4.37"
 serde-wasm-bindgen = "0.5.0"
 js-sys = "0.3.64"
 console_error_panic_hook = "0.1.7"
-wee_alloc = {version = "0.4.5", optional = true}
+wee_alloc = { version = "0.4.5", optional = true }
 cfg-if = "1.0.0"
+serde-aux = "4.2.0"
+serde_repr = "0.1.17"
+serde_with = "3.4.0"
 
-[target.'cfg(target_family = "wasm")'.dependencies.tokio]
-version = "1.32.0"
-features = ["time", "macros"]
+# [target.'cfg(target_family = "wasm")'.dependencies.tokio]
+# version = "1.32.0"
+# features = ["time", "macros"]
+#
+# [target.'cfg(not(target_family = "wasm"))'.dependencies.tokio]
+# version = "1.32.0"
+# features = ["time", "macros", "rt-multi-thread"]
 
-[target.'cfg(not(target_family = "wasm"))'.dependencies.tokio]
-version = "1.32.0"
-features = ["time", "macros", "rt-multi-thread"]
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

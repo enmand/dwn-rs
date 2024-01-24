@@ -1,40 +1,177 @@
-use from_variants::FromVariants;
-use std::{collections::BTreeMap, fmt::Display};
+use std::{collections::BTreeMap, ops::Bound};
 
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
+
+use crate::value::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Filters {
-    pub(crate) filters: BTreeMap<String, Filter>,
+    pub(crate) filters: Vec<BTreeMap<String, Filter>>,
 }
 
-impl From<BTreeMap<String, Filter>> for Filters {
-    fn from(filters: BTreeMap<String, Filter>) -> Self {
-        Self { filters }
-    }
-}
-
-impl<const N: usize, S, T> From<[(S, T); N]> for Filters
-where
-    S: Into<String> + Clone,
-    T: Into<Filter> + Clone,
-{
-    fn from(filters: [(S, T); N]) -> Self {
+impl From<Vec<BTreeMap<String, Filter>>> for Filters {
+    fn from(filters: Vec<BTreeMap<String, Filter>>) -> Self {
         Self {
-            filters: filters
-                .iter()
-                .map(|(k, v)| ((k.clone().into(), v.clone().into())))
-                .collect::<BTreeMap<String, Filter>>(),
+            filters,
+            ..Default::default()
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
-#[serde(untagged)]
+impl<const N: usize, const M: usize, S, T> From<[[(S, T); N]; M]> for Filters
+where
+    S: Into<String> + Clone,
+    T: Into<Filter> + Clone,
+{
+    fn from(filters: [[(S, T); N]; M]) -> Self {
+        Self {
+            filters: filters
+                .iter()
+                .map(|f| {
+                    f.iter()
+                        .map(|(k, v)| (k.clone().into(), v.clone().into()))
+                        .collect::<BTreeMap<String, Filter>>()
+                })
+                .collect::<Vec<BTreeMap<String, Filter>>>(),
+            ..Default::default()
+        }
+    }
+}
+
+impl IntoIterator for Filters {
+    type Item = BTreeMap<String, Filter>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.filters.into_iter()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Filter {
-    Equal(EqualFilter),
-    Range(RangeFilter),
-    OneOf(OneOfFilter),
+    Equal(Value),
+    Range(Bound<Value>, Bound<Value>),
+    OneOf(Vec<Value>),
+}
+
+impl<'de> Deserialize<'de> for Filter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct FilterVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FilterVisitor {
+            type Value = Filter;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("expected a value, or a JSON object with eq, range, or oneOf")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Filter, E>
+            where
+                E: serde::de::Error,
+            {
+                match chrono::DateTime::parse_from_rfc3339(value) {
+                    Ok(dt) => Ok(Filter::Equal(Value::String(
+                        dt.with_timezone(&chrono::Utc).to_rfc3339(),
+                    ))),
+                    Err(_) => {
+                        if value == "true" || value == "false" {
+                            return Ok(Filter::Equal(Value::Bool(
+                                value.parse::<bool>().map_err(serde::de::Error::custom)?,
+                            )));
+                        }
+
+                        Ok(Filter::Equal(Value::String(value.to_string())))
+                    }
+                }
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Filter, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(Filter::Equal(Value::Number(value)))
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<Filter, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(Filter::Equal(Value::Bool(value)))
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Filter, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut range = (Bound::Unbounded, Bound::Unbounded);
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "lt" => match range.1 {
+                            Bound::Unbounded => range.1 = Bound::Excluded(map.next_value()?),
+                            _ => return Err(serde::de::Error::custom("multiple upper bounds")),
+                        },
+                        "lte" => match range.1 {
+                            Bound::Unbounded => range.1 = Bound::Included(map.next_value()?),
+                            _ => return Err(serde::de::Error::custom("multiple upper bounds")),
+                        },
+                        "gt" => match range.0 {
+                            Bound::Unbounded => range.0 = Bound::Excluded(map.next_value()?),
+                            _ => return Err(serde::de::Error::custom("multiple lower bounds")),
+                        },
+                        "gte" => match range.0 {
+                            Bound::Unbounded => range.0 = Bound::Included(map.next_value()?),
+                            _ => return Err(serde::de::Error::custom("multiple lower bounds")),
+                        },
+                        _ => return Err(serde::de::Error::custom("invalid range key")),
+                    }
+                }
+
+                Ok(Filter::Range(range.0, range.1))
+            }
+        }
+        deserializer.deserialize_any(FilterVisitor)
+    }
+}
+
+impl Serialize for Filter {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        match self {
+            Filter::Equal(v) => v.serialize(serializer),
+            Filter::Range(beg, end) => {
+                let mut map = serializer.serialize_map(Some(2))?;
+
+                match beg {
+                    Bound::Included(v) => {
+                        map.serialize_entry("gte", v)?;
+                    }
+                    Bound::Excluded(v) => {
+                        map.serialize_entry("gt", v)?;
+                    }
+                    _ => {}
+                }
+
+                match end {
+                    Bound::Included(v) => {
+                        map.serialize_entry("lte", v)?;
+                    }
+                    Bound::Excluded(v) => {
+                        map.serialize_entry("lt", v)?;
+                    }
+                    _ => {}
+                }
+
+                map.end()
+            }
+            Filter::OneOf(v) => v.serialize(serializer),
+        }
+    }
 }
 
 impl From<&str> for Filter {
@@ -58,101 +195,5 @@ impl From<i64> for Filter {
 impl From<bool> for Filter {
     fn from(b: bool) -> Self {
         Filter::Equal(b.into())
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
-#[serde(untagged)]
-pub enum EqualFilter {
-    String(String),
-    Number(i64),
-    Bool(bool),
-}
-
-impl Display for EqualFilter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EqualFilter::String(s) => write!(f, "\"{}\"", s),
-            EqualFilter::Number(i) => write!(f, "{}", i),
-            EqualFilter::Bool(b) => write!(f, "{}", b),
-        }
-    }
-}
-
-impl From<&str> for EqualFilter {
-    fn from(s: &str) -> Self {
-        EqualFilter::String(s.into())
-    }
-}
-
-pub type OneOfFilter = Vec<EqualFilter>;
-
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct RangeFilter {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    lt: Option<RangeValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    gt: Option<RangeValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    lte: Option<RangeValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    gte: Option<RangeValue>,
-}
-
-impl RangeFilter {
-    pub fn range_with(&self, key: &String) -> String {
-        let mut s = String::new();
-
-        if let Some(lt) = &self.lt {
-            s.push_str(&format!("{} < {}", key, lt));
-        } else if let Some(gt) = &self.gt {
-            s.push_str(&format!("{} > {}", key, gt));
-        }
-
-        if let Some(lte) = &self.lte {
-            if self.gt.is_some() || self.lt.is_some() {
-                s.push_str(" AND ");
-            }
-
-            s.push_str(&format!("{} <= {}", key, lte));
-        }
-
-        if let Some(gte) = &self.gte {
-            if self.gt.is_some() || self.lt.is_some() {
-                s.push_str(" AND ");
-            }
-
-            s.push_str(&format!("{} >= {}", key, gte));
-        }
-
-        s
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, FromVariants)]
-#[serde(untagged)]
-pub enum RangeValue {
-    String(String),
-    Number(i64),
-}
-
-impl Display for RangeValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RangeValue::String(s) => {
-                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-                    write!(f, "\"{}\"", dt)
-                } else {
-                    write!(f, "{}", s)
-                }
-            }
-            RangeValue::Number(i) => write!(f, "{}", i),
-        }
-    }
-}
-
-impl From<&str> for RangeValue {
-    fn from(s: &str) -> Self {
-        RangeValue::String(s.into())
     }
 }
