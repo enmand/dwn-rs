@@ -6,7 +6,7 @@ pub use filter::*;
 use js_sys::Reflect;
 pub use message::*;
 
-use crate::{IndexValue, Indexes, SurrealDBError};
+use crate::{Indexes, QueryReturn, SurrealDBError, Value};
 use crate::{MessageStore, SurrealDB as RealSurreal};
 
 use std::collections::BTreeMap;
@@ -83,7 +83,7 @@ impl JSSurrealDB {
         check_aborted(options)?;
 
         let indexes: Indexes =
-            serde_wasm_bindgen::from_value::<BTreeMap<String, IndexValue>>(indexes.into())?.into();
+            serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
 
         let _ = self
             .store
@@ -120,7 +120,17 @@ impl JSSurrealDB {
     ) -> Result<JSQueryReturn, JsValue> {
         check_aborted(options)?;
 
-        let qr = self
+        let page = match pagination {
+            Some(p) => Some(match p.try_into() {
+                Ok(p) => p,
+                Err(_) => {
+                    return Ok(QueryReturn::default().into());
+                }
+            }),
+            None => None,
+        };
+
+        Ok(self
             .store
             .query(
                 tenant.into(),
@@ -129,15 +139,11 @@ impl JSSurrealDB {
                     Some(sort) => Some(sort.into()),
                     None => None,
                 },
-                match pagination {
-                    Some(p) => Some(p.into()),
-                    None => None,
-                },
+                page,
             )
             .await
-            .map_err(Into::<JsValue>::into)?;
-
-        Ok(qr.into())
+            .map_err(Into::<JsValue>::into)?
+            .into())
     }
 
     #[wasm_bindgen]

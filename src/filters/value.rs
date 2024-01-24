@@ -1,66 +1,37 @@
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 use from_variants::FromVariants;
-use serde::{ser::SerializeMap, Deserialize, Serialize};
+use serde::ser::{SerializeMap, SerializeSeq};
 
 #[derive(Debug, Clone, FromVariants)]
-pub enum IndexValue {
+pub enum Value {
+    Null,
     Bool(bool),
     String(String),
     Number(i64),
     Float(f64),
-    Map(BTreeMap<String, IndexValue>),
+    Cid(cid::Cid),
+    Map(BTreeMap<String, Value>),
+    Array(Vec<Value>),
     DateTime(chrono::DateTime<chrono::Utc>),
 }
 
-impl From<&str> for IndexValue {
+impl From<&str> for Value {
     fn from(s: &str) -> Self {
-        IndexValue::String(s.into())
+        Value::String(s.into())
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct Indexes {
-    #[serde(flatten)]
-    pub indexes: BTreeMap<String, IndexValue>,
-}
-
-impl From<BTreeMap<String, IndexValue>> for Indexes {
-    fn from(indexes: BTreeMap<String, IndexValue>) -> Self {
-        Self { indexes }
-    }
-}
-
-impl From<Vec<(String, IndexValue)>> for Indexes {
-    fn from(indexes: Vec<(String, IndexValue)>) -> Self {
-        Self {
-            indexes: indexes.into_iter().collect(),
-        }
-    }
-}
-
-impl<const N: usize> From<[(&str, IndexValue); N]> for Indexes {
-    fn from(indexes: [(&str, IndexValue); N]) -> Self {
-        Self {
-            indexes: indexes
-                .to_vec()
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone()))
-                .collect(),
-        }
-    }
-}
-
-impl serde::Serialize for IndexValue {
+impl serde::Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         match self {
-            IndexValue::Bool(b) => serializer.serialize_bool(*b),
-            IndexValue::String(s) => {
-                // something weird with how filter is passed between js -> wasm -> rust for dates?
-
+            Value::Null => serializer.serialize_none(),
+            Value::Bool(b) => serializer.serialize_bool(*b),
+            Value::String(s) => {
                 // if string is rfc3339 datetime, serialize as datetime
                 match chrono::DateTime::parse_from_rfc3339(s) {
                     Ok(dt) => {
@@ -73,23 +44,31 @@ impl serde::Serialize for IndexValue {
 
                 serializer.serialize_str(s)
             }
-            IndexValue::Number(n) => serializer.serialize_i64(*n),
-            IndexValue::Float(f) => serializer.serialize_f64(*f),
-            IndexValue::Map(m) => {
+            Value::Cid(c) => serializer.serialize_str(&c.to_string()),
+            Value::Number(n) => serializer.serialize_i64(*n),
+            Value::Float(f) => serializer.serialize_f64(*f),
+            Value::Map(m) => {
                 let mut map = serializer.serialize_map(Some(m.len()))?;
                 for (k, v) in m.iter() {
                     map.serialize_entry(k, v)?;
                 }
                 map.end()
             }
-            IndexValue::DateTime(dt) => {
+            Value::DateTime(dt) => {
                 serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::Micros, true))
+            }
+            Value::Array(a) => {
+                let mut map = serializer.serialize_seq(Some(a.len()))?;
+                for v in a.iter() {
+                    map.serialize_element(v)?;
+                }
+                map.end()
             }
         }
     }
 }
 
-impl<'de> serde::Deserialize<'de> for IndexValue {
+impl<'de> serde::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -97,7 +76,7 @@ impl<'de> serde::Deserialize<'de> for IndexValue {
         struct IndexValueVisitor;
 
         impl<'de> serde::de::Visitor<'de> for IndexValueVisitor {
-            type Value = IndexValue;
+            type Value = Value;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("a valid RFC3339 datetime or a valid IndexValue variant")
@@ -108,8 +87,19 @@ impl<'de> serde::Deserialize<'de> for IndexValue {
                 E: serde::de::Error,
             {
                 match chrono::DateTime::parse_from_rfc3339(value) {
-                    Ok(dt) => Ok(IndexValue::DateTime(dt.with_timezone(&chrono::Utc))),
-                    Err(_) => Ok(IndexValue::String(value.to_string())),
+                    Ok(dt) => Ok(Value::DateTime(dt.with_timezone(&chrono::Utc))),
+                    Err(_) => match cid::Cid::try_from(value) {
+                        Ok(cid) => return Ok(Value::Cid(cid)),
+                        Err(_) => {
+                            if value == "true" {
+                                return Ok(Value::Bool(true));
+                            } else if value == "false" {
+                                return Ok(Value::Bool(false));
+                            }
+
+                            Ok(Value::String(value.to_string()))
+                        }
+                    },
                 }
             }
 
@@ -117,28 +107,28 @@ impl<'de> serde::Deserialize<'de> for IndexValue {
             where
                 E: serde::de::Error,
             {
-                Ok(IndexValue::Bool(value))
+                Ok(Value::Bool(value))
             }
 
             fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                Ok(IndexValue::Number(value))
+                Ok(Value::Number(value))
             }
 
             fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                Ok(IndexValue::Number(value as i64))
+                Ok(Value::Number(value as i64))
             }
 
             fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                Ok(IndexValue::Float(value))
+                Ok(Value::Float(value))
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
@@ -147,11 +137,11 @@ impl<'de> serde::Deserialize<'de> for IndexValue {
             {
                 let mut values = BTreeMap::new();
 
-                while let Some((key, value)) = map.next_entry::<String, IndexValue>()? {
+                while let Some((key, value)) = map.next_entry::<String, Value>()? {
                     values.insert(key, value);
                 }
 
-                Ok(IndexValue::Map(values))
+                Ok(Value::Map(values))
             }
         }
 

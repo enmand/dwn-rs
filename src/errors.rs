@@ -9,6 +9,9 @@ pub enum ValueError {
 
     #[error("invalid filter: {0}")]
     FiltersError(#[from] FilterError),
+
+    #[error("unparseable value: {0}")]
+    UnparseableValue(String),
 }
 
 impl From<ValueError> for FilterError {

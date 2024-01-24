@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::filters::{Filters, Query};
 use crate::{
-    indexes::Indexes,
+    filters::indexes::Indexes,
     message::{CreateEncodedMessage, Message},
 };
 use crate::{
@@ -19,11 +19,10 @@ use libipld_core::{
     serde::{from_ipld, to_ipld},
 };
 use surrealdb::engine::any::Any;
-use surrealdb::sql::Thing;
+use surrealdb::sql::{Id, Table, Thing};
 
 const NAMESPACE: &str = "dwn";
-const DBNAME: &str = "store";
-const TABLENAME: &str = "messages";
+const DBNAME: &str = "messages";
 const CBOR_TAGS_CID: u64 = 42;
 
 #[async_trait]
@@ -96,7 +95,7 @@ impl MessageStore for SurrealDB {
                 return Err(SurrealDBError::NoInitError);
             } else {
                 let connstr = self._constr.clone();
-                self.connect(&connstr).await?;
+                self.db.connect(&connstr).await?;
             }
         }
 
@@ -105,43 +104,53 @@ impl MessageStore for SurrealDB {
 
     async fn close(&mut self) {
         let _ = self.db.invalidate().await;
-        self.db = Arc::new(surrealdb::Surreal::init());
     }
 
     async fn put(
         &self,
         tenant: &str,
-        message: Message,
+        mut message: Message,
         indexes: Indexes,
     ) -> Result<Cid, SurrealDBError> {
-        let ipld = to_ipld(&message)?;
-        let block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &ipld)?;
+        let mut data: Option<Ipld> = None;
+        if message.extra.contains_key("encodedData") {
+            data = message.extra.remove("encodedData");
+        }
+        let block =
+            Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &to_ipld(&message)?)?;
+        let cid = block.cid().to_owned();
 
-        // last_id is made from block.cid() and the tenant to ensure uniqueness
         let id = Thing::from((
-            TABLENAME.to_string(),
-            tenant.to_string() + &block.cid().to_string(),
+            Table::from(tenant.to_string()).to_string(),
+            Id::String(cid.to_string()),
         ));
 
         self.db
-            .create::<Option<GetEncodedMessage>>(id)
+            .create::<Option<GetEncodedMessage>>(id.clone())
             .content(CreateEncodedMessage {
-                cid: block.cid().to_string(),
+                cid: cid.to_string(),
                 encoded_message: block.data().to_vec(),
+                encoded_data: data,
                 tenant: tenant.to_string(),
                 indexes,
             })
             .await?;
 
-        Ok(block.cid().to_owned())
+        Ok(cid)
     }
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError> {
-        let id = Thing::from((TABLENAME.to_string(), tenant.to_string() + &cid.clone()));
+        let id = Thing::from((
+            Table::from(tenant.to_string()).to_string(),
+            Id::String(cid.to_string()),
+        ));
 
         // fetch and decode the message from the db
-        let encoded_message: GetEncodedMessage =
-            self.db.select(id).await?.ok_or(SurrealDBError::NotFound)?;
+        let encoded_message: GetEncodedMessage = self
+            .db
+            .select(id.clone())
+            .await?
+            .ok_or(SurrealDBError::NotFound)?;
 
         if encoded_message.tenant != tenant {
             return Err(SurrealDBError::NotFound);
@@ -150,9 +159,13 @@ impl MessageStore for SurrealDB {
         let block =
             Block::<DefaultParams>::new(Cid::try_from(cid)?, encoded_message.encoded_message)?;
 
-        let from = from_ipld::<Message>(block.decode::<DagCborCodec, Ipld>()?);
+        let mut from = from_ipld::<Message>(block.decode::<DagCborCodec, Ipld>()?)?;
 
-        Ok(from?)
+        if let Some(data) = encoded_message.encoded_data {
+            from.extra.insert("encodedData".to_string(), data);
+        }
+
+        Ok(from)
     }
 
     async fn query(
@@ -164,16 +177,21 @@ impl MessageStore for SurrealDB {
     ) -> Result<QueryReturn, SurrealDBError> {
         let mut qb = SurrealQuery::<GetEncodedMessage>::new(self.db.to_owned());
 
-        qb.from(TABLENAME.to_string())
+        qb.from(tenant.to_string())
             .filter(&filters)?
             .sort(sort.clone())
             .page(pagination.clone());
 
-        let ms = qb.query().await?;
+        let (ms, cursor) = match qb.query().await {
+            Ok(ms) => ms,
+            Err(e) => {
+                web_sys::console::log_1(&format!("query error: {:?}", e).into());
+                return Err(SurrealDBError::QueryError(e));
+            }
+        };
 
         let r = ms
             .into_iter()
-            .filter(|m| m.tenant == tenant)
             .map(|m: GetEncodedMessage| {
                 Cid::from_str(&m.cid.to_string())
                     .map_err(|e| SurrealDBError::CidDecodeError(e))
@@ -185,48 +203,40 @@ impl MessageStore for SurrealDB {
                         from_ipld::<Message>(ipld.decode::<DagCborCodec, Ipld>()?)
                             .map_err(|e| SurrealDBError::SerdeDecodeError(e))
                     })
-                    .and_then(|pm| Ok((pm, m.tenant.clone())))
-                    .unwrap_or_else(|e| {
-                        web_sys::console::log_1(&format!("Error: {:?}", e).into());
-                        (Message::default(), m.tenant)
+                    .and_then(|mut msg: Message| {
+                        if let Some(data) = m.encoded_data {
+                            msg.extra.insert("encodedData".to_string(), data);
+                        }
+                        Ok(msg)
                     })
+                    .unwrap_or_else(|_| Message::default())
             })
-            // .filter(|(m, msg_tenant)| {
-            //     tenant == msg_tenant
-            //         || ((m.descriptor.published.is_some() && m.descriptor.published.unwrap())
-            //             || m.descriptor.published.is_none())
-            // })
-            .map(|(m, _)| m)
             .collect::<Vec<Message>>();
 
-        web_sys::console::log_1(&format!("Query results: {:?}", r).into());
-
-        let last_cid = match r.last() {
-            Some(m) => m.record_id.clone(),
-            None => None,
+        let qr = QueryReturn {
+            messages: r,
+            cursor,
         };
 
-        Ok(QueryReturn {
-            messages: r,
-            pagination_message_cid: last_cid,
-        })
+        Ok(qr)
     }
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError> {
-        let id = Thing::from((TABLENAME.to_string(), tenant.to_string() + &cid.clone()));
+        let id = Thing::from((
+            Table::from(tenant.to_string()).to_string(),
+            Id::String(cid.to_string()),
+        ));
 
         // check the tenancy on the messages
-        let encoded_message: GetEncodedMessage = self
-            .db
-            .select(id.clone())
-            .await?
-            .ok_or(SurrealDBError::NotFound)?;
+        let encoded_message: Option<GetEncodedMessage> = self.db.select(id.clone()).await?;
 
-        if encoded_message.tenant != tenant {
-            return Err(SurrealDBError::NotFound);
+        if let Some(msg) = encoded_message {
+            if msg.tenant != tenant {
+                return Err(SurrealDBError::NotFound);
+            }
+
+            self.db.delete::<Option<CreateEncodedMessage>>(id).await?;
         }
-
-        self.db.delete::<Option<CreateEncodedMessage>>(id).await?;
 
         Ok(())
     }

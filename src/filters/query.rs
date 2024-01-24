@@ -1,20 +1,31 @@
-use crate::{Filters, Message};
+use crate::{Filters, Message, SOrders};
 
 use crate::filters::errors;
 use async_trait::async_trait;
+use cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use serde_with::{serde_as, DisplayFromStr};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Pagination {
-    #[serde(rename = "messageCid")]
-    pub message_cid: Option<String>,
+    pub cursor: Option<Cursor>,
     pub limit: Option<u32>,
 }
 
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Clone)]
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Cursor {
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "messageCid")]
+    pub cursor: Cid,
+    pub value: Option<crate::value::Value>,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Copy, Clone, Default)]
 #[repr(i8)]
 pub enum SortDirection {
+    #[default]
     Ascending = 1,
     Descending = -1,
 }
@@ -28,20 +39,50 @@ impl SortDirection {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct MessageSort {
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum MessageSort {
     #[serde(rename = "dateCreated")]
-    pub date_created: Option<SortDirection>,
+    DateCreated(SortDirection),
     #[serde(rename = "datePublished")]
-    pub date_published: Option<SortDirection>,
+    DatePublished(SortDirection),
     #[serde(rename = "messageTimestamp")]
-    pub timestamp: Option<SortDirection>,
+    Timestamp(SortDirection),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+impl Default for MessageSort {
+    fn default() -> Self {
+        Self::Timestamp(SortDirection::default())
+    }
+}
+
+impl MessageSort {
+    pub fn get_direction(&self) -> SortDirection {
+        match self {
+            MessageSort::DateCreated(direction) => direction.clone(),
+            MessageSort::DatePublished(direction) => direction.clone(),
+            MessageSort::Timestamp(direction) => direction.clone(),
+        }
+    }
+
+    pub fn to_order(&self) -> SOrders {
+        match self {
+            MessageSort::DateCreated(direction) => {
+                SOrders::new().push(("dateCreated", direction.to_bool()))
+            }
+            MessageSort::DatePublished(direction) => {
+                SOrders::new().push(("datePublished", direction.to_bool()))
+            }
+            MessageSort::Timestamp(direction) => {
+                SOrders::new().push(("messageTimestamp", direction.to_bool()))
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct QueryReturn {
     pub messages: Vec<Message>,
-    pub pagination_message_cid: Option<String>,
+    pub cursor: Option<Cursor>,
 }
 
 // Trait for implementing Filters
@@ -56,5 +97,10 @@ where
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, errors::FilterError>;
     fn page(&mut self, pagination: Option<Pagination>) -> &mut Self;
     fn sort(&mut self, sort: Option<MessageSort>) -> &mut Self;
-    async fn query(&self) -> Result<Vec<U>, errors::QueryError>;
+    async fn query(&self) -> Result<(Vec<U>, Option<crate::Cursor>), errors::QueryError>;
+}
+
+pub trait CursorValue {
+    fn cid(&self) -> Cid;
+    fn cursor_value(&self, sort: MessageSort) -> &crate::value::Value;
 }

@@ -1,4 +1,4 @@
-use crate::{MessageSort, Pagination, QueryReturn};
+use crate::{filters::Pagination, MessageSort, QueryReturn};
 
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -49,16 +49,14 @@ impl From<JSMessageSort> for MessageSort {
     }
 }
 
-impl From<JSPagination> for Pagination {
-    fn from(value: JSPagination) -> Self {
+impl TryFrom<JSPagination> for Pagination {
+    type Error = serde_wasm_bindgen::Error;
+    fn try_from(value: JSPagination) -> Result<Self, serde_wasm_bindgen::Error> {
         if value.is_undefined() {
-            return Pagination::default();
+            return Ok(Pagination::default());
         }
 
-        match serde_wasm_bindgen::from_value(value.into()) {
-            Ok(m) => m,
-            Err(_) => Pagination::default(),
-        }
+        serde_wasm_bindgen::from_value(value.into())
     }
 }
 

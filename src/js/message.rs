@@ -22,7 +22,7 @@ impl From<&GenericMessage> for Message {
 
         match serde_wasm_bindgen::from_value(value.into()) {
             Ok(m) => m,
-            Err(e) => Message::default(),
+            Err(_) => Message::default(),
         }
     }
 }
