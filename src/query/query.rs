@@ -299,6 +299,8 @@ where
             }
         }
 
+        web_sys::console::log_1(&format!("binds: {:?}", binds).into());
+        web_sys::console::log_1(&format!("query: {:?}\n\n", stmt.to_string()).into());
         let mut q = self.db.query(stmt.clone()).bind(&binds).await?;
         let mut res: Vec<U> = q.take(0)?;
 
