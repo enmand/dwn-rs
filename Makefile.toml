@@ -1,0 +1,16 @@
+[tasks.build-wasm]
+command = "wasm-pack"
+args = ["build", "--target", "nodejs", "--release", "--out-name", "index", "--out-dir", "out", "--", "--no-default-features", "--features", "wasm"]
+
+[tasks.install-bun-deps]
+command = "bun"
+args = ["install"]
+
+[tasks.test-store-js]
+command = "bun"
+args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
+dependencies = ["build-wasm", "install-bun-deps"]
+
+[tasks.test]
+command = "cargo"
+args = ["test", "--release", "--", "--nocapture"]
