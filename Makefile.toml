@@ -1,3 +1,8 @@
+[env]
+CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--lib"
+CARGO_MAKE_COVERAGE_PROVIDER = "kcov"
+CARGO_MAKE_RUN_CODECOV=true
+
 [tasks.build-wasm]
 command = "wasm-pack"
 args = ["build", "--target", "nodejs", "--release", "--out-name", "index", "--out-dir", "out", "--", "--no-default-features", "--features", "wasm"]
@@ -11,6 +16,13 @@ command = "bun"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
 dependencies = ["build-wasm", "install-bun-deps"]
 
-[tasks.test]
+[tasks.test-cargo]
 command = "cargo"
 args = ["test", "--release", "--", "--nocapture"]
+
+[tasks.test]
+clear = true
+run_task = [
+    { name = "test-cargo"},
+    { name = "test-store-js"}
+]

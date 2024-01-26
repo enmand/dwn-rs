@@ -14,12 +14,35 @@ jobs:
           toolchain: stable
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug cargo-make
+      - name: Run CI
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: ci-flow
+      - name: Run CI Coverage
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: ci-coverage-flow
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - run: wasm-pack build --release --target nodejs --out-name index --out-dir out -- --no-default-features -F wasm
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: install-wasm-pack
+      - name: Build WASM library
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: build-wasm
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install
-      - run: bun node_modules/mocha/bin/mocha.js tests/test.js --bail --exit
+      - uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: test-store-js
