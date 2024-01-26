@@ -175,10 +175,7 @@ where
             .map(|c| SCond(Cond(Value::Subquery(Box::new(Subquery::Value(c.into()))))))
             .reduce(|acc, e| acc.or(e))
         {
-            Some(c) => {
-                web_sys::console::log_1(&format!("cond: {:?}", c).into());
-                Some(c.into())
-            }
+            Some(c) => Some(c.into()),
             None => None,
         };
 
