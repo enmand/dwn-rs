@@ -82,7 +82,7 @@ impl SCond {
 
 impl Default for SCond {
     fn default() -> Self {
-        Self(Cond(Value::Expression(Box::new(Expression::default()))))
+        Self(Cond::default())
     }
 }
 
@@ -100,6 +100,29 @@ impl From<SCond> for Value {
     }
 }
 
+impl TryFrom<(String, Operator, String)> for SCond {
+    type Error = ValueError;
+    fn try_from((l, o, r): (String, Operator, String)) -> Result<Self, Self::Error> {
+        Ok(Self(Cond(Value::Expression(Box::new(
+            Expression::Binary {
+                l: value(l.as_str())?,
+                o,
+                r: value(r.as_str())?,
+            },
+        )))))
+    }
+}
+
+impl From<(SCond, Operator, SCond)> for SCond {
+    fn from((l, o, r): (SCond, Operator, SCond)) -> Self {
+        Self(Cond(Value::Expression(Box::new(Expression::Binary {
+            l: l.into(),
+            o,
+            r: r.into(),
+        }))))
+    }
+}
+
 impl From<Expression> for SCond {
     fn from(e: Expression) -> Self {
         Self(Cond(Value::Expression(Box::new(e))))
@@ -107,20 +130,18 @@ impl From<Expression> for SCond {
 }
 
 impl SCond {
-    pub fn and(self, c: impl Into<Cond>) -> Self {
-        Self(Cond(Value::Expression(Box::new(Expression::Binary {
-            l: self.into(),
-            o: Operator::And,
-            r: SCond(c.into()).into(),
-        }))))
+    pub fn and<C>(self, c: C) -> Self
+    where
+        C: Into<Cond>,
+    {
+        (self, Operator::And, SCond(c.into())).into()
     }
 
-    pub fn or(self, c: impl Into<Cond>) -> Self {
-        Self(Cond(Value::Expression(Box::new(Expression::Binary {
-            l: self.into(),
-            o: Operator::Or,
-            r: SCond(c.into()).into(),
-        }))))
+    pub fn or<C>(self, c: C) -> Self
+    where
+        C: Into<Cond>,
+    {
+        (self, Operator::Or, SCond(c.into())).into()
     }
 
     pub fn to_value(self) -> Value {
@@ -128,9 +149,4 @@ impl SCond {
             Cond(v) => v,
         }
     }
-}
-
-/// to value converts a string into a Value.
-pub(crate) fn to_value(v: impl Into<String>) -> Result<Value, ValueError> {
-    Ok(value(Into::<String>::into(v).as_str())?)
 }
