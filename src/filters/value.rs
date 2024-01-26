@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 use from_variants::FromVariants;
 use serde::ser::{SerializeMap, SerializeSeq};

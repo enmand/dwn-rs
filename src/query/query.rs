@@ -2,14 +2,14 @@ use std::fmt::Debug;
 use std::ops::Bound;
 use std::{collections::BTreeMap, marker::PhantomData, sync::Arc};
 
-use crate::query::expr::{to_value, SCond};
+use crate::query::expr::SCond;
 use crate::{
     CursorValue, Filter, FilterError, Filters, MessageSort, Pagination, Query, QueryError,
     SortDirection, ValueError,
 };
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use surrealdb::sql::{Cond, Function, Idiom, Subquery};
+use surrealdb::sql::{value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
     engine::any::Any,
     sql::{statements::SelectStatement, Expression, Limit, Number, Operator, Table, Value, Values},
@@ -87,16 +87,15 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        let fs = filters.clone().into_iter().enumerate().map(
-            |(s, k)| -> Vec<((String, String), Filter)> {
+        self.stmt.cond = match filters
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(s, k)| -> Vec<((String, String), Filter)> {
                 k.into_iter()
                     .map(|(k, v)| ((k.clone(), format!("{}_{}", k, &s)), v))
                     .collect()
-            },
-        );
-
-        let cond = fs
-            .clone()
+            })
             .map(|f| -> Result<SCond, ValueError> {
                 match f
                     .into_iter()
@@ -104,60 +103,50 @@ where
                         Filter::Equal(v) => {
                             self.binds.insert(var.clone(), v);
 
-                            Ok(SCond::from(Expression::Binary {
-                                l: to_value(k.clone())?,
-                                o: Operator::Equal,
-                                r: to_value(format!("${}", var))?,
-                            }))
+                            Ok(SCond::try_from((k, Operator::Equal, format!("${}", var)))?)
                         }
                         Filter::Range(lower, upper) => Ok(
                             match (
                                 match lower {
-                                    Bound::Included(u) => {
-                                        self.binds.insert(format!("{}_lower", var), u);
-
-                                        Some(SCond::from(Expression::Binary {
-                                            l: to_value(k.clone())?,
-                                            o: Operator::MoreThanOrEqual,
-                                            r: to_value(format!("${}_lower", var))?,
-                                        }))
-                                    }
-                                    Bound::Excluded(u) => {
-                                        self.binds.insert(format!("{}_lower", var), u);
-
-                                        Some(SCond::from(Expression::Binary {
-                                            l: to_value(k.clone())?,
-                                            o: Operator::MoreThan,
-                                            r: to_value(format!("${}_lower", var))?,
-                                        }))
+                                    Bound::Included(l) => Some((
+                                        Operator::MoreThanOrEqual,
+                                        format!("{}_lower", var),
+                                        l,
+                                    )),
+                                    Bound::Excluded(l) => {
+                                        Some((Operator::MoreThan, format!("{}_lower", var), l))
                                     }
                                     _ => None,
                                 },
                                 match upper {
-                                    Bound::Included(u) => {
-                                        self.binds.insert(format!("{}_upper", var), u);
-
-                                        Some(SCond::from(Expression::Binary {
-                                            l: to_value(k.clone())?,
-                                            o: Operator::LessThanOrEqual,
-                                            r: to_value(format!("${}_upper", var))?,
-                                        }))
-                                    }
+                                    Bound::Included(u) => Some((
+                                        Operator::LessThanOrEqual,
+                                        format!("{}_upper", var),
+                                        u,
+                                    )),
                                     Bound::Excluded(u) => {
-                                        self.binds.insert(format!("{}_upper", var), u);
-
-                                        Some(SCond::from(Expression::Binary {
-                                            l: to_value(k.clone())?,
-                                            o: Operator::LessThan,
-                                            r: to_value(format!("${}_upper", var))?,
-                                        }))
+                                        Some((Operator::LessThan, format!("{}_upper", var), u))
                                     }
                                     _ => None,
                                 },
                             ) {
-                                (Some(l), Some(u)) => l.and(u),
-                                (Some(l), None) => l,
-                                (None, Some(u)) => u,
+                                (Some(l), Some(u)) => {
+                                    self.binds.insert(l.1.clone(), l.2);
+                                    self.binds.insert(u.1.clone(), u.2);
+
+                                    SCond::try_from((k.clone(), l.0, format!("${}", l.1)))?
+                                        .and(SCond::try_from((k, u.0, format!("${}", u.1)))?)
+                                }
+                                (Some(l), None) => {
+                                    self.binds.insert(l.1.to_string(), l.2);
+
+                                    SCond::try_from((k, l.0, format!("${}", l.1)))?
+                                }
+                                (None, Some(u)) => {
+                                    self.binds.insert(u.1.to_string(), u.2);
+
+                                    SCond::try_from((k, u.0, format!("${}", u.1)))?
+                                }
                                 (None, None) => {
                                     return Err(FilterError::UnparseableFilter(
                                         "Could not parse filter".to_owned(),
@@ -169,11 +158,7 @@ where
                         Filter::OneOf(v) => {
                             self.binds.insert(var.clone(), crate::Value::Array(v));
 
-                            Ok(SCond::from(Expression::Binary {
-                                l: to_value(k.clone())?,
-                                o: Operator::Inside,
-                                r: to_value(format!("${}", var))?,
-                            }))
+                            Ok(SCond::try_from((k, Operator::Inside, format!("${}", var)))?)
                         }
                     })
                     .filter_map(|e: Result<SCond, ValueError>| e.ok())
@@ -188,10 +173,12 @@ where
             })
             .filter_map(|e| e.ok())
             .map(|c| SCond(Cond(Value::Subquery(Box::new(Subquery::Value(c.into()))))))
-            .reduce(|acc, e| acc.or(e));
-
-        self.stmt.cond = match cond {
-            Some(c) => Some(c.into()),
+            .reduce(|acc, e| acc.or(e))
+        {
+            Some(c) => {
+                web_sys::console::log_1(&format!("cond: {:?}", c).into());
+                Some(c.into())
+            }
             None => None,
         };
 
@@ -271,14 +258,16 @@ where
                                 l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone())
                                     .into(),
                                 o: Operator::Equal,
-                                r: to_value("$_cursor_val")?,
+                                r: value("$_cursor_val")
+                                    .map_err(|e| QueryError::ValueError(e.into()))?,
                             }
                             .into(),
                             o: Operator::And,
                             r: Expression::Binary {
                                 l: Idiom::from("cid".to_string()).into(),
                                 o: op.clone(),
-                                r: to_value("$_cursor")?,
+                                r: value("$_cursor")
+                                    .map_err(|e| QueryError::ValueError(e.into()))?,
                             }
                             .into(),
                         }
@@ -288,7 +277,7 @@ where
                     r: Expression::Binary {
                         l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone()).into(),
                         o: op,
-                        r: to_value("$_cursor_val")?,
+                        r: value("$_cursor_val").map_err(|e| QueryError::ValueError(e.into()))?,
                     }
                     .into(),
                 }
