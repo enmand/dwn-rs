@@ -7,7 +7,7 @@ RUSTFLAGS="-C instrument-coverage"
 [tasks.build-wasm]
 command = "wasm-pack"
 args = ["build", "--target", "nodejs", "--release", "--out-name", "index", "--out-dir", "out", "--", "--no-default-features", "--features", "wasm"]
-dependencies = ["wasm-pack-install"]
+dependencies = ["install-wasm-pack"]
 
 [tasks.install-bun-deps]
 command = "bun"
