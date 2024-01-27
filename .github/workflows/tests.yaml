@@ -24,6 +24,9 @@ jobs:
           args: --debug cargo-make
       - name: Run CI
         uses: actions-rs/cargo@v1
+        env:
+          CARGO_MAKE_COVERAGE_PROVIDER: "tarpaulin"
+          CARGO_MAKE_RUN_CODECOV: true
         with:
           command: make
           args: ci-flow
