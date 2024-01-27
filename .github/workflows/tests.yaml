@@ -27,11 +27,6 @@ jobs:
         with:
           command: make
           args: ci-flow
-      - name: Install wasm-pack
-        uses: actions-rs/cargo@v1
-        with:
-          command: make
-          args: install-wasm-pack
       - name: Build WASM library
         uses: actions-rs/cargo@v1
         with:
