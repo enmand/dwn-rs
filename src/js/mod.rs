@@ -15,16 +15,7 @@ use web_sys::AbortSignal;
 
 extern crate console_error_panic_hook;
 
-use cfg_if::cfg_if;
-
 use self::query::{JSMessageSort, JSPagination, JSQueryReturn};
-
-cfg_if! {
-    if #[cfg(feature = "wee_alloc")] {
-        #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-    }
-}
 
 const MESSAGE_STORE_OPTIONS_IMPORT: &'static str =
     r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
