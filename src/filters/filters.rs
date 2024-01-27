@@ -18,6 +18,17 @@ impl From<Vec<BTreeMap<String, Filter>>> for Filters {
     }
 }
 
+impl PartialEq for Filters {
+    fn eq(&self, other: &Self) -> bool {
+        self.filters.len() == other.filters.len()
+            && self
+                .filters
+                .iter()
+                .zip(other.filters.iter())
+                .all(|(a, b)| a.len() == b.len())
+    }
+}
+
 impl<const N: usize, const M: usize, S, T> From<[[(S, T); N]; M]> for Filters
 where
     S: Into<String> + Clone,
@@ -47,7 +58,7 @@ impl IntoIterator for Filters {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Filter {
     Equal(Value),
     Range(Bound<Value>, Bound<Value>),
@@ -195,5 +206,87 @@ impl From<i64> for Filter {
 impl From<bool> for Filter {
     fn from(b: bool) -> Self {
         Filter::Equal(b.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filters_from() {
+        struct TestCase {
+            input: Filters,
+            output: Filters,
+        }
+
+        let ref clean = Filters {
+            filters: vec![vec![("foo".to_string(), Filter::Equal(Value::Number(1)))]
+                .into_iter()
+                .collect()],
+            ..Default::default()
+        };
+
+        let tcs = vec![
+            TestCase {
+                input: vec![BTreeMap::from([(
+                    "foo".to_string(),
+                    Filter::Equal(Value::Number(1)),
+                )])]
+                .into(),
+                output: clean.clone(),
+            },
+            TestCase {
+                input: [[("foo", Filter::Equal(Value::Number(1)))]].into(),
+                output: clean.clone(),
+            },
+        ];
+
+        for tc in tcs {
+            assert_eq!(tc.input, tc.output);
+        }
+    }
+
+    #[test]
+    fn test_filters_into_iter() {
+        let filters = Filters {
+            filters: vec![
+                vec![
+                    ("foo".to_string(), Filter::Equal(Value::Number(1))),
+                    ("bar".to_string(), Filter::Equal(Value::Number(2))),
+                ]
+                .into_iter()
+                .collect(),
+                vec![("baz".to_string(), Filter::Equal(Value::Number(3)))]
+                    .into_iter()
+                    .collect(),
+            ],
+            ..Default::default()
+        };
+
+        let mut iter = filters.into_iter();
+
+        assert_eq!(
+            iter.next(),
+            Some(
+                vec![
+                    ("foo".to_string(), Filter::Equal(Value::Number(1))),
+                    ("bar".to_string(), Filter::Equal(Value::Number(2))),
+                ]
+                .into_iter()
+                .collect()
+            )
+        );
+
+        assert_eq!(
+            iter.next(),
+            Some(
+                vec![("baz".to_string(), Filter::Equal(Value::Number(3)))]
+                    .into_iter()
+                    .collect()
+            )
+        );
+
+        assert_eq!(iter.next(), None);
     }
 }

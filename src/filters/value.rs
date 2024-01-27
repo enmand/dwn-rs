@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use from_variants::FromVariants;
 use serde::ser::{SerializeMap, SerializeSeq};
 
-#[derive(Debug, Clone, FromVariants)]
+#[derive(Debug, Clone, FromVariants, PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
