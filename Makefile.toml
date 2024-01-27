@@ -1,3 +1,7 @@
+extend= [
+  { path = "makefile.d/coverage_grcov.makefile.toml" }
+]
+
 [env]
 CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--lib --release"
 CARGO_MAKE_COVERAGE_PROVIDER = "kcov"
@@ -21,6 +25,10 @@ dependencies = ["build-wasm", "install-bun-deps"]
 env = {RUSTFLAGS="-C instrument-coverage"}
 command = "cargo"
 args = ["test", "--release", "--", "--nocapture"]
+
+[tasks.coverage]
+alias="coverage_grcov"
+
 
 [tasks.test]
 clear = true
