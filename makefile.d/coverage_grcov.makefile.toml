@@ -52,7 +52,7 @@ args = ["build"]
 condition = { rust_version = { min = "1.60.0" } }
 private=true
 command = "cargo"
-args = ["build"]
+args = ["build", "--release", "--lib"]
 
   [tasks.coverage_grcov_build_stable.env]
   "CARGO_BUILD_TARGET_DIR"="${COVERAGE_TARGET_DIRECTORY}"
@@ -127,4 +127,3 @@ dependencies=["install_grcov","coverage_grcov_build_stable", "coverage_grcov_pre
 
 [tasks.coverage_grcov]
 dependencies=["coverage_grcov_nightly","coverage_grcov_stable"]
-
