@@ -11,11 +11,11 @@ args = ["build", "--target", "nodejs", "--out-name", "index", "--release", "--",
 dependencies = ["install-wasm-pack"]
 
 [tasks.install-bun-deps]
-command = "bun"
+command = "npm"
 args = ["install"]
 
 [tasks.test-store-js]
-command = "bun"
+command = "node"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
 dependencies = ["build-wasm", "install-bun-deps"]
 

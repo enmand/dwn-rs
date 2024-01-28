@@ -55,9 +55,9 @@ jobs:
         with:
           command: make
           args: build-wasm
-      - uses: oven-sh/setup-bun@v1
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: latest
       - name: Test WASM library against dwn-sdk-js
         uses: actions-rs/cargo@v1
         with:
