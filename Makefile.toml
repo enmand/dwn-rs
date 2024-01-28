@@ -9,7 +9,7 @@ CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN = "stable"
 
 [tasks.build-wasm]
 command = "wasm-pack"
-args = ["build", "--target", "nodejs", "--release", "--", "--no-default-features", "--features", "wasm"]
+args = ["build", "--target", "nodejs", "--out-name", "index", "--release", "--", "--no-default-features", "--features", "wasm"]
 dependencies = ["install-wasm-pack"]
 
 [tasks.install-bun-deps]
