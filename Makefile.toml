@@ -21,10 +21,5 @@ command = "bun"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
 dependencies = ["build-wasm", "install-bun-deps"]
 
-[tasks.test]
-env = {RUSTFLAGS="-C instrument-coverage"}
-toolchain = "nightly"
-
 [tasks.coverage]
 alias="coverage_grcov"
-toolchain = "nightly"
