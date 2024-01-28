@@ -5,7 +5,7 @@ on:
       - main
   pull_request:
 jobs:
-  build:
+  rust-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -14,25 +14,15 @@ jobs:
         with:
           toolchain: nightly
           components: llvm-tools-preview
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-all-crates: true
-      - name: Install cargo-make (nightly)
+      - name: Install cargo-make
         uses: actions-rs/cargo@v1
         with:
           command: install
           args: --debug cargo-make
           toolchain: nightly
-      - name: Install cargo-make (stable)
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug cargo-make
       - name: Run CI
         uses: actions-rs/cargo@v1
         env:
@@ -42,6 +32,23 @@ jobs:
           command: make
           args: ci-flow
           toolchain: nightly
+  wasm-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+      - name: Install cargo-make (stable)
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug cargo-make
       - name: Build WASM library
         uses: actions-rs/cargo@v1
         with:
