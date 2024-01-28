@@ -6,7 +6,7 @@ on:
   pull_request:
 jobs:
   build:
-    runs-on: dwn-rs
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust nightly
