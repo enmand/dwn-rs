@@ -36,7 +36,7 @@ jobs:
       - name: Run CI
         uses: actions-rs/cargo@v1
         env:
-          CARGO_MAKE_COVERAGE_PROVIDER: "tarpaulin"
+          CARGO_MAKE_COVERAGE_PROVIDER: "grcov"
           CARGO_MAKE_RUN_CODECOV: true
         with:
           command: make
