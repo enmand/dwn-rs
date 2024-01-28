@@ -22,7 +22,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-all-crates: true
-      - name: Install cargo-make
+      - name: Install cargo-make (nightly)
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug cargo-make
+          toolchain: nightly
+      - name: Install cargo-make (stable)
         uses: actions-rs/cargo@v1
         with:
           command: install
@@ -35,6 +41,7 @@ jobs:
         with:
           command: make
           args: ci-flow
+          toolchain: nightly
       - name: Build WASM library
         uses: actions-rs/cargo@v1
         with:

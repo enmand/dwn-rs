@@ -71,4 +71,4 @@ serde_with = "3.4.0"
 # features = ["time", "macros", "rt-multi-thread"]
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = false
+wasm-opt = true
