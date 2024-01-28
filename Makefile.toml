@@ -1,8 +1,8 @@
 [env]
 CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--lib --release"
+CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN = "stable"
 
 [tasks.build-wasm]
-toolchain = "stable"
 command = "wasm-pack"
 args = ["build", "--target", "nodejs", "--release", "--out-name", "index", "--out-dir", "out", "--", "--no-default-features", "--features", "wasm"]
 dependencies = ["install-wasm-pack"]
@@ -16,21 +16,6 @@ command = "bun"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
 dependencies = ["build-wasm", "install-bun-deps"]
 
-[tasks.test-cargo]
-env = {RUSTFLAGS="-C instrument-coverage"}
-category = "Test"
-install_crate = false
-toolchain = "nightly"
-command = "cargo"
-args = [
-  "test",
-  "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)",
-  "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )",
-]
-
 [tasks.test]
-clear = true
-run_task = [
-    { name = "test-cargo"},
-    { name = "test-store-js"}
-]
+env = {RUSTFLAGS="-C instrument-coverage"}
+toolchain = "nightly"
