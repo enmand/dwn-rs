@@ -9,7 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          targets: wasm32-unknown-unknown
+          components: llvm-tools-preview
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
           targets: wasm32-unknown-unknown
@@ -38,7 +45,8 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - uses: actions-rs/cargo@v1
+      - name: Test WASM library against dwn-sdk-js
+        uses: actions-rs/cargo@v1
         with:
           command: make
           args: test-store-js
