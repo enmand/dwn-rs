@@ -1,7 +1,7 @@
-dwn-store-surrealdb-rs
+dwn-rs
 ====
 
-dwn-store-surrealdb-rs is a Rust-based DWN store implementation that can be
+dwn-rs is a Rust-based DWN implementation that can be
 used with [dwn-sdk-js](https://github.com/TBD54566975/dwn-sdk-js).
 
 # Compiling
