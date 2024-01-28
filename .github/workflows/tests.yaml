@@ -28,6 +28,7 @@ jobs:
         env:
           CARGO_MAKE_COVERAGE_PROVIDER: "grcov"
           CARGO_MAKE_RUN_CODECOV: true
+          CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN: nightly
         with:
           command: make
           args: ci-flow
