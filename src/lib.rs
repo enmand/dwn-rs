@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 pub mod errors;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod js;
 pub mod message_store;
 pub mod query;

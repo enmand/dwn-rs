@@ -5,14 +5,14 @@ on:
       - main
   pull_request:
 jobs:
-  build:
+  rust-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          targets: wasm32-unknown-unknown
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
@@ -22,25 +22,44 @@ jobs:
         with:
           command: install
           args: --debug cargo-make
+          toolchain: nightly
       - name: Run CI
         uses: actions-rs/cargo@v1
+        env:
+          CARGO_MAKE_COVERAGE_PROVIDER: "grcov"
+          CARGO_MAKE_RUN_CODECOV: true
+          CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN: nightly
         with:
           command: make
           args: ci-flow
-      - name: Install wasm-pack
+          toolchain: nightly
+  wasm-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+      - name: Install cargo-make (stable)
         uses: actions-rs/cargo@v1
         with:
-          command: make
-          args: install-wasm-pack
+          command: install
+          args: --debug cargo-make
       - name: Build WASM library
         uses: actions-rs/cargo@v1
         with:
           command: make
           args: build-wasm
-      - uses: oven-sh/setup-bun@v1
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - uses: actions-rs/cargo@v1
+          node-version: latest
+      - name: Test WASM library against dwn-sdk-js
+        uses: actions-rs/cargo@v1
         with:
           command: make
           args: test-store-js

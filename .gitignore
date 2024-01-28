@@ -6,3 +6,4 @@
 /dist/
 /TEST-*
 package-lock.json
+*.profraw

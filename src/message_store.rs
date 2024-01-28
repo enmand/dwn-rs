@@ -185,7 +185,6 @@ impl MessageStore for SurrealDB {
         let (ms, cursor) = match qb.query().await {
             Ok(ms) => ms,
             Err(e) => {
-                web_sys::console::log_1(&format!("query error: {:?}", e).into());
                 return Err(SurrealDBError::QueryError(e));
             }
         };
