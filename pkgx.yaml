@@ -1,5 +1,5 @@
 dependencies:
-  rust-lang.org: '~1.74.0'
+  rust-lang.org: '~1.75.0'
   # rust-lang.org/rustup: "~1.26.0"
   bun.sh: '~1.0.13'
   node: '^20'
