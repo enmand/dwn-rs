@@ -1,0 +1,40 @@
+[package]
+name = "dwn-rs-wasm"
+version = "0.2.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+surrealdb = [
+    "dwn-rs-messagestore/surreal-wasm",
+]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = true
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3.64"
+serde = { version = "1.0.183", features = ["derive"] }
+serde-wasm-bindgen = "0.5.0"
+thiserror = "1.0.47"
+wasm-bindgen = { version = "0.2.87", features = [
+    "serde",
+    "serde_json",
+    "serde-serialize",
+    "enable-interning",
+] }
+wasm-bindgen-futures = "0.4.37"
+web-sys = { version = "0.3.64", features = [
+    "AbortSignal",
+    "console",
+    "AbortController",
+    "WebSocket",
+] }
+
+dwn-rs-core = { path = "../dwn-rs-core" }
+dwn-rs-stores = { path = "../dwn-rs-stores" }
+dwn-rs-messagestore = { path = "../dwn-rs-messagestore" }

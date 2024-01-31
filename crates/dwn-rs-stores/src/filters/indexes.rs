@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::value::Value;
 use serde::{Deserialize, Serialize};
+
+use crate::value::Value;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Indexes {

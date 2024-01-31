@@ -1,6 +1,16 @@
 use thiserror::Error;
 
-use crate::ValueError;
+#[derive(Error, Debug)]
+pub enum ValueError {
+    #[error("invalid value: {0}")]
+    InvalidValue(String),
+
+    #[error("invalid filter: {0}")]
+    FiltersError(#[from] FilterError),
+
+    #[error("unparseable value: {0}")]
+    UnparseableValue(String),
+}
 
 #[derive(Error, Debug)]
 pub enum QueryError {
@@ -21,4 +31,10 @@ pub enum QueryError {
 pub enum FilterError {
     #[error("unable to create filter")]
     UnparseableFilter(String),
+}
+
+impl From<ValueError> for FilterError {
+    fn from(e: ValueError) -> Self {
+        Self::UnparseableFilter(e.to_string())
+    }
 }

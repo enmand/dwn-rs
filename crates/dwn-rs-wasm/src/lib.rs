@@ -6,19 +6,36 @@ pub use filter::*;
 use js_sys::Reflect;
 pub use message::*;
 
-use crate::{Indexes, QueryReturn, SurrealDBError, Value};
-use crate::{MessageStore, SurrealDB as RealSurreal};
-
 use std::collections::BTreeMap;
+
+use thiserror::Error;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
 
-extern crate console_error_panic_hook;
-
 use self::query::{JSMessageSort, JSPagination, JSQueryReturn};
+use dwn_rs_messagestore::surrealdb::SurrealDB as RealSurreal;
+use dwn_rs_messagestore::SurrealDBError;
+use dwn_rs_stores::{
+    errors::MessageStoreError as StoreError,
+    filters::{Indexes, QueryReturn},
+    value::Value,
+    MessageStore,
+};
 
-const MESSAGE_STORE_OPTIONS_IMPORT: &'static str =
-    r#"import { MessageStoreOptions } from "@tbd54566975/dwn-sdk-js";"#;
+#[derive(Error, Debug)]
+enum MessageStoreError {
+    #[error("Store error: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("store connection failed: {0}")]
+    ConnectionFailed(#[from] SurrealDBError),
+}
+
+impl From<MessageStoreError> for JsValue {
+    fn from(e: MessageStoreError) -> Self {
+        JsValue::from_str(&format!("{}", e))
+    }
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -29,12 +46,6 @@ extern "C" {
 #[wasm_bindgen(js_name = SurrealDB)]
 pub struct JSSurrealDB {
     store: RealSurreal,
-}
-
-impl From<SurrealDBError> for JsValue {
-    fn from(err: SurrealDBError) -> Self {
-        JsValue::from_str(&format!("{:?}", err.to_string()))
-    }
 }
 
 #[wasm_bindgen(js_class = SurrealDB)]
@@ -50,7 +61,11 @@ impl JSSurrealDB {
 
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
-        self.store.connect(&connstr).await.map_err(Into::into)
+        self.store
+            .connect(&connstr)
+            .await
+            .map_err(MessageStoreError::from)
+            .map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -60,7 +75,11 @@ impl JSSurrealDB {
 
     #[wasm_bindgen]
     pub async fn open(&mut self) -> Result<(), JsValue> {
-        self.store.open().await.map_err(Into::into)
+        self.store
+            .open()
+            .await
+            .map_err(MessageStoreError::from)
+            .map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -76,11 +95,12 @@ impl JSSurrealDB {
         let indexes: Indexes =
             serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
 
-        let _ = self
+        let _: Result<_, JsValue> = self
             .store
             .put(tenant.into(), message.into(), indexes)
             .await
-            .map_err(Into::<JsValue>::into)?;
+            .map_err(MessageStoreError::from)
+            .map_err(Into::into);
 
         Ok(())
     }
@@ -133,6 +153,7 @@ impl JSSurrealDB {
                 page,
             )
             .await
+            .map_err(MessageStoreError::from)
             .map_err(Into::<JsValue>::into)?
             .into())
     }
@@ -149,12 +170,17 @@ impl JSSurrealDB {
         self.store
             .delete(tenant.into(), cid)
             .await
+            .map_err(MessageStoreError::from)
             .map_err(Into::into)
     }
 
     #[wasm_bindgen]
     pub async fn clear(&mut self) -> Result<(), JsValue> {
-        self.store.clear().await.map_err(Into::into)
+        self.store
+            .clear()
+            .await
+            .map_err(MessageStoreError::from)
+            .map_err(Into::into)
     }
 }
 

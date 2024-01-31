@@ -1,5 +1,7 @@
-use crate::ValueError;
-use surrealdb::sql::{value, Cond, Expression, Idiom, Operator, Order, Orders, Value};
+use surrealdb::sql::{Cond, Expression, Idiom, Operator, Order, Orders, Value};
+
+use super::query::value;
+use dwn_rs_stores::{filters::errors::ValueError, MessageSort};
 
 /// SOrder is a wrapper around Order which allows for more ergonomic construction of Order
 /// structs.
@@ -66,6 +68,27 @@ impl SOrders {
 impl From<SOrders> for Orders {
     fn from(s: SOrders) -> Self {
         Self(s.0.into_iter().map(Into::<Order>::into).collect())
+    }
+}
+
+/// Ordable is a trait that allows for the conversion of a type into an Order.
+pub trait Ordable {
+    fn to_order(self) -> SOrders;
+}
+
+impl Ordable for MessageSort {
+    fn to_order(self) -> SOrders {
+        match self {
+            MessageSort::DateCreated(direction) => {
+                SOrders::new().push(("dateCreated", direction.to_bool()))
+            }
+            MessageSort::DatePublished(direction) => {
+                SOrders::new().push(("datePublished", direction.to_bool()))
+            }
+            MessageSort::Timestamp(direction) => {
+                SOrders::new().push(("messageTimestamp", direction.to_bool()))
+            }
+        }
     }
 }
 

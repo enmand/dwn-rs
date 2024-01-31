@@ -1,0 +1,23 @@
+[package]
+name = "dwn-rs-stores"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait = "0.1.73"
+chrono = { version = "0.4.30", features = ["serde"] }
+from_variants = "1.0.2"
+libipld-core = { version = "0.16.0", features = [
+    "serde",
+    "serde-codec",
+    "multibase",
+] }
+thiserror = "1.0.47"
+serde = { version = "1.0.183", features = ["derive"] }
+serde_repr = "0.1.17"
+serde_with = "3.4.0"
+
+dwn-rs-core = { path = "../dwn-rs-core" }

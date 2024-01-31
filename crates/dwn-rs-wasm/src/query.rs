@@ -1,7 +1,7 @@
-use crate::{filters::Pagination, MessageSort, QueryReturn};
-
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
+
+use dwn_rs_stores::{MessageSort, Pagination, QueryReturn};
 
 #[wasm_bindgen(typescript_custom_section)]
 const QUERY_TYPES: &'static str = r#"
@@ -21,7 +21,6 @@ extern "C" {
     #[wasm_bindgen(typescript_type = "MessageSort")]
     pub type JSMessageSort;
 
-    #[derive(Debug)]
     #[wasm_bindgen(typescript_type = "Pagination")]
     pub type JSPagination;
 }
