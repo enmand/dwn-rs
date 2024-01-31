@@ -1,6 +1,4 @@
-extend = [
-  { path = "makefile.d/coverage_grcov.makefile.toml" }
-]
+extend = [{ path = "makefile.d/coverage_grcov.makefile.toml" }]
 
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
@@ -10,7 +8,9 @@ CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--lib --release"
 workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "wasm-pack"
-args = ["build", "--target", "nodejs", "--out-name", "index", "--release"]
+args = [
+  "build", "--target", "nodejs", "--out-name", "index", "--release", "--", "--no-default-features", "-F", "surrealdb",
+]
 dependencies = ["install-wasm-pack"]
 
 [tasks.install-npm-deps]
@@ -27,4 +27,4 @@ args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
 dependencies = ["build-wasm", "install-npm-deps"]
 
 [tasks.coverage]
-alias="coverage_grcov"
+alias = "coverage_grcov"
