@@ -9,7 +9,7 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "wasm-pack"
 args = [
-  "build", "--target", "nodejs", "--out-name", "index", "--release", "--", "--no-default-features", "-F", "surrealdb",
+  "build", "--target", "nodejs", "--out-name", "index", "--release", "--", "--no-default-features", "--features", "surrealdb",
 ]
 dependencies = ["install-wasm-pack"]
 
