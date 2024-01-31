@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
+default = ["surrealdb"]
 surrealdb = [
     "dwn-rs-messagestore/surreal-wasm",
 ]
@@ -37,4 +37,4 @@ web-sys = { version = "0.3.64", features = [
 
 dwn-rs-core = { path = "../dwn-rs-core" }
 dwn-rs-stores = { path = "../dwn-rs-stores" }
-dwn-rs-messagestore = { path = "../dwn-rs-messagestore" }
+dwn-rs-messagestore = { path = "../dwn-rs-messagestore", default-features = false }
