@@ -2,33 +2,35 @@ use std::fmt::Debug;
 use std::ops::Bound;
 use std::{collections::BTreeMap, marker::PhantomData, sync::Arc};
 
-use crate::query::expr::SCond;
-use crate::{
-    CursorValue, Filter, FilterError, Filters, MessageSort, Pagination, Query, QueryError,
-    SortDirection, ValueError,
-};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use surrealdb::sql::{value, Cond, Function, Idiom, Subquery};
+use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
     engine::any::Any,
     sql::{statements::SelectStatement, Expression, Limit, Number, Operator, Table, Value, Values},
+};
+
+use super::expr::{Ordable, SCond};
+use dwn_rs_stores::filters::{
+    errors::{FilterError, QueryError, ValueError},
+    filters::{Filter, Filters},
+    query::{Cursor, CursorValue, MessageSort, Pagination, Query, SortDirection},
 };
 
 pub struct SurrealQuery<U>
 where
     U: DeserializeOwned,
 {
-    binds: BTreeMap<String, crate::Value>,
+    binds: BTreeMap<String, dwn_rs_stores::value::Value>,
 
     db: Arc<surrealdb::Surreal<Any>>,
 
     stmt: SelectStatement,
     from: String,
     limit: Option<u32>,
-    order: Option<crate::MessageSort>,
+    order: Option<MessageSort>,
     sort_direction: Option<SortDirection>,
-    cursor: Option<crate::Cursor>,
+    cursor: Option<Cursor>,
     u_type: PhantomData<U>,
 }
 
@@ -39,7 +41,7 @@ where
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
             db: db.into(),
-            binds: BTreeMap::<String, crate::Value>::new(),
+            binds: BTreeMap::<String, dwn_rs_stores::value::Value>::new(),
             stmt: SelectStatement::default(),
             from: String::default(),
             limit: None,
@@ -156,7 +158,8 @@ where
                             },
                         ),
                         Filter::OneOf(v) => {
-                            self.binds.insert(var.clone(), crate::Value::Array(v));
+                            self.binds
+                                .insert(var.clone(), dwn_rs_stores::value::Value::Array(v));
 
                             Ok(SCond::try_from((k, Operator::Inside, format!("${}", var)))?)
                         }
@@ -206,7 +209,7 @@ where
     // MessageSort struct, which contains the fields to sort on and the direction to sort.
     // If the MessageSort struct is not set, the query will return messages in the order
     // they were published.
-    fn sort(&mut self, sort: Option<crate::MessageSort>) -> &mut Self {
+    fn sort(&mut self, sort: Option<MessageSort>) -> &mut Self {
         self.order = match sort {
             Some(s) => Some(s),
             None => self.order,
@@ -224,14 +227,14 @@ where
         self
     }
 
-    async fn query(&self) -> Result<(Vec<U>, Option<crate::Cursor>), QueryError> {
+    async fn query(&self) -> Result<(Vec<U>, Option<Cursor>), QueryError> {
         let mut stmt = self.stmt.clone();
         stmt.expr.0.push(surrealdb::sql::Field::All);
 
         let mut binds = self.binds.clone();
 
         if let (
-            Some(crate::Cursor {
+            Some(Cursor {
                 cursor: c,
                 value: Some(v),
             }),
@@ -245,7 +248,10 @@ where
             };
 
             binds.insert("_cursor_val".to_owned(), v.clone());
-            binds.insert("_cursor".to_owned(), crate::Value::String(c.to_string()));
+            binds.insert(
+                "_cursor".to_owned(),
+                dwn_rs_stores::value::Value::String(c.to_string()),
+            );
 
             let cur_cond = Value::Subquery(Box::new(Subquery::Value(
                 Expression::Binary {
@@ -255,16 +261,14 @@ where
                                 l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone())
                                     .into(),
                                 o: Operator::Equal,
-                                r: value("$_cursor_val")
-                                    .map_err(|e| QueryError::ValueError(e.into()))?,
+                                r: value("$_cursor_val")?,
                             }
                             .into(),
                             o: Operator::And,
                             r: Expression::Binary {
                                 l: Idiom::from("cid".to_string()).into(),
                                 o: op.clone(),
-                                r: value("$_cursor")
-                                    .map_err(|e| QueryError::ValueError(e.into()))?,
+                                r: value("$_cursor")?,
                             }
                             .into(),
                         }
@@ -274,7 +278,7 @@ where
                     r: Expression::Binary {
                         l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone()).into(),
                         o: op,
-                        r: value("$_cursor_val").map_err(|e| QueryError::ValueError(e.into()))?,
+                        r: value("$_cursor_val")?,
                     }
                     .into(),
                 }
@@ -296,15 +300,20 @@ where
             }
         }
 
-        let mut q = self.db.query(stmt.clone()).bind(&binds).await?;
-        let mut res: Vec<U> = q.take(0)?;
+        let mut q = self
+            .db
+            .query(stmt.clone())
+            .bind(&binds)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))?;
+        let mut res: Vec<U> = q.take(0).map_err(|e| QueryError::DbError(e.to_string()))?;
 
         let last_cursor_value = if let (Some(l), Some(o)) = (self.limit, self.order) {
             if res.len() as u32 > l {
                 res.pop();
 
                 match res.last() {
-                    Some(r) => Some(crate::Cursor {
+                    Some(r) => Some(Cursor {
                         cursor: r.cid(),
                         value: Some(r.cursor_value(o).clone()),
                     }),
@@ -319,4 +328,8 @@ where
 
         Ok((res, last_cursor_value))
     }
+}
+
+pub(super) fn value(s: &str) -> Result<Value, ValueError> {
+    surreal_value(s).map_err(|e| ValueError::InvalidValue(e.to_string()))
 }

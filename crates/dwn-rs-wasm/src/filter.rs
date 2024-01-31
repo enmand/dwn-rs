@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::{Filter as DBFilter, Filters};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
+
+use dwn_rs_stores::{Filter as DBFilter, Filters};
 
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";

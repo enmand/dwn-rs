@@ -1,12 +1,8 @@
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
-use cid::Cid;
+use chrono::{DateTime, Utc};
 use libipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::Thing;
-
-use crate::{filters::Indexes, CursorValue, MessageSort};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct JWS {
@@ -56,19 +52,19 @@ pub struct Descriptor {
         serialize_with = "crate::serde::serialize_optional_datetime",
         skip_serializing_if = "Option::is_none"
     )]
-    pub timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub timestamp: Option<DateTime<Utc>>,
     #[serde(
         rename = "dateCreated",
         serialize_with = "crate::serde::serialize_optional_datetime",
         skip_serializing_if = "Option::is_none"
     )]
-    pub date_created: Option<chrono::DateTime<chrono::Utc>>,
+    pub date_created: Option<DateTime<Utc>>,
     #[serde(
         rename = "datePublished",
         serialize_with = "crate::serde::serialize_optional_datetime",
         skip_serializing_if = "Option::is_none"
     )]
-    pub date_published: Option<chrono::DateTime<chrono::Utc>>,
+    pub date_published: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter: Option<MessageFilter>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,51 +76,7 @@ pub struct Descriptor {
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct MessageFilter {
     #[serde(rename = "dateCreated", skip_serializing_if = "Option::is_none")]
-    pub date_created: Option<chrono::DateTime<chrono::Utc>>,
+    pub date_created: Option<DateTime<Utc>>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct CreateEncodedMessage {
-    pub(super) cid: String,
-    pub(super) tenant: String,
-    pub(super) encoded_message: Vec<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) encoded_data: Option<Ipld>,
-    #[serde(flatten)]
-    pub(super) indexes: Indexes,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct GetEncodedMessage {
-    pub(super) id: Thing,
-    pub(super) cid: String,
-    pub(super) tenant: String,
-    pub(super) encoded_message: Vec<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) encoded_data: Option<Ipld>,
-    #[serde(flatten)]
-    pub(super) indexes: Indexes,
-}
-
-impl CursorValue for GetEncodedMessage {
-    fn cursor_value(&self, sort: MessageSort) -> &crate::value::Value {
-        match sort {
-            MessageSort::DateCreated(_) => self.indexes.indexes.get("dateCreated").unwrap(),
-            MessageSort::DatePublished(_) => {
-                self.indexes.indexes.get("datePublished").clone().unwrap()
-            }
-            MessageSort::Timestamp(_) => self
-                .indexes
-                .indexes
-                .get("messageTimestamp")
-                .clone()
-                .unwrap(),
-        }
-    }
-
-    fn cid(&self) -> Cid {
-        Cid::from_str(&self.cid).unwrap()
-    }
 }

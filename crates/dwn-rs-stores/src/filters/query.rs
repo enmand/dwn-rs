@@ -1,11 +1,12 @@
-use crate::{Filters, Message, SOrders};
-
-use crate::filters::errors;
 use async_trait::async_trait;
-use cid::Cid;
+use libipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::{serde_as, DisplayFromStr};
+
+use crate::filters::errors;
+use crate::Filters;
+use dwn_rs_core::Message;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Pagination {
@@ -61,20 +62,6 @@ impl MessageSort {
             MessageSort::DateCreated(direction) => direction.clone(),
             MessageSort::DatePublished(direction) => direction.clone(),
             MessageSort::Timestamp(direction) => direction.clone(),
-        }
-    }
-
-    pub fn to_order(&self) -> SOrders {
-        match self {
-            MessageSort::DateCreated(direction) => {
-                SOrders::new().push(("dateCreated", direction.to_bool()))
-            }
-            MessageSort::DatePublished(direction) => {
-                SOrders::new().push(("datePublished", direction.to_bool()))
-            }
-            MessageSort::Timestamp(direction) => {
-                SOrders::new().push(("messageTimestamp", direction.to_bool()))
-            }
         }
     }
 }

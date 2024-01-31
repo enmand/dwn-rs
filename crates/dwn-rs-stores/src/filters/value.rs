@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
+use chrono::{DateTime, SecondsFormat, Utc};
 use from_variants::FromVariants;
+use libipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
 #[derive(Debug, Clone, FromVariants, PartialEq)]
@@ -10,10 +12,10 @@ pub enum Value {
     String(String),
     Number(i64),
     Float(f64),
-    Cid(cid::Cid),
+    Cid(Cid),
     Map(BTreeMap<String, Value>),
     Array(Vec<Value>),
-    DateTime(chrono::DateTime<chrono::Utc>),
+    DateTime(DateTime<Utc>),
 }
 
 impl From<&str> for Value {
@@ -32,11 +34,10 @@ impl serde::Serialize for Value {
             Value::Bool(b) => serializer.serialize_bool(*b),
             Value::String(s) => {
                 // if string is rfc3339 datetime, serialize as datetime
-                match chrono::DateTime::parse_from_rfc3339(s) {
+                match DateTime::parse_from_rfc3339(s) {
                     Ok(dt) => {
-                        return serializer.serialize_str(
-                            &dt.to_rfc3339_opts(chrono::SecondsFormat::Micros, true),
-                        );
+                        return serializer
+                            .serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Micros, true));
                     }
                     Err(_) => {}
                 };
@@ -54,7 +55,7 @@ impl serde::Serialize for Value {
                 map.end()
             }
             Value::DateTime(dt) => {
-                serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::Micros, true))
+                serializer.serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Micros, true))
             }
             Value::Array(a) => {
                 let mut map = serializer.serialize_seq(Some(a.len()))?;
@@ -85,9 +86,9 @@ impl<'de> serde::Deserialize<'de> for Value {
             where
                 E: serde::de::Error,
             {
-                match chrono::DateTime::parse_from_rfc3339(value) {
+                match DateTime::parse_from_rfc3339(value) {
                     Ok(dt) => Ok(Value::DateTime(dt.with_timezone(&chrono::Utc))),
-                    Err(_) => match cid::Cid::try_from(value) {
+                    Err(_) => match libipld_core::cid::Cid::try_from(value) {
                         Ok(cid) => return Ok(Value::Cid(cid)),
                         Err(_) => {
                             if value == "true" {

@@ -1,60 +1,36 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::filters::{Filters, Query};
-use crate::{
-    filters::indexes::Indexes,
-    message::{CreateEncodedMessage, Message},
-};
-use crate::{
-    GetEncodedMessage, MessageSort, Pagination, QueryReturn, SurrealDBError, SurrealQuery,
-};
 use async_trait::async_trait;
-use libipld::{block::Block, store::DefaultParams};
+use libipld::{cid::Cid, Block, DefaultParams};
 use libipld_cbor::DagCborCodec;
-use libipld_core::ipld::Ipld;
 use libipld_core::{
-    cid::Cid,
+    ipld::Ipld,
     multihash::Code,
     serde::{from_ipld, to_ipld},
 };
-use surrealdb::engine::any::Any;
-use surrealdb::sql::{Id, Table, Thing};
+use surrealdb::{
+    engine::any::Any,
+    sql::{Id, Table, Thing},
+    Surreal,
+};
+
+use crate::SurrealQuery;
+use dwn_rs_core::Message;
+use dwn_rs_stores::{
+    Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
+};
+
+use super::{
+    errors::SurrealDBError,
+    models::{CreateEncodedMessage, GetEncodedMessage},
+};
 
 const NAMESPACE: &str = "dwn";
 const DBNAME: &str = "messages";
-const CBOR_TAGS_CID: u64 = 42;
-
-#[async_trait]
-pub trait MessageStore {
-    async fn open(&mut self) -> Result<(), SurrealDBError>;
-
-    async fn close(&mut self);
-
-    async fn put(
-        &self,
-        tenant: &str,
-        message: Message,
-        indexes: Indexes,
-    ) -> Result<Cid, SurrealDBError>;
-
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError>;
-
-    async fn query(
-        &self,
-        tenant: &str,
-        filter: Filters,
-        sort: Option<MessageSort>,
-        pagination: Option<Pagination>,
-    ) -> Result<QueryReturn, SurrealDBError>;
-
-    async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError>;
-
-    async fn clear(&self) -> Result<(), SurrealDBError>;
-}
 
 pub struct SurrealDB {
-    db: Arc<surrealdb::Surreal<Any>>,
+    db: Arc<Surreal<Any>>,
     _constr: String,
 }
 
@@ -88,14 +64,17 @@ impl SurrealDB {
 
 #[async_trait]
 impl MessageStore for SurrealDB {
-    async fn open(&mut self) -> Result<(), SurrealDBError> {
+    async fn open(&mut self) -> Result<(), MessageStoreError> {
         let health = self.db.health().await;
         if health.is_err() {
             if self._constr.is_empty() {
-                return Err(SurrealDBError::NoInitError);
+                return Err(MessageStoreError::NoInitError);
             } else {
                 let connstr = self._constr.clone();
-                self.db.connect(&connstr).await?;
+                self.db
+                    .connect(&connstr)
+                    .await
+                    .map_err(SurrealDBError::from)?;
             }
         }
 
@@ -111,7 +90,7 @@ impl MessageStore for SurrealDB {
         tenant: &str,
         mut message: Message,
         indexes: Indexes,
-    ) -> Result<Cid, SurrealDBError> {
+    ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Ipld> = None;
         if message.extra.contains_key("encodedData") {
             data = message.extra.remove("encodedData");
@@ -134,12 +113,13 @@ impl MessageStore for SurrealDB {
                 tenant: tenant.to_string(),
                 indexes,
             })
-            .await?;
+            .await
+            .map_err(SurrealDBError::from)?;
 
         Ok(cid)
     }
 
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, SurrealDBError> {
+    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
         let id = Thing::from((
             Table::from(tenant.to_string()).to_string(),
             Id::String(cid.to_string()),
@@ -149,11 +129,12 @@ impl MessageStore for SurrealDB {
         let encoded_message: GetEncodedMessage = self
             .db
             .select(id.clone())
-            .await?
-            .ok_or(SurrealDBError::NotFound)?;
+            .await
+            .map_err(SurrealDBError::from)?
+            .ok_or(MessageStoreError::NotFound)?;
 
         if encoded_message.tenant != tenant {
-            return Err(SurrealDBError::NotFound);
+            return Err(MessageStoreError::NotFound);
         }
 
         let block =
@@ -174,7 +155,7 @@ impl MessageStore for SurrealDB {
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn, SurrealDBError> {
+    ) -> Result<QueryReturn, MessageStoreError> {
         let mut qb = SurrealQuery::<GetEncodedMessage>::new(self.db.to_owned());
 
         qb.from(tenant.to_string())
@@ -185,7 +166,7 @@ impl MessageStore for SurrealDB {
         let (ms, cursor) = match qb.query().await {
             Ok(ms) => ms,
             Err(e) => {
-                return Err(SurrealDBError::QueryError(e));
+                return Err(MessageStoreError::QueryError(e));
             }
         };
 
@@ -193,14 +174,14 @@ impl MessageStore for SurrealDB {
             .into_iter()
             .map(|m: GetEncodedMessage| {
                 Cid::from_str(&m.cid.to_string())
-                    .map_err(|e| SurrealDBError::CidDecodeError(e))
+                    .map_err(|e| MessageStoreError::CidDecodeError(e))
                     .and_then(|cid| {
                         Block::<DefaultParams>::new(cid, m.encoded_message)
-                            .map_err(|e| SurrealDBError::MessageDecodeError(e))
+                            .map_err(|e| MessageStoreError::MessageDecodeError(e))
                     })
                     .and_then(|ipld| {
                         from_ipld::<Message>(ipld.decode::<DagCborCodec, Ipld>()?)
-                            .map_err(|e| SurrealDBError::SerdeDecodeError(e))
+                            .map_err(|e| MessageStoreError::SerdeDecodeError(e))
                     })
                     .and_then(|mut msg: Message| {
                         if let Some(data) = m.encoded_data {
@@ -220,28 +201,38 @@ impl MessageStore for SurrealDB {
         Ok(qr)
     }
 
-    async fn delete(&self, tenant: &str, cid: String) -> Result<(), SurrealDBError> {
+    async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError> {
         let id = Thing::from((
             Table::from(tenant.to_string()).to_string(),
             Id::String(cid.to_string()),
         ));
 
         // check the tenancy on the messages
-        let encoded_message: Option<GetEncodedMessage> = self.db.select(id.clone()).await?;
+        let encoded_message: Option<GetEncodedMessage> = self
+            .db
+            .select(id.clone())
+            .await
+            .map_err(SurrealDBError::from)?;
 
         if let Some(msg) = encoded_message {
             if msg.tenant != tenant {
-                return Err(SurrealDBError::NotFound);
+                return Err(MessageStoreError::NotFound);
             }
 
-            self.db.delete::<Option<CreateEncodedMessage>>(id).await?;
+            self.db
+                .delete::<Option<CreateEncodedMessage>>(id)
+                .await
+                .map_err(SurrealDBError::from)?;
         }
 
         Ok(())
     }
 
-    async fn clear(&self) -> Result<(), SurrealDBError> {
-        self.db.query(format!("REMOVE DATABASE {}", DBNAME)).await?;
+    async fn clear(&self) -> Result<(), MessageStoreError> {
+        self.db
+            .query(format!("REMOVE DATABASE {}", DBNAME))
+            .await
+            .map_err(SurrealDBError::from)?;
 
         Ok(())
     }

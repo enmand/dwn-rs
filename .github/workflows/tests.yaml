@@ -31,7 +31,7 @@ jobs:
           CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN: nightly
         with:
           command: make
-          args: ci-flow
+          args: workspace-ci-flow
           toolchain: nightly
   wasm-tests:
     runs-on: ubuntu-latest

@@ -1,5 +1,5 @@
 import { TestSuite } from "@tbd54566975/dwn-sdk-js/tests";
-import { SurrealDB } from "../pkg/index.js";
+import { SurrealDB } from "../crates/dwn-rs-wasm/pkg/index.js";
 import WebSocket from "isomorphic-ws";
 
 global.WebSocket = WebSocket;

@@ -3,36 +3,15 @@ use thiserror::Error;
 use crate::{FilterError, QueryError};
 
 #[derive(Error, Debug)]
-pub enum ValueError {
-    #[error("invalid value: {0}")]
-    InvalidValue(#[from] surrealdb::error::Db),
-
-    #[error("invalid filter: {0}")]
-    FiltersError(#[from] FilterError),
-
-    #[error("unparseable value: {0}")]
-    UnparseableValue(String),
-}
-
-impl From<ValueError> for FilterError {
-    fn from(e: ValueError) -> Self {
-        Self::UnparseableFilter(e.to_string())
-    }
-}
-
-impl From<surrealdb::Error> for QueryError {
-    fn from(e: surrealdb::Error) -> Self {
-        Self::DbError(e.to_string())
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum SurrealDBError {
-    #[error("SurrealDBError: {0}")]
-    ConnectionError(#[from] surrealdb::Error),
+pub enum MessageStoreError {
+    #[error("error opening database: {0}")]
+    OpenError(String),
 
     #[error("no database initialized")]
     NoInitError,
+
+    #[error("Put error: {0}")]
+    StoreException(String),
 
     #[error("failed to encode message: {0}")]
     MessageEncodeError(#[from] libipld_core::error::Error),
