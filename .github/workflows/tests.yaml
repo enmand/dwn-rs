@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust nightly
+      - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
+          toolchain: stable
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
@@ -22,17 +22,16 @@ jobs:
         with:
           command: install
           args: --debug cargo-make
-          toolchain: nightly
+          toolchain: stable
       - name: Run CI
         uses: actions-rs/cargo@v1
         env:
           CARGO_MAKE_COVERAGE_PROVIDER: "grcov"
           CARGO_MAKE_RUN_CODECOV: true
-          CARGO_MAKE_RUST_DEFAULT_TOOLCHAIN: nightly
         with:
           command: make
           args: workspace-ci-flow
-          toolchain: nightly
+          toolchain: stable
   wasm-tests:
     runs-on: ubuntu-latest
     steps:
