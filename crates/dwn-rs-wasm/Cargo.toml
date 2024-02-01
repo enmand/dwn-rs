@@ -2,6 +2,8 @@
 name = "dwn-rs-wasm"
 version = "0.2.1"
 edition = "2021"
+license = "Apache-2.0"
+description = "WASM-based build for dwn-rs, compatible with the dwn-sdk-js"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

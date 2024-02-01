@@ -2,6 +2,8 @@
 name = "dwn-rs-messagestore"
 version = "0.2.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "Message store implementations for dwn-rs"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
