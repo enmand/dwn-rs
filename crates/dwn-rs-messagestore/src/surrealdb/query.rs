@@ -40,7 +40,7 @@ where
 {
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
-            db: db.into(),
+            db,
             binds: BTreeMap::<String, dwn_rs_stores::value::Value>::new(),
             stmt: SelectStatement::default(),
             from: String::default(),
@@ -89,7 +89,7 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        self.stmt.cond = match filters
+        self.stmt.cond = filters
             .clone()
             .into_iter()
             .enumerate()
@@ -176,11 +176,7 @@ where
             })
             .filter_map(|e| e.ok())
             .map(|c| SCond(Cond(Value::Subquery(Box::new(Subquery::Value(c.into()))))))
-            .reduce(|acc, e| acc.or(e))
-        {
-            Some(c) => Some(c.into()),
-            None => None,
-        };
+            .reduce(|acc, e| acc.or(e)).map(|c| c.into());
 
         Ok(self)
     }
@@ -258,7 +254,7 @@ where
                     l: Value::Subquery(Box::new(Subquery::Value(
                         Expression::Binary {
                             l: Expression::Binary {
-                                l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone())
+                                l: self.stmt.order.clone().unwrap().0[0].order.clone()
                                     .into(),
                                 o: Operator::Equal,
                                 r: value("$_cursor_val")?,
@@ -276,20 +272,19 @@ where
                     ))),
                     o: Operator::Or,
                     r: Expression::Binary {
-                        l: Idiom::from(self.stmt.order.clone().unwrap().0[0].order.clone()).into(),
+                        l: self.stmt.order.clone().unwrap().0[0].order.clone().into(),
                         o: op,
                         r: value("$_cursor_val")?,
                     }
                     .into(),
                 }
                 .into(),
-            )))
-            .into();
+            )));
 
             if let Some(cond) = stmt.cond {
                 stmt.cond = Some(Cond(
                     Expression::Binary {
-                        l: cond.0.into(),
+                        l: cond.0,
                         o: Operator::And,
                         r: cur_cond,
                     }
@@ -312,13 +307,10 @@ where
             if res.len() as u32 > l {
                 res.pop();
 
-                match res.last() {
-                    Some(r) => Some(Cursor {
+                res.last().map(|r| Cursor {
                         cursor: r.cid(),
                         value: Some(r.cursor_value(o).clone()),
-                    }),
-                    None => None,
-                }
+                    })
             } else {
                 None
             }

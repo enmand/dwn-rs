@@ -34,6 +34,12 @@ pub struct SurrealDB {
     _constr: String,
 }
 
+impl Default for SurrealDB {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SurrealDB {
     pub fn new() -> Self {
         Self {
@@ -160,7 +166,7 @@ impl MessageStore for SurrealDB {
 
         qb.from(tenant.to_string())
             .filter(&filters)?
-            .sort(sort.clone())
+            .sort(sort)
             .page(pagination.clone());
 
         let (ms, cursor) = match qb.query().await {
@@ -174,20 +180,20 @@ impl MessageStore for SurrealDB {
             .into_iter()
             .map(|m: GetEncodedMessage| {
                 Cid::from_str(&m.cid.to_string())
-                    .map_err(|e| MessageStoreError::CidDecodeError(e))
+                    .map_err(MessageStoreError::CidDecodeError)
                     .and_then(|cid| {
                         Block::<DefaultParams>::new(cid, m.encoded_message)
-                            .map_err(|e| MessageStoreError::MessageDecodeError(e))
+                            .map_err(MessageStoreError::MessageDecodeError)
                     })
                     .and_then(|ipld| {
                         from_ipld::<Message>(ipld.decode::<DagCborCodec, Ipld>()?)
-                            .map_err(|e| MessageStoreError::SerdeDecodeError(e))
+                            .map_err(MessageStoreError::SerdeDecodeError)
                     })
-                    .and_then(|mut msg: Message| {
+                    .map(|mut msg: Message| {
                         if let Some(data) = m.encoded_data {
                             msg.extra.insert("encodedData".to_string(), data);
                         }
-                        Ok(msg)
+                        msg
                     })
                     .unwrap_or_else(|_| Message::default())
             })

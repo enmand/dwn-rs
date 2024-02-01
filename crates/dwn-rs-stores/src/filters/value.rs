@@ -34,12 +34,9 @@ impl serde::Serialize for Value {
             Value::Bool(b) => serializer.serialize_bool(*b),
             Value::String(s) => {
                 // if string is rfc3339 datetime, serialize as datetime
-                match DateTime::parse_from_rfc3339(s) {
-                    Ok(dt) => {
-                        return serializer
-                            .serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Micros, true));
-                    }
-                    Err(_) => {}
+                if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+                    return serializer
+                        .serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Micros, true));
                 };
 
                 serializer.serialize_str(s)
@@ -89,7 +86,7 @@ impl<'de> serde::Deserialize<'de> for Value {
                 match DateTime::parse_from_rfc3339(value) {
                     Ok(dt) => Ok(Value::DateTime(dt.with_timezone(&chrono::Utc))),
                     Err(_) => match libipld_core::cid::Cid::try_from(value) {
-                        Ok(cid) => return Ok(Value::Cid(cid)),
+                        Ok(cid) => Ok(Value::Cid(cid)),
                         Err(_) => {
                             if value == "true" {
                                 return Ok(Value::Bool(true));

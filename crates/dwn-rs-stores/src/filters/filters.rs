@@ -11,10 +11,7 @@ pub struct Filters {
 
 impl From<Vec<BTreeMap<String, Filter>>> for Filters {
     fn from(filters: Vec<BTreeMap<String, Filter>>) -> Self {
-        Self {
-            filters,
-            ..Default::default()
-        }
+        Self { filters }
     }
 }
 
@@ -44,7 +41,6 @@ where
                         .collect::<BTreeMap<String, Filter>>()
                 })
                 .collect::<Vec<BTreeMap<String, Filter>>>(),
-            ..Default::default()
         }
     }
 }

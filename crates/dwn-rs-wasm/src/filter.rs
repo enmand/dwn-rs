@@ -27,9 +27,7 @@ extern "C" {
 impl From<&Filter> for Filters {
     fn from(value: &Filter) -> Self {
         match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, DBFilter>>>(value.into()) {
-            Ok(m) => {
-                return m.into();
-            }
+            Ok(m) => m.into(),
             Err(_) => Filters::default(),
         }
     }

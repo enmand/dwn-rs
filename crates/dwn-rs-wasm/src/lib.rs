@@ -43,6 +43,12 @@ extern "C" {
     pub type MessageStoreOptions;
 }
 
+impl Default for JSSurrealDB {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen(js_name = SurrealDB)]
 pub struct JSSurrealDB {
     store: RealSurreal,
@@ -62,7 +68,7 @@ impl JSSurrealDB {
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
         self.store
-            .connect(&connstr)
+            .connect(connstr)
             .await
             .map_err(MessageStoreError::from)
             .map_err(Into::into)
@@ -97,7 +103,7 @@ impl JSSurrealDB {
 
         let _: Result<_, JsValue> = self
             .store
-            .put(tenant.into(), message.into(), indexes)
+            .put(tenant, message.into(), indexes)
             .await
             .map_err(MessageStoreError::from)
             .map_err(Into::into);
@@ -114,7 +120,7 @@ impl JSSurrealDB {
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
 
-        match self.store.get(tenant.into(), cid).await {
+        match self.store.get(tenant, cid).await {
             Ok(m) => Ok(m.into()),
             Err(_) => Ok(JsValue::undefined().into()),
         }
@@ -144,12 +150,9 @@ impl JSSurrealDB {
         Ok(self
             .store
             .query(
-                tenant.into(),
+                tenant,
                 filter.into(),
-                match message_sort {
-                    Some(sort) => Some(sort.into()),
-                    None => None,
-                },
+                message_sort.map(|sort| sort.into()),
                 page,
             )
             .await
@@ -168,7 +171,7 @@ impl JSSurrealDB {
         check_aborted(options)?;
 
         self.store
-            .delete(tenant.into(), cid)
+            .delete(tenant, cid)
             .await
             .map_err(MessageStoreError::from)
             .map_err(Into::into)
