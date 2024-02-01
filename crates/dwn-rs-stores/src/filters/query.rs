@@ -59,9 +59,9 @@ impl Default for MessageSort {
 impl MessageSort {
     pub fn get_direction(&self) -> SortDirection {
         match self {
-            MessageSort::DateCreated(direction) => direction.clone(),
-            MessageSort::DatePublished(direction) => direction.clone(),
-            MessageSort::Timestamp(direction) => direction.clone(),
+            MessageSort::DateCreated(direction) => *direction,
+            MessageSort::DatePublished(direction) => *direction,
+            MessageSort::Timestamp(direction) => *direction,
         }
     }
 }

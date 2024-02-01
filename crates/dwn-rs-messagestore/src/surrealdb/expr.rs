@@ -49,6 +49,12 @@ where
 #[derive(Debug, Clone)]
 pub struct SOrders(pub Vec<SOrder>);
 
+impl Default for SOrders {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SOrders {
     pub fn new() -> Self {
         Self(Vec::new())
@@ -94,18 +100,12 @@ impl Ordable for MessageSort {
 
 /// SCond is a wrapper around Cond which allows for more ergonomic construction of Cond
 /// structs.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SCond(pub Cond);
 
 impl SCond {
     pub fn new() -> Self {
         Self(Cond(Value::None))
-    }
-}
-
-impl Default for SCond {
-    fn default() -> Self {
-        Self(Cond::default())
     }
 }
 
@@ -167,8 +167,8 @@ impl SCond {
         (self, Operator::Or, SCond(c.into())).into()
     }
 
-    pub fn to_value(self) -> Value {
-        match self.0.into() {
+    pub fn to_value(&self) -> &Value {
+        match &self.0 {
             Cond(v) => v,
         }
     }

@@ -34,13 +34,12 @@ impl CursorValue for GetEncodedMessage {
         match sort {
             MessageSort::DateCreated(_) => self.indexes.indexes.get("dateCreated").unwrap(),
             MessageSort::DatePublished(_) => {
-                self.indexes.indexes.get("datePublished").clone().unwrap()
+                self.indexes.indexes.get("datePublished").unwrap()
             }
             MessageSort::Timestamp(_) => self
                 .indexes
                 .indexes
                 .get("messageTimestamp")
-                .clone()
                 .unwrap(),
         }
     }
