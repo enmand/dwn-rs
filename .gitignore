@@ -4,6 +4,6 @@
 /node_modules
 /history.txt
 /dist/
-/TEST-*
+TEST-*
 package-lock.json
 *.profraw
