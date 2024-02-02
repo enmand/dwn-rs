@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use dwn_rs_stores::{CursorValue, Indexes, MessageSort, Value};
+use crate::{CursorValue, Indexes, MessageSort, Value};
 use libipld_core::cid::Cid;
 use libipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
@@ -33,14 +33,8 @@ impl CursorValue for GetEncodedMessage {
     fn cursor_value(&self, sort: MessageSort) -> &Value {
         match sort {
             MessageSort::DateCreated(_) => self.indexes.indexes.get("dateCreated").unwrap(),
-            MessageSort::DatePublished(_) => {
-                self.indexes.indexes.get("datePublished").unwrap()
-            }
-            MessageSort::Timestamp(_) => self
-                .indexes
-                .indexes
-                .get("messageTimestamp")
-                .unwrap(),
+            MessageSort::DatePublished(_) => self.indexes.indexes.get("datePublished").unwrap(),
+            MessageSort::Timestamp(_) => self.indexes.indexes.get("messageTimestamp").unwrap(),
         }
     }
 

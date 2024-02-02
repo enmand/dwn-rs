@@ -9,10 +9,10 @@ description = "WASM-based build for dwn-rs, compatible with the dwn-sdk-js"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["dwn-rs-messagestore/surreal"]
-surrealdb = [
-    "dwn-rs-messagestore/surreal-wasm",
-]
+default = ["surrealdb-lib"]
+surrealdb = []
+surrealdb-lib = ["surrealdb", "dwn-rs-stores/surreal-lib"]
+surrealdb-wasm = ["surrealdb", "dwn-rs-stores/surreal-wasm"]
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = true
@@ -38,5 +38,4 @@ web-sys = { version = "0.3.64", features = [
 ] }
 
 dwn-rs-core = { path = "../dwn-rs-core" }
-dwn-rs-stores = { path = "../dwn-rs-stores" }
-dwn-rs-messagestore = { path = "../dwn-rs-messagestore", default-features = false }
+dwn-rs-stores = { path = "../dwn-rs-stores", default-features = false }

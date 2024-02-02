@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, ops::Bound};
 
 use serde::{ser::SerializeMap, Deserialize, Serialize};
 
-use crate::value::Value;
+use crate::filters::value::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Filters {

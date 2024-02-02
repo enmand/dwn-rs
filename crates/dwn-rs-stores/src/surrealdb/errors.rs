@@ -1,4 +1,4 @@
-use dwn_rs_stores::{MessageStoreError, QueryError, ValueError};
+use crate::{MessageStoreError, QueryError, ValueError};
 
 use thiserror::Error;
 

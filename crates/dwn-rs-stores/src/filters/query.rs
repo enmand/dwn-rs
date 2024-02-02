@@ -20,7 +20,7 @@ pub struct Cursor {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "messageCid")]
     pub cursor: Cid,
-    pub value: Option<crate::value::Value>,
+    pub value: Option<crate::filters::value::Value>,
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Copy, Clone, Default)]
@@ -89,5 +89,5 @@ where
 
 pub trait CursorValue {
     fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: MessageSort) -> &crate::value::Value;
+    fn cursor_value(&self, sort: MessageSort) -> &crate::filters::value::Value;
 }

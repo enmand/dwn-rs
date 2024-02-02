@@ -8,10 +8,32 @@ description = "Traits and common types for implementing DWN stores for dwn-rs"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ["surreal-lib"]
+surreal = []
+surreal-lib = [
+    "surreal",
+    "surrealdb/rustls",
+    "surrealdb/kv-mem",
+    "surrealdb/kv-speedb",
+    "surrealdb/protocol-ws",
+    "surrealdb/protocol-http"
+]
+surreal-wasm = [
+    "surreal",
+    "surrealdb/rustls",
+    "surrealdb/kv-mem",
+    "surrealdb/kv-indxdb",
+    "surrealdb/protocol-ws",
+    "surrealdb/protocol-http"
+]
+
 [dependencies]
 async-trait = "0.1.73"
 chrono = { version = "0.4.30", features = ["serde"] }
 from_variants = "1.0.2"
+libipld = { version = "0.16.0", features = ["serde-codec"] }
+libipld-cbor = "0.16.0"
 libipld-core = { version = "0.16.0", features = [
     "serde",
     "serde-codec",
@@ -21,5 +43,6 @@ thiserror = "1.0.47"
 serde = { version = "1.0.183", features = ["derive"] }
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
+surrealdb = { version = "1.1.1", default-features = false, optional = true }
 
 dwn-rs-core = { path = "../dwn-rs-core" }
