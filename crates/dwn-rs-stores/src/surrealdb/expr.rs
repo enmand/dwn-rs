@@ -1,7 +1,7 @@
 use surrealdb::sql::{Cond, Expression, Idiom, Operator, Order, Orders, Value};
 
 use super::query::value;
-use dwn_rs_stores::{filters::errors::ValueError, MessageSort};
+use crate::{filters::errors::ValueError, MessageSort};
 
 /// SOrder is a wrapper around Order which allows for more ergonomic construction of Order
 /// structs.

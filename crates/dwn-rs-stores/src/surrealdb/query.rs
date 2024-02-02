@@ -11,7 +11,7 @@ use surrealdb::{
 };
 
 use super::expr::{Ordable, SCond};
-use dwn_rs_stores::filters::{
+use crate::filters::{
     errors::{FilterError, QueryError, ValueError},
     filters::{Filter, Filters},
     query::{Cursor, CursorValue, MessageSort, Pagination, Query, SortDirection},
@@ -21,7 +21,7 @@ pub struct SurrealQuery<U>
 where
     U: DeserializeOwned,
 {
-    binds: BTreeMap<String, dwn_rs_stores::value::Value>,
+    binds: BTreeMap<String, crate::filters::value::Value>,
 
     db: Arc<surrealdb::Surreal<Any>>,
 
@@ -41,7 +41,7 @@ where
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
             db,
-            binds: BTreeMap::<String, dwn_rs_stores::value::Value>::new(),
+            binds: BTreeMap::<String, crate::filters::value::Value>::new(),
             stmt: SelectStatement::default(),
             from: String::default(),
             limit: None,
@@ -159,7 +159,7 @@ where
                         ),
                         Filter::OneOf(v) => {
                             self.binds
-                                .insert(var.clone(), dwn_rs_stores::value::Value::Array(v));
+                                .insert(var.clone(), crate::filters::value::Value::Array(v));
 
                             Ok(SCond::try_from((k, Operator::Inside, format!("${}", var)))?)
                         }
@@ -176,7 +176,8 @@ where
             })
             .filter_map(|e| e.ok())
             .map(|c| SCond(Cond(Value::Subquery(Box::new(Subquery::Value(c.into()))))))
-            .reduce(|acc, e| acc.or(e)).map(|c| c.into());
+            .reduce(|acc, e| acc.or(e))
+            .map(|c| c.into());
 
         Ok(self)
     }
@@ -246,7 +247,7 @@ where
             binds.insert("_cursor_val".to_owned(), v.clone());
             binds.insert(
                 "_cursor".to_owned(),
-                dwn_rs_stores::value::Value::String(c.to_string()),
+                crate::filters::value::Value::String(c.to_string()),
             );
 
             let cur_cond = Value::Subquery(Box::new(Subquery::Value(
@@ -254,8 +255,7 @@ where
                     l: Value::Subquery(Box::new(Subquery::Value(
                         Expression::Binary {
                             l: Expression::Binary {
-                                l: self.stmt.order.clone().unwrap().0[0].order.clone()
-                                    .into(),
+                                l: self.stmt.order.clone().unwrap().0[0].order.clone().into(),
                                 o: Operator::Equal,
                                 r: value("$_cursor_val")?,
                             }
@@ -308,9 +308,9 @@ where
                 res.pop();
 
                 res.last().map(|r| Cursor {
-                        cursor: r.cid(),
-                        value: Some(r.cursor_value(o).clone()),
-                    })
+                    cursor: r.cid(),
+                    value: Some(r.cursor_value(o).clone()),
+                })
             } else {
                 None
             }

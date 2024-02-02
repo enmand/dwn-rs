@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::value::Value;
+use crate::filters::value::Value;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Indexes {

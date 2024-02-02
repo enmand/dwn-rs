@@ -40,3 +40,12 @@ pub enum MessageStoreError {
     #[error("unable to create filters")]
     FilterError(#[from] FilterError),
 }
+
+#[derive(Error, Debug)]
+pub enum DataStoreError {
+    #[error("error opening database: {0}")]
+    OpenError(String),
+
+    #[error("no database initialized")]
+    NoInitError,
+}

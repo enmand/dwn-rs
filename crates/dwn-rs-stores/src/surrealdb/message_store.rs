@@ -16,10 +16,10 @@ use surrealdb::{
 };
 
 use crate::SurrealQuery;
-use dwn_rs_core::Message;
-use dwn_rs_stores::{
+use crate::{
     Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
+use dwn_rs_core::Message;
 
 use super::{
     errors::SurrealDBError,

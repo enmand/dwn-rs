@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/dwn-rs-core",
     "crates/dwn-rs-stores",
-    "crates/dwn-rs-messagestore",
     "crates/dwn-rs-wasm",
 ]
 
