@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/crates/dwn-rs-core"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/crates/dwn-rs-stores"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/crates/dwn-rs-wasm"
+    schedule:
+      interval: "daily"
