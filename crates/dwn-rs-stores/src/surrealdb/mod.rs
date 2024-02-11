@@ -1,3 +1,4 @@
+pub mod data_store;
 pub mod errors;
 mod expr;
 pub mod message_store;

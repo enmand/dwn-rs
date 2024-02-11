@@ -42,3 +42,20 @@ impl CursorValue for GetEncodedMessage {
         Cid::from_str(&self.cid).unwrap()
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct CreateData {
+    pub(super) cid: String,
+    pub(super) data: Vec<u8>,
+    pub(super) tenant: String,
+    pub(super) record_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct GetData {
+    pub(super) id: Thing,
+    pub(super) cid: String,
+    pub(super) data: Vec<u8>,
+    pub(super) tenant: String,
+    pub(super) record_id: String,
+}
