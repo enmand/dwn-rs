@@ -17,7 +17,7 @@ surreal-lib = [
     "surrealdb/kv-mem",
     "surrealdb/kv-speedb",
     "surrealdb/protocol-ws",
-    "surrealdb/protocol-http"
+    "surrealdb/protocol-http",
 ]
 surreal-wasm = [
     "surreal",
@@ -25,7 +25,7 @@ surreal-wasm = [
     "surrealdb/kv-mem",
     "surrealdb/kv-indxdb",
     "surrealdb/protocol-ws",
-    "surrealdb/protocol-http"
+    "surrealdb/protocol-http",
 ]
 
 [dependencies]
@@ -40,6 +40,7 @@ libipld-core = { version = "0.16.0", features = [
     "multibase",
 ] }
 thiserror = "1.0.47"
+tokio = { version = "1.36.0", features = ["io-util"] }
 serde = { version = "1.0.183", features = ["derive"] }
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
