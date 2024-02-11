@@ -1,4 +1,4 @@
-use crate::{MessageStoreError, QueryError, ValueError};
+use crate::{QueryError, StoreError, ValueError};
 
 use thiserror::Error;
 
@@ -23,11 +23,11 @@ impl From<SurrealDBError> for ValueError {
     }
 }
 
-impl From<SurrealDBError> for MessageStoreError {
+impl From<SurrealDBError> for StoreError {
     fn from(e: SurrealDBError) -> Self {
         match e {
-            SurrealDBError::DBError(e) => Self::StoreException(e.to_string()),
-            SurrealDBError::SurrealError(e) => Self::StoreException(e.to_string()),
+            SurrealDBError::DBError(e) => Self::InternalException(e.to_string()),
+            SurrealDBError::SurrealError(e) => Self::InternalException(e.to_string()),
         }
     }
 }

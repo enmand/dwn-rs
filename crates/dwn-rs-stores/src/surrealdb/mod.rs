@@ -3,7 +3,8 @@ mod expr;
 pub mod message_store;
 mod models;
 pub mod query;
+pub mod surrealdb;
 
 pub use errors::*;
-pub use message_store::*;
 pub use query::*;
+pub use surrealdb::*;

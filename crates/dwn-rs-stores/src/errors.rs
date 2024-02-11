@@ -3,15 +3,24 @@ use thiserror::Error;
 use crate::{FilterError, QueryError};
 
 #[derive(Error, Debug)]
-pub enum MessageStoreError {
+pub enum StoreError {
     #[error("error opening database: {0}")]
     OpenError(String),
 
     #[error("no database initialized")]
     NoInitError,
 
-    #[error("Put error: {0}")]
-    StoreException(String),
+    #[error("internal store error: {0}")]
+    InternalException(String),
+
+    #[error("unable to find record")]
+    NotFound,
+}
+
+#[derive(Error, Debug)]
+pub enum MessageStoreError {
+    #[error("error operating the store: {0}")]
+    StoreError(#[from] StoreError),
 
     #[error("failed to encode message: {0}")]
     MessageEncodeError(#[from] libipld_core::error::Error),
@@ -31,9 +40,6 @@ pub enum MessageStoreError {
     #[error("failed to decode cid")]
     CidDecodeError(#[source] libipld_core::cid::Error),
 
-    #[error("unable to find record")]
-    NotFound,
-
     #[error("unable to perform query")]
     QueryError(#[from] QueryError),
 
@@ -48,4 +54,10 @@ pub enum DataStoreError {
 
     #[error("no database initialized")]
     NoInitError,
+
+    #[error("error operating the store: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("unable to read data from buffer")]
+    ReadError(#[from] std::io::Error),
 }
