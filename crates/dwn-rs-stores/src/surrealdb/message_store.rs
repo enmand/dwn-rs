@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use async_trait::async_trait;
 use libipld::{cid::Cid, Block, DefaultParams};
@@ -9,16 +8,13 @@ use libipld_core::{
     multihash::Code,
     serde::{from_ipld, to_ipld},
 };
-use surrealdb::{
-    engine::any::Any,
-    sql::{Id, Table, Thing},
-    Surreal,
-};
+use surrealdb::sql::{Id, Table, Thing};
 
-use crate::SurrealQuery;
+use super::surrealdb::SurrealDB;
 use crate::{
     Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
+use crate::{StoreError, SurrealQuery};
 use dwn_rs_core::Message;
 
 use super::{
@@ -26,69 +22,14 @@ use super::{
     models::{CreateEncodedMessage, GetEncodedMessage},
 };
 
-const NAMESPACE: &str = "dwn";
-const DBNAME: &str = "messages";
-
-pub struct SurrealDB {
-    db: Arc<Surreal<Any>>,
-    _constr: String,
-}
-
-impl Default for SurrealDB {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SurrealDB {
-    pub fn new() -> Self {
-        Self {
-            db: Arc::new(surrealdb::Surreal::init()),
-            _constr: String::default(),
-        }
-    }
-
-    pub fn with_db(&mut self, db: surrealdb::Surreal<Any>) -> &mut Self {
-        self.db = Arc::new(db);
-        self
-    }
-
-    pub async fn connect(&mut self, connstr: &str) -> Result<(), SurrealDBError> {
-        self._constr = connstr.into();
-        self.db.connect(connstr).await?;
-        self.db
-            .health()
-            .await
-            .map_err(Into::<SurrealDBError>::into)?;
-        self.db
-            .use_ns(NAMESPACE)
-            .use_db(DBNAME)
-            .await
-            .map_err(Into::into)
-    }
-}
-
 #[async_trait]
 impl MessageStore for SurrealDB {
     async fn open(&mut self) -> Result<(), MessageStoreError> {
-        let health = self.db.health().await;
-        if health.is_err() {
-            if self._constr.is_empty() {
-                return Err(MessageStoreError::NoInitError);
-            } else {
-                let connstr = self._constr.clone();
-                self.db
-                    .connect(&connstr)
-                    .await
-                    .map_err(SurrealDBError::from)?;
-            }
-        }
-
-        Ok(())
+        self.open().await.map_err(MessageStoreError::from)
     }
 
     async fn close(&mut self) {
-        let _ = self.db.invalidate().await;
+        self.close().await
     }
 
     async fn put(
@@ -120,7 +61,9 @@ impl MessageStore for SurrealDB {
                 indexes,
             })
             .await
-            .map_err(SurrealDBError::from)?;
+            .map_err(SurrealDBError::from)
+            .map_err(StoreError::from)
+            .map_err(MessageStoreError::from)?;
 
         Ok(cid)
     }
@@ -136,11 +79,13 @@ impl MessageStore for SurrealDB {
             .db
             .select(id.clone())
             .await
-            .map_err(SurrealDBError::from)?
-            .ok_or(MessageStoreError::NotFound)?;
+            .map_err(SurrealDBError::from)
+            .map_err(StoreError::from)
+            .map_err(MessageStoreError::from)?
+            .ok_or(MessageStoreError::StoreError(StoreError::NotFound))?;
 
         if encoded_message.tenant != tenant {
-            return Err(MessageStoreError::NotFound);
+            return Err(MessageStoreError::StoreError(StoreError::NotFound));
         }
 
         let block =
@@ -218,27 +163,28 @@ impl MessageStore for SurrealDB {
             .db
             .select(id.clone())
             .await
-            .map_err(SurrealDBError::from)?;
+            .map_err(SurrealDBError::from)
+            .map_err(StoreError::from)
+            .map_err(MessageStoreError::from)?;
 
         if let Some(msg) = encoded_message {
             if msg.tenant != tenant {
-                return Err(MessageStoreError::NotFound);
+                return Err(MessageStoreError::StoreError(StoreError::NotFound));
             }
 
             self.db
                 .delete::<Option<CreateEncodedMessage>>(id)
                 .await
-                .map_err(SurrealDBError::from)?;
+                .map_err(SurrealDBError::from)
+                .map_err(StoreError::from)
+                .map_err(MessageStoreError::from)?;
         }
 
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), MessageStoreError> {
-        self.db
-            .query(format!("REMOVE DATABASE {}", DBNAME))
-            .await
-            .map_err(SurrealDBError::from)?;
+        self.clear().await.map_err(MessageStoreError::from)?;
 
         Ok(())
     }
