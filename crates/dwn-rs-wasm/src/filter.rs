@@ -5,6 +5,8 @@ use wasm_bindgen::prelude::*;
 
 use dwn_rs_stores::{Filter as DBFilter, Filters};
 
+use crate::ser::serializer;
+
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";
 
@@ -51,9 +53,4 @@ impl From<Filters> for Filter {
 
         wasm_bindgen::JsValue::default().into()
     }
-}
-
-#[inline]
-fn serializer() -> serde_wasm_bindgen::Serializer {
-    serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true)
 }

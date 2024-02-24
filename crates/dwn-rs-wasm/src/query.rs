@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 
 use dwn_rs_stores::{MessageSort, Pagination, QueryReturn};
 
+use crate::ser::serializer;
+
 #[wasm_bindgen(typescript_custom_section)]
 const QUERY_TYPES: &'static str = r#"
 export type QueryReturn = {
@@ -57,9 +59,4 @@ impl TryFrom<JSPagination> for Pagination {
 
         serde_wasm_bindgen::from_value(value.into())
     }
-}
-
-#[inline]
-fn serializer() -> serde_wasm_bindgen::Serializer {
-    serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true)
 }
