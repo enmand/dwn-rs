@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 
 use dwn_rs_core::Message;
 
+use crate::ser::serializer;
+
 #[wasm_bindgen(typescript_custom_section)]
 const MESSAGE_IMPORT: &'static str = r#"import { GenericMessage } from "@tbd54566975/dwn-sdk-js";"#;
 
@@ -58,9 +60,4 @@ impl From<Vec<Message>> for GenericMessageArray {
 
         wasm_bindgen::JsValue::default().into()
     }
-}
-
-#[inline]
-fn serializer() -> serde_wasm_bindgen::Serializer {
-    serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true)
 }
