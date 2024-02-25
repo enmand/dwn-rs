@@ -23,12 +23,7 @@ js-sys = "0.3.64"
 serde = { version = "1.0.183", features = ["derive"] }
 serde-wasm-bindgen = "0.6.3"
 thiserror = "1.0.47"
-wasm-bindgen = { version = "0.2.87", features = [
-    "serde",
-    "serde_json",
-    "serde-serialize",
-    "enable-interning",
-] }
+wasm-bindgen = { version = "0.2.91", features = ["enable-interning"] }
 wasm-bindgen-futures = "0.4.37"
 web-sys = { version = "0.3.64", features = [
     "AbortSignal",
