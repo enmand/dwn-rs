@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "dependencies": {
-    "@tbd54566975/dwn-sdk-js": "^0.2.16",
+    "@tbd54566975/dwn-sdk-js": "0.2.16",
     "isomorphic-ws": "^5.0.0"
   },
   "devDependencies": {
