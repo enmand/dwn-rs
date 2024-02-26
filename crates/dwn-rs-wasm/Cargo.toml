@@ -42,4 +42,4 @@ web-sys = { version = "0.3.64", features = [
 dwn-rs-core = { path = "../dwn-rs-core" }
 dwn-rs-stores = { path = "../dwn-rs-stores", default-features = false }
 
-wasm-streams = "0.3.0"
+wasm-streams = "0.4.0"
