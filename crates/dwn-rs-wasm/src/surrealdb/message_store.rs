@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use dwn_rs_stores::{
     errors::MessageStoreError as StoreError,
-    filters::value::Value,
-    filters::{Indexes, QueryReturn},
+    filters::{value::Value, Indexes, QueryReturn},
     surrealdb::{SurrealDB, SurrealDBError},
     MessageStore,
 };
@@ -52,8 +51,6 @@ pub struct SurrealMessageStore {
 impl SurrealMessageStore {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        console_error_panic_hook::set_once();
-
         Self {
             store: SurrealDB::new(),
         }
@@ -62,7 +59,7 @@ impl SurrealMessageStore {
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
         self.store
-            .connect(connstr)
+            .connect(connstr, dwn_rs_stores::surrealdb::Database::Messages)
             .await
             .map_err(MessageStoreError::from)
             .map_err(Into::into)
