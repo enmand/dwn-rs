@@ -8,7 +8,6 @@ use dwn_rs_stores::{
     surrealdb::{Database, SurrealDB, SurrealDBError},
     DataStore, DataStoreError,
 };
-use web_sys::console;
 
 use crate::{
     data::{DataStoreGetResult, DataStorePutResult},
