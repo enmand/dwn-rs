@@ -1,7 +1,9 @@
+use std::pin::Pin;
+
 use async_trait::async_trait;
+use futures_util::Stream;
 use libipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncRead;
 
 use crate::{
     DataStoreError, Filters, Indexes, MessageSort, MessageStoreError, Pagination, QueryReturn,
@@ -42,11 +44,11 @@ pub trait DataStore {
 
     async fn close(&mut self);
 
-    async fn put<T: AsyncRead + Send + Sync + Unpin>(
+    async fn put<T: Stream<Item = Vec<u8>> + Send + Unpin>(
         &self,
         tenant: &str,
         record_id: String,
-        cid: Cid,
+        cid: String,
         value: T,
     ) -> Result<PutDataResults, DataStoreError>;
 
@@ -54,11 +56,14 @@ pub trait DataStore {
         &self,
         tenant: &str,
         record_id: String,
-        cid: Cid,
-    ) -> Result<Option<GetDataResults>, DataStoreError>;
-
-    async fn delete(&self, tenant: &str, record_id: String, cid: Cid)
-        -> Result<(), DataStoreError>;
+        cid: String,
+    ) -> Result<GetDataResults, DataStoreError>;
+    async fn delete(
+        &self,
+        tenant: &str,
+        record_id: String,
+        cid: String,
+    ) -> Result<(), DataStoreError>;
 
     async fn clear(&self) -> Result<(), DataStoreError>;
 }
@@ -69,11 +74,7 @@ pub struct PutDataResults {
     pub size: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
 pub struct GetDataResults {
-    #[serde(rename = "dataSize")]
     pub size: usize,
-
-    #[serde(rename = "dataStream")]
-    pub data: Vec<u8>,
+    pub data: Pin<Box<dyn Stream<Item = Vec<u8>>>>,
 }
