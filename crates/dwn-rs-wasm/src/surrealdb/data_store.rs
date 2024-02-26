@@ -1,5 +1,34 @@
-use dwn_rs_stores::surrealdb::SurrealDB;
+use async_stream::stream;
+use futures_util::StreamExt;
+use js_sys::{Object, Reflect};
+use thiserror::Error;
 use wasm_bindgen::prelude::*;
+
+use dwn_rs_stores::{
+    surrealdb::{Database, SurrealDB, SurrealDBError},
+    DataStore, DataStoreError,
+};
+use web_sys::console;
+
+use crate::{
+    data::{DataStoreGetResult, DataStorePutResult},
+    streams::node_readable::{NodeReadable, Readable},
+};
+
+#[derive(Error, Debug)]
+enum SurrealDataStoreError {
+    #[error("Store error: {0}")]
+    StoreError(#[from] DataStoreError),
+
+    #[error("store connection failed: {0}")]
+    ConnectionFailed(#[from] SurrealDBError),
+}
+
+impl From<SurrealDataStoreError> for JsValue {
+    fn from(e: SurrealDataStoreError) -> Self {
+        JsValue::from_str(&format!("{}", e))
+    }
+}
 
 #[wasm_bindgen(js_name = SurrealDataStore)]
 pub struct SurrealDataStore {
@@ -19,9 +48,108 @@ impl SurrealDataStore {
 
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
-        Ok(())
+        self.store
+            .connect(connstr, Database::Data)
+            .await
+            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::into)
     }
 
     #[wasm_bindgen]
-    pub async fn close(&mut self) {}
+    pub async fn open(&mut self) -> Result<(), JsValue> {
+        self.store
+            .open()
+            .await
+            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::into)
+    }
+
+    #[wasm_bindgen]
+    pub async fn put(
+        &self,
+        tenant: &str,
+        record_id: &str,
+        cid: &str,
+        value: Readable,
+    ) -> Result<DataStorePutResult, JsValue> {
+        match self
+            .store
+            .put(
+                tenant,
+                record_id.to_string(),
+                cid.to_string(),
+                NodeReadable::new(value),
+            )
+            .await
+            .map_err(SurrealDataStoreError::from)
+        {
+            Ok(d) => Ok(d.into()),
+            Err(e) => Err(SurrealDataStoreError::from(e).into()),
+        }
+    }
+
+    #[wasm_bindgen]
+    pub async fn get(
+        &self,
+        tenant: &str,
+        record_id: &str,
+        cid: &str,
+    ) -> Result<Option<DataStoreGetResult>, JsValue> {
+        let mut v = match self
+            .store
+            .get(tenant, record_id.to_string(), cid.to_string())
+            .await
+        {
+            Ok(d) => d,
+            Err(_) => return Ok(None),
+        };
+
+        let size = v.size;
+        let reader = stream! {
+            while let Some(chunk) = v.data.next().await {
+                yield Ok(wasm_bindgen::JsCast::unchecked_into(js_sys::Uint8Array::from(chunk.as_slice())));
+            }
+        };
+
+        let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
+        Reflect::set(&obj, &"dataSize".into(), &size.into())?;
+        Reflect::set(
+            &obj,
+            &"dataStream".into(),
+            &Readable::from_web(JsCast::unchecked_into(
+                wasm_streams::ReadableStream::from_stream(reader).into_raw(),
+            )),
+        )?;
+
+        Ok(Some(obj))
+    }
+
+    #[wasm_bindgen]
+    pub async fn close(&mut self) {
+        self.store.close().await;
+    }
+
+    #[wasm_bindgen]
+    pub async fn clear(&mut self) -> Result<(), JsValue> {
+        self.store
+            .clear()
+            .await
+            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::into)
+    }
+
+    #[wasm_bindgen]
+    pub async fn delete(
+        &mut self,
+        tenant: &str,
+        record_id: &str,
+        cid: &str,
+    ) -> Result<(), JsValue> {
+        self.store
+            .delete(tenant, record_id.to_string(), cid.to_string())
+            .await
+            .map_err(SurrealDataStoreError::from)?;
+
+        Ok(())
+    }
 }

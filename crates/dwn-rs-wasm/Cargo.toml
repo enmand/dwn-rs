@@ -15,22 +15,31 @@ surrealdb-lib = ["surrealdb", "dwn-rs-stores/surreal-lib"]
 surrealdb-wasm = ["surrealdb", "dwn-rs-stores/surreal-wasm"]
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = true
+wasm-opt = false
 
 [dependencies]
+async-stream = "0.3.5"
 console_error_panic_hook = "0.1.7"
+futures-util = "0.3.30"
 js-sys = "0.3.64"
 serde = { version = "1.0.183", features = ["derive"] }
 serde-wasm-bindgen = "0.6.3"
 thiserror = "1.0.47"
 wasm-bindgen = { version = "0.2.91", features = ["enable-interning"] }
+tokio = { version = "1.36.0", features = ["io-util"] }
+tokio-stream = { version = "0.1.14", default-features = false, features = [
+    "io-util",
+] }
 wasm-bindgen-futures = "0.4.37"
 web-sys = { version = "0.3.64", features = [
     "AbortSignal",
     "console",
     "AbortController",
     "WebSocket",
+    "ReadableStream",
 ] }
 
 dwn-rs-core = { path = "../dwn-rs-core" }
 dwn-rs-stores = { path = "../dwn-rs-stores", default-features = false }
+
+wasm-streams = "0.3.0"
