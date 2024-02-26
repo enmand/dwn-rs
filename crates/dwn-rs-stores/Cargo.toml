@@ -29,7 +29,9 @@ surreal-wasm = [
 ]
 
 [dependencies]
+async-stream = "0.3.5"
 async-trait = "0.1.73"
+futures-util = "0.3.30"
 chrono = { version = "0.4.30", features = ["serde"] }
 from_variants = "1.0.2"
 libipld = { version = "0.16.0", features = ["serde-codec"] }
@@ -40,7 +42,10 @@ libipld-core = { version = "0.16.0", features = [
     "multibase",
 ] }
 thiserror = "1.0.47"
-tokio = { version = "1.36.0", features = ["io-util"] }
+tokio = { version = "1.5.0", features = ["io-util"] }
+tokio-stream = { version = "0.1.14", default-features = false, features = [
+    "io-util",
+] }
 serde = { version = "1.0.183", features = ["derive"] }
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
