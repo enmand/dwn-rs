@@ -34,6 +34,12 @@ pub struct SurrealDataStore {
     store: SurrealDB,
 }
 
+impl Default for SurrealDataStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen(js_class = SurrealDataStore)]
 impl SurrealDataStore {
     #[wasm_bindgen(constructor)]
@@ -83,7 +89,7 @@ impl SurrealDataStore {
             .map_err(SurrealDataStoreError::from)
         {
             Ok(d) => Ok(d.into()),
-            Err(e) => Err(SurrealDataStoreError::from(e).into()),
+            Err(e) => Err(e.into()),
         }
     }
 
