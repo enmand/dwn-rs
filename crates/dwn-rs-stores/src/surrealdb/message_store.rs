@@ -10,7 +10,7 @@ use libipld_core::{
 };
 use surrealdb::sql::{Id, Table, Thing};
 
-use super::surrealdb::SurrealDB;
+use super::core::SurrealDB;
 use crate::{
     Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };

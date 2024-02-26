@@ -33,6 +33,12 @@ pub struct SurrealDB {
     pub(super) _constr: String,
 }
 
+impl Default for SurrealDB {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SurrealDB {
     pub(super) async fn open(&mut self) -> Result<(), StoreError> {
         let health = self.db.health().await;
