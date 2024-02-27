@@ -31,7 +31,7 @@ pub trait MessageStore {
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn, MessageStoreError>;
+    ) -> Result<QueryReturn<Message>, MessageStoreError>;
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError>;
 

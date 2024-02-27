@@ -106,7 +106,7 @@ impl MessageStore for SurrealDB {
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn, MessageStoreError> {
+    ) -> Result<QueryReturn<Message>, MessageStoreError> {
         let mut qb = SurrealQuery::<GetEncodedMessage>::new(self.db.to_owned());
 
         qb.from(tenant.to_string())
@@ -144,10 +144,7 @@ impl MessageStore for SurrealDB {
             })
             .collect::<Vec<Message>>();
 
-        let qr = QueryReturn {
-            messages: r,
-            cursor,
-        };
+        let qr = QueryReturn { items: r, cursor };
 
         Ok(qr)
     }
