@@ -6,7 +6,8 @@ use libipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    DataStoreError, Filters, Indexes, MessageSort, MessageStoreError, Pagination, QueryReturn,
+    Cursor, DataStoreError, EventLogError, Filters, Indexes, MessageSort, MessageStoreError,
+    Pagination, QueryReturn,
 };
 use dwn_rs_core::Message;
 
@@ -77,4 +78,35 @@ pub struct PutDataResults {
 pub struct GetDataResults {
     pub size: usize,
     pub data: Pin<Box<dyn Stream<Item = Vec<u8>>>>,
+}
+
+#[async_trait]
+pub trait EventLog {
+    async fn open(&mut self) -> Result<(), EventLogError>;
+
+    async fn close(&mut self);
+
+    async fn append(
+        &self,
+        tenant: &str,
+        cid: String,
+        indexes: Indexes,
+    ) -> Result<(), EventLogError>;
+
+    async fn get_events(
+        &self,
+        tenant: &str,
+        cursor: Option<Cursor>,
+    ) -> Result<QueryReturn<&str>, EventLogError>;
+
+    async fn query_events(
+        &self,
+        tenant: &str,
+        filter: Filters,
+        cursor: Option<Cursor>,
+    ) -> Result<QueryReturn<&str>, EventLogError>;
+
+    async fn delete<'a>(&self, tenant: &str, cid: &'a [&str]) -> Result<(), EventLogError>;
+
+    async fn clear(&self) -> Result<(), EventLogError>;
 }
