@@ -39,6 +39,16 @@ impl SortDirection {
     }
 }
 
+/// Directional is a trait that allows for the retrieval of the direction of a type.
+pub trait Directional {
+    fn get_direction(&self) -> SortDirection;
+}
+
+/// Ordorable is a trait that allows for the conversion of a type into an Order.
+pub trait Ordorable {
+    fn to_order<'a>(self) -> (&'a str, bool);
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum MessageSort {
     #[serde(rename = "dateCreated")]
@@ -55,13 +65,48 @@ impl Default for MessageSort {
     }
 }
 
-impl MessageSort {
-    pub fn get_direction(&self) -> SortDirection {
+impl Directional for MessageSort {
+    fn get_direction(&self) -> SortDirection {
         match self {
             MessageSort::DateCreated(direction) => *direction,
             MessageSort::DatePublished(direction) => *direction,
             MessageSort::Timestamp(direction) => *direction,
         }
+    }
+}
+
+impl Ordorable for MessageSort {
+    fn to_order<'a>(self) -> (&'a str, bool) {
+        match self {
+            MessageSort::DateCreated(direction) => ("dateCreated", direction.to_bool()),
+            MessageSort::DatePublished(direction) => ("datePublished", direction.to_bool()),
+            MessageSort::Timestamp(direction) => ("messageTimestamp", direction.to_bool()),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct MessageCidSort {
+    direction: SortDirection,
+}
+
+impl Default for MessageCidSort {
+    fn default() -> Self {
+        Self {
+            direction: SortDirection::default(),
+        }
+    }
+}
+
+impl Directional for MessageCidSort {
+    fn get_direction(&self) -> SortDirection {
+        self.direction
+    }
+}
+
+impl Ordorable for MessageCidSort {
+    fn to_order<'a>(self) -> (&'a str, bool) {
+        ("messageCid", self.direction.to_bool())
     }
 }
 
@@ -73,20 +118,21 @@ pub struct QueryReturn<T> {
 
 // Trait for implementing Filters
 #[async_trait]
-pub trait Query<U>
+pub trait Query<U, T>
 where
     U: DeserializeOwned,
+    T: Directional,
 {
     fn from<S>(&mut self, table: S) -> &mut Self
     where
         S: Into<String>;
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, errors::FilterError>;
     fn page(&mut self, pagination: Option<Pagination>) -> &mut Self;
-    fn sort(&mut self, sort: Option<MessageSort>) -> &mut Self;
+    fn sort(&mut self, sort: Option<T>) -> &mut Self;
     async fn query(&self) -> Result<(Vec<U>, Option<crate::Cursor>), errors::QueryError>;
 }
 
-pub trait CursorValue {
+pub trait CursorValue<T> {
     fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: MessageSort) -> &crate::filters::value::Value;
+    fn cursor_value(&self, sort: T) -> &crate::filters::value::Value;
 }
