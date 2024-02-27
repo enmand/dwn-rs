@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, Indexes, MessageCidSort, MessageSort, Value};
+use crate::{CursorValue, Indexes, MessageSort, Value};
 use libipld_core::cid::Cid;
 use libipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
