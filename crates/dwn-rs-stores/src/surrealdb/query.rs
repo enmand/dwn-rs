@@ -22,7 +22,7 @@ use crate::Ordorable;
 pub struct SurrealQuery<U, T>
 where
     U: DeserializeOwned,
-    T: Directional + Default + Ordorable + Sync,
+    T: Directional + Default + Ordorable + Sync + Copy,
 {
     binds: BTreeMap<String, crate::filters::value::Value>,
 
@@ -40,7 +40,7 @@ where
 impl<U, T> SurrealQuery<U, T>
 where
     U: DeserializeOwned,
-    T: Directional + Default + Ordorable + Sync,
+    T: Directional + Default + Ordorable + Sync + Copy,
 {
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
@@ -61,7 +61,7 @@ where
 impl<U, T> Query<U, T> for SurrealQuery<U, T>
 where
     U: CursorValue<T> + DeserializeOwned + Sync + Send + Debug,
-    T: Directional + Default + Ordorable + Sync,
+    T: Directional + Default + Ordorable + Sync + Copy,
 {
     /// from sets the table to query from.
     ///
@@ -214,7 +214,8 @@ where
     fn sort(&mut self, sort: Option<T>) -> &mut Self {
         self.order = match sort {
             Some(s) => Some(s),
-            None => self.order,
+            None => self.order.clone(),
+          
         };
 
         if let Some(o) = self.order {
