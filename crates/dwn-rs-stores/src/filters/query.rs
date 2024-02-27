@@ -6,7 +6,6 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use crate::filters::errors;
 use crate::Filters;
-use dwn_rs_core::Message;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Pagination {
@@ -67,8 +66,8 @@ impl MessageSort {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct QueryReturn {
-    pub messages: Vec<Message>,
+pub struct QueryReturn<T> {
+    pub items: Vec<T>,
     pub cursor: Option<Cursor>,
 }
 

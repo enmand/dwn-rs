@@ -1,7 +1,8 @@
+use dwn_rs_core::Message;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::{MessageSort, Pagination, QueryReturn};
+use dwn_rs_stores::{Cursor, MessageSort, Pagination, QueryReturn};
 
 use crate::ser::serializer;
 
@@ -27,9 +28,20 @@ extern "C" {
     pub type JSPagination;
 }
 
-impl From<QueryReturn> for JSQueryReturn {
-    fn from(value: QueryReturn) -> Self {
-        if let Ok(m) = value.serialize(&serializer()) {
+impl From<QueryReturn<Message>> for JSQueryReturn {
+    fn from(value: QueryReturn<Message>) -> Self {
+        #[derive(Serialize)]
+        struct Wrapper<'a> {
+            messages: &'a [Message],
+            cursor: Option<Cursor>,
+        }
+
+        let wrapper = Wrapper {
+            messages: value.items.as_slice(),
+            cursor: value.cursor,
+        };
+
+        if let Ok(m) = wrapper.serialize(&serializer()) {
             return m.into();
         }
 
