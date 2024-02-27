@@ -61,3 +61,15 @@ pub enum DataStoreError {
     #[error("unable to read data from buffer")]
     ReadError(#[from] std::io::Error),
 }
+
+#[derive(Error, Debug)]
+pub enum EventLogError {
+    #[error("error operating the store: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("unable to create filters")]
+    FilterError(#[from] FilterError),
+
+    #[error("unable to perform query")]
+    QueryError(#[from] QueryError),
+}
