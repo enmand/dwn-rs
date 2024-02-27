@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, Indexes, MessageSort, Value};
+use crate::{CursorValue, Indexes, MessageCidSort, MessageSort, Value};
 use libipld_core::cid::Cid;
 use libipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ pub(crate) struct GetEncodedMessage {
     pub(super) indexes: Indexes,
 }
 
-impl CursorValue for GetEncodedMessage {
+impl CursorValue<MessageSort> for GetEncodedMessage {
     fn cursor_value(&self, sort: MessageSort) -> &Value {
         match sort {
             MessageSort::DateCreated(_) => self.indexes.indexes.get("dateCreated").unwrap(),

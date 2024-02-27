@@ -10,16 +10,19 @@ use surrealdb::{
     sql::{statements::SelectStatement, Expression, Limit, Number, Operator, Table, Value, Values},
 };
 
-use super::expr::{Ordable, SCond};
+use super::expr::{SCond, SOrder, SOrders};
 use crate::filters::{
     errors::{FilterError, QueryError, ValueError},
     filters::{Filter, Filters},
-    query::{Cursor, CursorValue, MessageSort, Pagination, Query, SortDirection},
+    query::{Cursor, CursorValue, Pagination, Query, SortDirection},
+    Directional,
 };
+use crate::Ordorable;
 
-pub struct SurrealQuery<U>
+pub struct SurrealQuery<U, T>
 where
     U: DeserializeOwned,
+    T: Directional + Default + Ordorable + Sync,
 {
     binds: BTreeMap<String, crate::filters::value::Value>,
 
@@ -28,15 +31,16 @@ where
     stmt: SelectStatement,
     from: String,
     limit: Option<u32>,
-    order: Option<MessageSort>,
+    order: Option<T>,
     sort_direction: Option<SortDirection>,
     cursor: Option<Cursor>,
     u_type: PhantomData<U>,
 }
 
-impl<U> SurrealQuery<U>
+impl<U, T> SurrealQuery<U, T>
 where
     U: DeserializeOwned,
+    T: Directional + Default + Ordorable + Sync,
 {
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
@@ -45,8 +49,8 @@ where
             stmt: SelectStatement::default(),
             from: String::default(),
             limit: None,
-            order: Some(MessageSort::default()),
-            sort_direction: Some(MessageSort::default().get_direction()),
+            order: Some(T::default()),
+            sort_direction: Some(T::default().get_direction()),
             cursor: None,
             u_type: PhantomData,
         }
@@ -54,9 +58,10 @@ where
 }
 
 #[async_trait]
-impl<U> Query<U> for SurrealQuery<U>
+impl<U, T> Query<U, T> for SurrealQuery<U, T>
 where
-    U: CursorValue + DeserializeOwned + Sync + Send + Debug,
+    U: CursorValue<T> + DeserializeOwned + Sync + Send + Debug,
+    T: Directional + Default + Ordorable + Sync,
 {
     /// from sets the table to query from.
     ///
@@ -206,7 +211,7 @@ where
     // MessageSort struct, which contains the fields to sort on and the direction to sort.
     // If the MessageSort struct is not set, the query will return messages in the order
     // they were published.
-    fn sort(&mut self, sort: Option<MessageSort>) -> &mut Self {
+    fn sort(&mut self, sort: Option<T>) -> &mut Self {
         self.order = match sort {
             Some(s) => Some(s),
             None => self.order,
@@ -214,8 +219,8 @@ where
 
         if let Some(o) = self.order {
             let direction = o.get_direction();
-            let mut order = o.to_order();
-            order.push(("cid", direction.to_bool(), false));
+            let mut order: SOrders = o.to_order().into();
+            order.push(SOrder::from(("cid", direction.to_bool(), false)));
 
             self.stmt.order = Some(order.into());
             self.sort_direction = Some(direction);
