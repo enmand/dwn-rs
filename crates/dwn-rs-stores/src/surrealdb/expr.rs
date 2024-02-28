@@ -77,6 +77,12 @@ impl From<(&str, bool)> for SOrders {
     }
 }
 
+impl From<Vec<(&str, bool)>> for SOrders {
+    fn from(v: Vec<(&str, bool)>) -> Self {
+        Self(v.iter().map(|(v, d)| SOrder::from((*v, *d))).collect())
+    }
+}
+
 impl From<SOrders> for Orders {
     fn from(s: SOrders) -> Self {
         Self(s.0.into_iter().map(Into::<Order>::into).collect())
