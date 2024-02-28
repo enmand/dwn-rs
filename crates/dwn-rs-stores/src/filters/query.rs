@@ -41,12 +41,12 @@ impl SortDirection {
 
 /// Directional is a trait that allows for the retrieval of the direction of a type.
 pub trait Directional {
-    fn get_direction(&self) -> SortDirection;
+    fn get_direction(&self) -> &SortDirection;
 }
 
 /// Ordorable is a trait that allows for the conversion of a type into an Order.
 pub trait Ordorable {
-    fn to_order<'a>(self) -> (&'a str, bool);
+    fn to_order<'a>(self) -> Vec<(&'a str, bool)>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -66,21 +66,28 @@ impl Default for MessageSort {
 }
 
 impl Directional for MessageSort {
-    fn get_direction(&self) -> SortDirection {
+    fn get_direction(&self) -> &SortDirection {
         match self {
-            MessageSort::DateCreated(direction) => *direction,
-            MessageSort::DatePublished(direction) => *direction,
-            MessageSort::Timestamp(direction) => *direction,
+            MessageSort::DateCreated(direction) => direction,
+            MessageSort::DatePublished(direction) => direction,
+            MessageSort::Timestamp(direction) => direction,
         }
     }
 }
 
 impl Ordorable for MessageSort {
-    fn to_order<'a>(self) -> (&'a str, bool) {
+    fn to_order<'a>(self) -> Vec<(&'a str, bool)> {
         match self {
-            MessageSort::DateCreated(direction) => ("dateCreated", direction.to_bool()),
-            MessageSort::DatePublished(direction) => ("datePublished", direction.to_bool()),
-            MessageSort::Timestamp(direction) => ("messageTimestamp", direction.to_bool()),
+            MessageSort::DateCreated(direction) => {
+                vec![("dateCreated", direction.to_bool())]
+            }
+
+            MessageSort::DatePublished(direction) => {
+                vec![("datePublished", direction.to_bool())]
+            }
+            MessageSort::Timestamp(direction) => {
+                vec![("messageTimestamp", direction.to_bool())]
+            }
         }
     }
 }
@@ -93,20 +100,20 @@ pub struct MessageCidSort {
 impl Default for MessageCidSort {
     fn default() -> Self {
         Self {
-            direction: SortDirection::default(),
+            direction: SortDirection::Descending,
         }
     }
 }
 
 impl Directional for MessageCidSort {
-    fn get_direction(&self) -> SortDirection {
-        self.direction
+    fn get_direction(&self) -> &SortDirection {
+        &self.direction
     }
 }
 
 impl Ordorable for MessageCidSort {
-    fn to_order<'a>(self) -> (&'a str, bool) {
-        ("messageCid", self.direction.to_bool())
+    fn to_order<'a, 's>(self) -> Vec<(&'a str, bool)> {
+        [("messageCid", self.direction.to_bool())].into()
     }
 }
 
