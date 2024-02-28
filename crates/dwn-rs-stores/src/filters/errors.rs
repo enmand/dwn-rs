@@ -5,7 +5,7 @@ pub enum ValueError {
     #[error("invalid value: {0}")]
     InvalidValue(String),
 
-    #[error("invalid filter: {0}")]
+    #[error("invalid value in filter: {0}")]
     FiltersError(#[from] FilterError),
 
     #[error("unparseable value: {0}")]
@@ -29,12 +29,6 @@ pub enum QueryError {
 
 #[derive(Error, Debug)]
 pub enum FilterError {
-    #[error("unable to create filter")]
+    #[error("unable to create filter: {0}")]
     UnparseableFilter(String),
-}
-
-impl From<ValueError> for FilterError {
-    fn from(e: ValueError) -> Self {
-        Self::UnparseableFilter(e.to_string())
-    }
 }
