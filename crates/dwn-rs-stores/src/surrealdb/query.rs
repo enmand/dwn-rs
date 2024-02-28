@@ -215,7 +215,6 @@ where
         self.order = match sort {
             Some(s) => Some(s),
             None => self.order.clone(),
-          
         };
 
         if let Some(o) = self.order {
@@ -236,70 +235,25 @@ where
 
         let mut binds = self.binds.clone();
 
-        if let (
-            Some(Cursor {
-                cursor: c,
-                value: Some(v),
-            }),
-            Some(o),
-        ) = (&self.cursor, &self.order)
-        {
-            // get the direction of the sort, and set the operator to MoreThan if ASC, LessThan if DESC
-            let op = match o.get_direction() {
-                SortDirection::Ascending => Operator::MoreThan,
-                SortDirection::Descending => Operator::LessThan,
-            };
+        stmt.cond = match cursor_cond(&self.stmt, self.cursor.clone(), self.order)? {
+            Some((conds, mut cursor_binds)) => {
+                binds.append(&mut cursor_binds);
 
-            binds.insert("_cursor_val".to_owned(), v.clone());
-            binds.insert(
-                "_cursor".to_owned(),
-                crate::filters::value::Value::String(c.to_string()),
-            );
-
-            let cur_cond = Value::Subquery(Box::new(Subquery::Value(
-                Expression::Binary {
-                    l: Value::Subquery(Box::new(Subquery::Value(
+                if let Some(filters) = stmt.cond {
+                    Some(Cond(
                         Expression::Binary {
-                            l: Expression::Binary {
-                                l: self.stmt.order.clone().unwrap().0[0].order.clone().into(),
-                                o: Operator::Equal,
-                                r: value("$_cursor_val")?,
-                            }
-                            .into(),
+                            l: filters.0,
                             o: Operator::And,
-                            r: Expression::Binary {
-                                l: Idiom::from("cid".to_string()).into(),
-                                o: op.clone(),
-                                r: value("$_cursor")?,
-                            }
-                            .into(),
+                            r: conds.0,
                         }
                         .into(),
-                    ))),
-                    o: Operator::Or,
-                    r: Expression::Binary {
-                        l: self.stmt.order.clone().unwrap().0[0].order.clone().into(),
-                        o: op,
-                        r: value("$_cursor_val")?,
-                    }
-                    .into(),
+                    ))
+                } else {
+                    Some(conds)
                 }
-                .into(),
-            )));
-
-            if let Some(cond) = stmt.cond {
-                stmt.cond = Some(Cond(
-                    Expression::Binary {
-                        l: cond.0,
-                        o: Operator::And,
-                        r: cur_cond,
-                    }
-                    .into(),
-                ));
-            } else {
-                stmt.cond = Some(Cond(cur_cond));
             }
-        }
+            None => stmt.cond,
+        };
 
         let mut q = self
             .db
@@ -330,4 +284,72 @@ where
 
 pub(super) fn value(s: &str) -> Result<Value, ValueError> {
     surreal_value(s).map_err(|e| ValueError::InvalidValue(e.to_string()))
+}
+
+/// Create the cursor condition for the query to SurrealDB using the provided cursor and
+/// ordering. If the cursor is set, the condition will be set to the value of the cursor
+/// and the ordering will be set to the direction of the ordering. If the cursor is not
+/// set, the condition will be set to None.
+pub(self) fn cursor_cond<T: Ordorable + Directional>(
+    stmt: &SelectStatement,
+    cursor: Option<Cursor>,
+    order: Option<T>,
+) -> Result<Option<(Cond, BTreeMap<String, crate::filters::value::Value>)>, ValueError> {
+    if let (
+        Some(Cursor {
+            cursor: c,
+            value: Some(v),
+        }),
+        Some(o),
+    ) = (&cursor, &order)
+    {
+        let mut binds = BTreeMap::new();
+
+        // get the direction of the sort, and set the operator to MoreThan if ASC, LessThan if DESC
+        let op = match o.get_direction() {
+            SortDirection::Ascending => Operator::MoreThan,
+            SortDirection::Descending => Operator::LessThan,
+        };
+
+        binds.insert("_cursor_val".to_owned(), v.clone());
+        binds.insert(
+            "_cursor".to_owned(),
+            crate::filters::value::Value::String(c.to_string()),
+        );
+
+        let cur_cond = Value::Subquery(Box::new(Subquery::Value(
+            Expression::Binary {
+                l: Value::Subquery(Box::new(Subquery::Value(
+                    Expression::Binary {
+                        l: Expression::Binary {
+                            l: stmt.order.clone().unwrap().0[0].order.clone().into(),
+                            o: Operator::Equal,
+                            r: value("$_cursor_val")?,
+                        }
+                        .into(),
+                        o: Operator::And,
+                        r: Expression::Binary {
+                            l: Idiom::from("cid".to_string()).into(),
+                            o: op.clone(),
+                            r: value("$_cursor")?,
+                        }
+                        .into(),
+                    }
+                    .into(),
+                ))),
+                o: Operator::Or,
+                r: Expression::Binary {
+                    l: stmt.order.clone().unwrap().0[0].order.clone().into(),
+                    o: op,
+                    r: value("$_cursor_val")?,
+                }
+                .into(),
+            }
+            .into(),
+        )));
+
+        return Ok(Some((Cond(cur_cond), binds)));
+    }
+
+    Ok(None)
 }
