@@ -1,6 +1,7 @@
 pub mod core;
 pub mod data_store;
 pub mod errors;
+pub mod event_log;
 mod expr;
 pub mod message_store;
 mod models;

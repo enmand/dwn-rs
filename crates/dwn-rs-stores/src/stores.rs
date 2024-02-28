@@ -97,14 +97,14 @@ pub trait EventLog {
         &self,
         tenant: &str,
         cursor: Option<Cursor>,
-    ) -> Result<QueryReturn<&str>, EventLogError>;
+    ) -> Result<QueryReturn<String>, EventLogError>;
 
     async fn query_events(
         &self,
         tenant: &str,
         filter: Filters,
         cursor: Option<Cursor>,
-    ) -> Result<QueryReturn<&str>, EventLogError>;
+    ) -> Result<QueryReturn<String>, EventLogError>;
 
     async fn delete<'a>(&self, tenant: &str, cid: &'a [&str]) -> Result<(), EventLogError>;
 

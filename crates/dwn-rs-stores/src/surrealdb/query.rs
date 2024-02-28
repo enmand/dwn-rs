@@ -50,7 +50,7 @@ where
             from: String::default(),
             limit: None,
             order: Some(T::default()),
-            sort_direction: Some(T::default().get_direction()),
+            sort_direction: Some(*T::default().get_direction()),
             cursor: None,
             u_type: PhantomData,
         }
@@ -220,10 +220,11 @@ where
         if let Some(o) = self.order {
             let direction = o.get_direction();
             let mut order: SOrders = o.to_order().into();
+
             order.push(SOrder::from(("cid", direction.to_bool(), false)));
 
             self.stmt.order = Some(order.into());
-            self.sort_direction = Some(direction);
+            self.sort_direction = Some(*direction);
         }
 
         self

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use dwn_rs_core::Message;
 use dwn_rs_stores::{
     errors::MessageStoreError as StoreError,
     filters::{value::Value, Indexes, QueryReturn},
@@ -132,7 +133,7 @@ impl SurrealMessageStore {
             Some(p) => Some(match p.try_into() {
                 Ok(p) => p,
                 Err(_) => {
-                    return Ok(QueryReturn::default().into());
+                    return Ok(QueryReturn::<Message>::default().into());
                 }
             }),
             None => None,

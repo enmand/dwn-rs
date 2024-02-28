@@ -15,7 +15,7 @@ surrealdb-lib = ["surrealdb", "dwn-rs-stores/surreal-lib"]
 surrealdb-wasm = ["surrealdb", "dwn-rs-stores/surreal-wasm"]
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = true
+wasm-opt = false
 
 [dependencies]
 async-stream = "0.3.5"

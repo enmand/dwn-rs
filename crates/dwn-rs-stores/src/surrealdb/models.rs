@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, Indexes, MessageSort, Value};
+use crate::{CursorValue, Indexes, MessageCidSort, MessageSort, Value};
 use libipld_core::cid::Cid;
 use libipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
+use ulid::Ulid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEncodedMessage {
@@ -58,4 +59,22 @@ pub(crate) struct GetData {
     pub(super) data: Vec<u8>,
     pub(super) tenant: String,
     pub(super) record_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct CreateEvent {
+    pub(super) id: Thing,
+    pub(super) watermark: Ulid,
+    #[serde(flatten)]
+    pub(super) indexes: Indexes,
+}
+
+impl CursorValue<MessageCidSort> for CreateEvent {
+    fn cursor_value(&self, _: MessageCidSort) -> &Value {
+        self.indexes.indexes.get("messageCid").unwrap()
+    }
+
+    fn cid(&self) -> Cid {
+        Cid::from_str(&self.id.to_string()).unwrap()
+    }
 }
