@@ -26,6 +26,9 @@ extern "C" {
 
     #[wasm_bindgen(typescript_type = "Pagination")]
     pub type JSPagination;
+
+    #[wasm_bindgen(typescript_type = "PaginationCursor")]
+    pub type JSPaginationCursor;
 }
 
 impl From<QueryReturn<Message>> for JSQueryReturn {
@@ -38,6 +41,27 @@ impl From<QueryReturn<Message>> for JSQueryReturn {
 
         let wrapper = Wrapper {
             messages: value.items.as_slice(),
+            cursor: value.cursor,
+        };
+
+        if let Ok(m) = wrapper.serialize(&serializer()) {
+            return m.into();
+        }
+
+        wasm_bindgen::JsValue::default().into()
+    }
+}
+
+impl From<QueryReturn<String>> for JSQueryReturn {
+    fn from(value: QueryReturn<String>) -> Self {
+        #[derive(Serialize)]
+        struct Wrapper<'a> {
+            events: &'a [String],
+            cursor: Option<Cursor>,
+        }
+
+        let wrapper = Wrapper {
+            events: value.items.as_slice(),
             cursor: value.cursor,
         };
 
@@ -67,6 +91,17 @@ impl TryFrom<JSPagination> for Pagination {
     fn try_from(value: JSPagination) -> Result<Self, serde_wasm_bindgen::Error> {
         if value.is_undefined() {
             return Ok(Pagination::default());
+        }
+
+        serde_wasm_bindgen::from_value(value.into())
+    }
+}
+
+impl TryFrom<JSPaginationCursor> for Cursor {
+    type Error = serde_wasm_bindgen::Error;
+    fn try_from(value: JSPaginationCursor) -> Result<Self, serde_wasm_bindgen::Error> {
+        if value.is_undefined() {
+            return Ok(Cursor::default());
         }
 
         serde_wasm_bindgen::from_value(value.into())
