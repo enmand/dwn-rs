@@ -79,14 +79,23 @@ impl Ordorable for MessageSort {
     fn to_order<'a>(self) -> Vec<(&'a str, bool)> {
         match self {
             MessageSort::DateCreated(direction) => {
-                vec![("dateCreated", direction.to_bool())]
+                vec![
+                    ("dateCreated", direction.to_bool()),
+                    ("cid", direction.to_bool()),
+                ]
             }
 
             MessageSort::DatePublished(direction) => {
-                vec![("datePublished", direction.to_bool())]
+                vec![
+                    ("datePublished", direction.to_bool()),
+                    ("cid", direction.to_bool()),
+                ]
             }
             MessageSort::Timestamp(direction) => {
-                vec![("messageTimestamp", direction.to_bool())]
+                vec![
+                    ("messageTimestamp", direction.to_bool()),
+                    ("cid", direction.to_bool()),
+                ]
             }
         }
     }
@@ -100,7 +109,7 @@ pub struct MessageCidSort {
 impl Default for MessageCidSort {
     fn default() -> Self {
         Self {
-            direction: SortDirection::Descending,
+            direction: SortDirection::default(),
         }
     }
 }
@@ -113,7 +122,7 @@ impl Directional for MessageCidSort {
 
 impl Ordorable for MessageCidSort {
     fn to_order<'a, 's>(self) -> Vec<(&'a str, bool)> {
-        [("messageCid", self.direction.to_bool())].into()
+        vec![("watermark", self.direction.to_bool())]
     }
 }
 
@@ -135,11 +144,12 @@ where
         S: Into<String>;
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, errors::FilterError>;
     fn page(&mut self, pagination: Option<Pagination>) -> &mut Self;
+    fn always_cursor(&mut self) -> &mut Self;
     fn sort(&mut self, sort: Option<T>) -> &mut Self;
     async fn query(&self) -> Result<(Vec<U>, Option<crate::Cursor>), errors::QueryError>;
 }
 
 pub trait CursorValue<T> {
     fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: T) -> &crate::filters::value::Value;
+    fn cursor_value(&self, sort: T) -> crate::filters::value::Value;
 }
