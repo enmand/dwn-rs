@@ -10,7 +10,7 @@ use surrealdb::{
     sql::{statements::SelectStatement, Expression, Limit, Number, Operator, Table, Value, Values},
 };
 
-use super::expr::{SCond, SOrder, SOrders};
+use super::expr::{SCond, SOrders};
 use crate::filters::{
     errors::{FilterError, QueryError, ValueError},
     filters::{Filter, Filters},
@@ -34,6 +34,7 @@ where
     order: Option<T>,
     sort_direction: Option<SortDirection>,
     cursor: Option<Cursor>,
+    always_cursor: bool,
     u_type: PhantomData<U>,
 }
 
@@ -52,6 +53,7 @@ where
             order: Some(T::default()),
             sort_direction: Some(*T::default().get_direction()),
             cursor: None,
+            always_cursor: false,
             u_type: PhantomData,
         }
     }
@@ -207,6 +209,13 @@ where
         self
     }
 
+    // always_cursor forces the query builder to return a cursor for the last element, even if the
+    // limit is not set, or there are no further messages
+    fn always_cursor(&mut self) -> &mut Self {
+        self.always_cursor = true;
+        self
+    }
+
     // sort sets the sort order for this query. The argument to this function is a
     // MessageSort struct, which contains the fields to sort on and the direction to sort.
     // If the MessageSort struct is not set, the query will return messages in the order
@@ -219,8 +228,7 @@ where
 
         if let Some(o) = self.order {
             let direction = o.get_direction();
-            let mut order: SOrders = o.to_order().into();
-            order.push(SOrder::from(("cid", direction.to_bool(), false)));
+            let order: SOrders = o.to_order().into();
 
             self.stmt.order = Some(order.into());
             self.sort_direction = Some(*direction);
@@ -261,11 +269,19 @@ where
             .bind(&binds)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
+
         let mut res: Vec<U> = q.take(0).map_err(|e| QueryError::DbError(e.to_string()))?;
 
-        let last_cursor_value = if let (Some(l), Some(o)) = (self.limit, self.order) {
+        let mut limit = self.limit;
+        if self.always_cursor {
+            limit = Some(0);
+        }
+
+        let last_cursor_value = if let (Some(l), Some(o)) = (limit, self.order) {
             if res.len() as u32 > l {
-                res.pop();
+                if !self.always_cursor {
+                    res.pop();
+                }
 
                 res.last().map(|r| Cursor {
                     cursor: r.cid(),
