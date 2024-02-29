@@ -14,6 +14,7 @@ pub enum Database {
     None,
     Messages,
     Data,
+    Events,
 }
 
 impl From<Database> for String {
@@ -22,6 +23,7 @@ impl From<Database> for String {
             Database::None => "".into(),
             Database::Messages => "messages".into(),
             Database::Data => "data".into(),
+            Database::Events => "events".into(),
         }
     }
 }

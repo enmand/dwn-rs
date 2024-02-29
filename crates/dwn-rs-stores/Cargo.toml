@@ -52,3 +52,4 @@ serde_with = "3.4.0"
 surrealdb = { version = "1.2.0", default-features = false, optional = true }
 
 dwn-rs-core = { path = "../dwn-rs-core" }
+ulid = { version = "1.1.2", features = ["serde"] }
