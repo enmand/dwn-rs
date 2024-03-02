@@ -1,4 +1,5 @@
 use thiserror::Error;
+use ulid::MonotonicError;
 
 use crate::{FilterError, QueryError};
 
@@ -72,4 +73,7 @@ pub enum EventLogError {
 
     #[error("unable to perform query")]
     QueryError(#[from] QueryError),
+
+    #[error("unable to generate watermark: {0}")]
+    WatermarkError(#[from] MonotonicError),
 }

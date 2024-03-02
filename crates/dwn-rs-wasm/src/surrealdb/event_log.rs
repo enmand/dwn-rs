@@ -63,7 +63,12 @@ impl SurrealEventLog {
     }
 
     #[wasm_bindgen]
-    pub async fn append(&self, tenant: &str, cid: &str, indexes: IndexMap) -> Result<(), JsError> {
+    pub async fn append(
+        &mut self,
+        tenant: &str,
+        cid: &str,
+        indexes: IndexMap,
+    ) -> Result<(), JsError> {
         let indexes =
             serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
 
