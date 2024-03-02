@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use surrealdb::{engine::any::Any, Surreal};
+use ulid::Generator;
 
 use crate::StoreError;
 
@@ -28,11 +29,12 @@ impl From<Database> for String {
     }
 }
 
-#[derive(Clone)]
 pub struct SurrealDB {
     pub(super) db: Arc<Surreal<Any>>,
     pub(super) db_name: Database,
     pub(super) _constr: String,
+
+    pub(super) ulid_generator: Generator,
 }
 
 impl Default for SurrealDB {
@@ -68,6 +70,8 @@ impl SurrealDB {
             db: Arc::new(surrealdb::Surreal::init()),
             db_name: Database::None,
             _constr: String::new(),
+
+            ulid_generator: Generator::new(),
         }
     }
 

@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use surrealdb::sql::{Id, Range, Table, Thing};
-use ulid::Ulid;
 
 use crate::{
     Cursor, EventLog, EventLogError, Filters, Indexes, MessageCidSort, Pagination, Query,
@@ -22,7 +21,7 @@ impl EventLog for SurrealDB {
     }
 
     async fn append(
-        &self,
+        &mut self,
         tenant: &str,
         cid: String,
         indexes: Indexes,
@@ -32,7 +31,7 @@ impl EventLog for SurrealDB {
             Id::String(cid.to_string()),
         ));
 
-        let watermark = Ulid::new().to_string();
+        let watermark = self.ulid_generator.generate()?.to_string();
         self.db
             .create::<Option<CreateEvent>>(id.clone())
             .content(CreateEvent {
