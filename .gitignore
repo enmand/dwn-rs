@@ -6,3 +6,5 @@
 TEST-*
 package-lock.json
 *.profraw
+RESOLVERCACHE/
+crates/dwn-rs-wasm/node_modules
