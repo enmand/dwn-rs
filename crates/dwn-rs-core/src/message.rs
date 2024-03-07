@@ -69,6 +69,8 @@ pub struct Descriptor {
     pub filter: Option<MessageFilter>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub published: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub definition: Option<Ipld>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Ipld>,
 }
