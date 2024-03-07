@@ -1,35 +1,17 @@
 use std::collections::BTreeMap;
 
-use dwn_rs_core::Message;
 use dwn_rs_stores::{
-    errors::MessageStoreError as StoreError,
-    filters::{value::Value, Indexes, QueryReturn},
-    surrealdb::{SurrealDB, SurrealDBError},
+    filters::{value::Value, Indexes},
+    surrealdb::SurrealDB,
     MessageStore,
 };
 use js_sys::Reflect;
-use thiserror::Error;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
 
 use crate::filter::*;
 use crate::message::*;
 use crate::query::{JSMessageSort, JSPagination, JSQueryReturn};
-
-#[derive(Error, Debug)]
-enum MessageStoreError {
-    #[error("Store error: {0}")]
-    StoreError(#[from] StoreError),
-
-    #[error("store connection failed: {0}")]
-    ConnectionFailed(#[from] SurrealDBError),
-}
-
-impl From<MessageStoreError> for JsValue {
-    fn from(e: MessageStoreError) -> Self {
-        JsValue::from_str(&format!("{}", e))
-    }
-}
 
 #[wasm_bindgen]
 extern "C" {
@@ -52,6 +34,8 @@ pub struct SurrealMessageStore {
 impl SurrealMessageStore {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
+        console_error_panic_hook::set_once();
+
         Self {
             store: SurrealDB::new(),
         }
@@ -62,7 +46,7 @@ impl SurrealMessageStore {
         self.store
             .connect(connstr, dwn_rs_stores::surrealdb::Database::Messages)
             .await
-            .map_err(MessageStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into)
     }
 
@@ -76,7 +60,7 @@ impl SurrealMessageStore {
         self.store
             .open()
             .await
-            .map_err(MessageStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into)
     }
 
@@ -93,11 +77,11 @@ impl SurrealMessageStore {
         let indexes: Indexes =
             serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
 
-        let _: Result<_, JsValue> = self
+        let _: Result<_, JsError> = self
             .store
             .put(tenant, message.into(), indexes)
             .await
-            .map_err(MessageStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into);
 
         Ok(())
@@ -112,10 +96,15 @@ impl SurrealMessageStore {
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
 
-        match self.store.get(tenant, cid).await {
-            Ok(m) => Ok(m.into()),
-            Err(_) => Ok(JsValue::undefined().into()),
-        }
+        Ok(match self.store.get(tenant, cid).await {
+            Ok(v) => v.into(),
+            Err(e) => match e {
+                dwn_rs_stores::MessageStoreError::StoreError(
+                    dwn_rs_stores::StoreError::NotFound,
+                ) => return Ok(JsValue::undefined().into()),
+                _ => return Err(Into::<JsError>::into(e).into()),
+            },
+        })
     }
 
     #[wasm_bindgen]
@@ -132,14 +121,12 @@ impl SurrealMessageStore {
         let page = match pagination {
             Some(p) => Some(match p.try_into() {
                 Ok(p) => p,
-                Err(_) => {
-                    return Ok(QueryReturn::<Message>::default().into());
-                }
+                Err(e) => return Err(Into::<JsError>::into(e).into()),
             }),
             None => None,
         };
 
-        Ok(self
+        let out: JSQueryReturn = match self
             .store
             .query(
                 tenant,
@@ -148,9 +135,15 @@ impl SurrealMessageStore {
                 page,
             )
             .await
-            .map_err(MessageStoreError::from)
-            .map_err(Into::<JsValue>::into)?
-            .into())
+        {
+            Ok(v) => v.into(),
+            Err(e) => {
+                web_sys::console::log_1(&e.to_string().into());
+                return Err(Into::<JsError>::into(e).into());
+            }
+        };
+
+        Ok(out)
     }
 
     #[wasm_bindgen]
@@ -165,8 +158,8 @@ impl SurrealMessageStore {
         self.store
             .delete(tenant, cid)
             .await
-            .map_err(MessageStoreError::from)
-            .map_err(Into::into)
+            .map_err(Into::<JsError>::into)
+            .map_err(Into::<JsValue>::into)
     }
 
     #[wasm_bindgen]
@@ -174,8 +167,8 @@ impl SurrealMessageStore {
         self.store
             .clear()
             .await
-            .map_err(MessageStoreError::from)
-            .map_err(Into::into)
+            .map_err(Into::<JsError>::into)
+            .map_err(Into::<JsValue>::into)
     }
 }
 
@@ -184,7 +177,8 @@ fn check_aborted(options: Option<MessageStoreOptions>) -> Result<(), JsValue> {
         let sig = Reflect::get(&signal.into(), &JsValue::from_str("signal")).expect("signal");
         let sig = AbortSignal::from(sig);
         if sig.aborted() {
-            let reason = Reflect::get(&sig.into(), &JsValue::from_str("reason")).expect("reason");
+            let reason =
+                Reflect::get(&sig.into(), &JsValue::from_str("reason")).expect("has reason");
 
             return Err(reason);
         }

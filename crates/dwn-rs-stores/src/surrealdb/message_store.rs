@@ -124,27 +124,23 @@ impl MessageStore for SurrealDB {
         let r = ms
             .into_iter()
             .map(|m: GetEncodedMessage| {
-                Cid::from_str(&m.cid.to_string())
-                    .map_err(MessageStoreError::CidDecodeError)
-                    .and_then(|cid| {
-                        Block::<DefaultParams>::new(cid, m.encoded_message)
-                            .map_err(MessageStoreError::MessageDecodeError)
-                    })
-                    .and_then(|ipld| {
-                        from_ipld::<Message>(ipld.decode::<DagCborCodec, Ipld>()?)
-                            .map_err(MessageStoreError::SerdeDecodeError)
-                    })
-                    .map(|mut msg: Message| {
-                        if let Some(data) = m.encoded_data {
-                            msg.extra.insert("encodedData".to_string(), data);
-                        }
-                        msg
-                    })
-                    .unwrap_or_else(|_| Message::default())
-            })
-            .collect::<Vec<Message>>();
+                let cid = Cid::from_str(&m.cid.to_string())?;
+                let block = Block::<DefaultParams>::new(cid, m.encoded_message)
+                    .map_err(MessageStoreError::MessageDecodeError)?;
+                let ipld = block
+                    .decode::<DagCborCodec, Ipld>()
+                    .expect("failed to decode message");
+                let mut msg =
+                    from_ipld::<Message>(ipld).map_err(MessageStoreError::SerdeDecodeError)?;
+                if let Some(data) = m.encoded_data {
+                    msg.extra.insert("encodedData".to_string(), data);
+                }
 
-        let qr = QueryReturn { items: r, cursor };
+                Ok(msg)
+            })
+            .collect::<Result<Vec<Message>, MessageStoreError>>();
+
+        let qr = QueryReturn { items: r?, cursor };
 
         Ok(qr)
     }
