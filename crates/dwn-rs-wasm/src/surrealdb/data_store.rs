@@ -1,5 +1,6 @@
 use async_stream::stream;
-use futures_util::StreamExt;
+use core::iter::IntoIterator;
+use futures_util::{stream, StreamExt, TryStreamExt};
 use js_sys::{Object, Reflect};
 use thiserror::Error;
 use wasm_bindgen::prelude::*;
@@ -11,7 +12,7 @@ use dwn_rs_stores::{
 
 use crate::{
     data::{DataStoreGetResult, DataStorePutResult},
-    streams::node_readable::{NodeReadable, Readable},
+    streams::{stream::StreamReadable, sys::Readable},
 };
 
 #[derive(Error, Debug)]
@@ -83,7 +84,9 @@ impl SurrealDataStore {
                 tenant,
                 record_id.to_string(),
                 cid.to_string(),
-                NodeReadable::new(value),
+                StreamReadable::new(value)
+                    .into_stream()
+                    .map(|r| js_sys::Uint8Array::new(&r).to_vec()),
             )
             .await
             .map_err(SurrealDataStoreError::from)
