@@ -1,0 +1,108 @@
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio_stream::Stream;
+use wasm_bindgen::prelude::*;
+
+use super::sys::Readable;
+
+#[derive(Clone, Debug)]
+/// StreamReadable is a wrapper around a readable-stream Readable Stream. This is commonly used
+/// in browsers and in Node to read data from a stream, using the Node-compatiable API.
+///
+/// The stream is used to read data from the JavaScript stream, and return items as a JsValue.
+pub struct StreamReadable {
+    readable: Readable,
+}
+
+/// IntoStream is the the implementation for tokio::Stream, for the StreamReadable stream. This
+/// can be used in Rust to read data from the JsvaScript stream, and return items as a JsValue.
+pub struct IntoStream {
+    inner: StreamReadable,
+    data_rx: UnboundedReceiver<JsValue>,
+    done_rx: UnboundedReceiver<()>,
+    done: bool,
+    data_cb: Closure<dyn FnMut(JsValue)>,
+    end_cb: Closure<dyn FnMut()>,
+}
+
+impl StreamReadable {
+    pub fn new(r: Readable) -> StreamReadable {
+        StreamReadable {
+            readable: r.clone(),
+        }
+    }
+
+    /// into_stream creates a new Stream from the StreamReadable stream. This function locks the StreamReadable in
+    /// JavaScript, and attaches the handlers for data and end events. It then returns a new Stream
+    /// from the locked data, and passes the values through unbounded channels.
+    pub fn into_stream(self) -> IntoStream {
+        let (data_tx, data_rx) = unbounded_channel::<JsValue>();
+        let (done_tx, done_rx) = unbounded_channel::<()>();
+
+        let data_cb = Closure::wrap(Box::new(move |d| {
+            data_tx.send(d).unwrap();
+        }) as Box<dyn FnMut(JsValue)>);
+        self.readable.on("data", data_cb.as_ref().unchecked_ref());
+
+        let end_cb = Closure::wrap(Box::new(move || {
+            done_tx.send(()).unwrap();
+        }) as Box<dyn FnMut()>);
+        self.readable.on("end", end_cb.as_ref().unchecked_ref());
+
+        IntoStream {
+            inner: self,
+            data_rx,
+            done_rx,
+            done: false,
+            data_cb,
+            end_cb,
+        }
+    }
+}
+
+impl Stream for IntoStream {
+    type Item = JsValue;
+
+    // poll_next is the main function that drives the stream. It is called by the runtime to
+    // read the data in the Readable, and return it as a JsValue.
+    fn poll_next<'c>(self: Pin<&mut Self>, cx: &mut Context<'c>) -> Poll<Option<Self::Item>> {
+        let state = self.get_mut();
+        let data_rx = state.data_rx.poll_recv(cx);
+        let done_rx = state.done_rx.poll_recv(cx);
+
+        // If we end, but the stream still has data left, we need to keep polling until the data is
+        // done.
+        let poll = match state.done && data_rx.is_pending() {
+            false => data_rx,
+            true => Poll::Ready(None),
+        };
+
+        // If we've recieved the done signal, and the data_rx is no longer ready, end the stream.
+        if done_rx.is_ready() {
+            state.done = true;
+        };
+
+        poll
+    }
+}
+
+impl Drop for IntoStream {
+    fn drop(&mut self) {
+        // Drop the event listeners so that we don't try to call them after the stream is dropped.
+        self.inner
+            .readable
+            .off("data", self.data_cb.as_ref().unchecked_ref());
+        self.inner
+            .readable
+            .off("end", self.end_cb.as_ref().unchecked_ref());
+    }
+}
+
+// The following unsafe implementations are required to ensure the vector data can be sent
+// between WASM calls, where threads are not allowed.
+unsafe impl Send for IntoStream {}
+unsafe impl Sync for IntoStream {}
