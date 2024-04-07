@@ -30,31 +30,42 @@ pub struct IntoStream {
 }
 
 impl StreamReadable {
-    pub fn new(r: Readable) -> StreamReadable {
-        StreamReadable {
+    pub fn new(r: Readable) -> Self {
+        Self {
             readable: r.clone(),
         }
+    }
+
+    pub fn as_raw(&self) -> &Readable {
+        &self.readable
     }
 
     /// into_stream creates a new Stream from the StreamReadable stream. This function locks the StreamReadable in
     /// JavaScript, and attaches the handlers for data and end events. It then returns a new Stream
     /// from the locked data, and passes the values through unbounded channels.
     pub fn into_stream(self) -> IntoStream {
+        IntoStream::new(self)
+    }
+}
+
+impl IntoStream {
+    pub fn new(r: StreamReadable) -> Self {
+        let readable = r.as_raw();
         let (data_tx, data_rx) = unbounded_channel::<JsValue>();
         let (done_tx, done_rx) = unbounded_channel::<()>();
 
         let data_cb = Closure::wrap(Box::new(move |d| {
             data_tx.send(d).unwrap();
         }) as Box<dyn FnMut(JsValue)>);
-        self.readable.on("data", data_cb.as_ref().unchecked_ref());
+        readable.on("data", data_cb.as_ref().unchecked_ref());
 
         let end_cb = Closure::wrap(Box::new(move || {
             done_tx.send(()).unwrap();
         }) as Box<dyn FnMut()>);
-        self.readable.on("end", end_cb.as_ref().unchecked_ref());
+        readable.on("end", end_cb.as_ref().unchecked_ref());
 
-        IntoStream {
-            inner: self,
+        Self {
+            inner: r,
             data_rx,
             done_rx,
             done: false,
@@ -104,5 +115,6 @@ impl Drop for IntoStream {
 
 // The following unsafe implementations are required to ensure the vector data can be sent
 // between WASM calls, where threads are not allowed.
+// TODO: we should find a better way to do this, and remove this unsafe impl. (e.g. for WASIX
+// environments that do support threads.)
 unsafe impl Send for IntoStream {}
-unsafe impl Sync for IntoStream {}
