@@ -49,7 +49,7 @@ tokio-stream = { version = "0.1.14", default-features = false, features = [
 serde = { version = "1.0.183", features = ["derive"] }
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
-surrealdb = { version = "1.2.0", default-features = false, optional = true }
+surrealdb = { version = "1.2.2", default-features = false, optional = true }
 
 dwn-rs-core = { path = "../dwn-rs-core" }
 ulid = { version = "1.1.2", features = ["serde"] }
