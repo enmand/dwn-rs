@@ -6,6 +6,7 @@ on:
   pull_request:
 jobs:
   rust-tests:
+    name: Rust tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -32,6 +33,7 @@ jobs:
           args: --no-workspace workspace-ci-flow
           toolchain: stable
   wasm-tests:
+    name: "WASM (node tests)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -53,6 +55,37 @@ jobs:
         with:
           command: make
           args: build-wasm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - name: Test WASM library against dwn-sdk-js
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: test-store-js
+  browser-tests:
+    name: "WASM (browser tests)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+      - name: Install cargo-make (stable)
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug cargo-make
+      - name: Build WASM library
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: build-wasm-browser
       - uses: actions/setup-node@v4
         with:
           node-version: latest
