@@ -1,6 +1,5 @@
 use async_stream::stream;
-use core::iter::IntoIterator;
-use futures_util::{stream, StreamExt, TryStreamExt};
+use futures_util::StreamExt;
 use js_sys::{Object, Reflect};
 use thiserror::Error;
 use wasm_bindgen::prelude::*;
@@ -115,8 +114,10 @@ impl SurrealDataStore {
         let size = v.size;
         let reader = stream! {
             while let Some(chunk) = v.data.next().await {
-                yield Ok(wasm_bindgen::JsCast::unchecked_into(js_sys::Uint8Array::from(chunk.as_slice())));
+                yield Ok(js_sys::Uint8Array::from(chunk.as_slice()).into());
             }
+
+            yield Err(JsValue::NULL);
         };
 
         let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
@@ -124,9 +125,7 @@ impl SurrealDataStore {
         Reflect::set(
             &obj,
             &"dataStream".into(),
-            &Readable::from_web(JsCast::unchecked_into(
-                wasm_streams::ReadableStream::from_stream(reader).into_raw(),
-            )),
+            StreamReadable::from_stream(reader).await.as_raw(),
         )?;
 
         Ok(Some(obj))
