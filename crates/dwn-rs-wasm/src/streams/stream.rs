@@ -3,9 +3,12 @@ use std::{
     task::{Context, Poll},
 };
 
+use futures_util::{pin_mut, StreamExt};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::Stream;
 use wasm_bindgen::prelude::*;
+
+use crate::streams::sys::EventEmitter;
 
 use super::sys::Readable;
 
@@ -38,6 +41,42 @@ impl StreamReadable {
 
     pub fn as_raw(&self) -> &Readable {
         &self.readable
+    }
+
+    /// from_stream creates a new StreamReadable from a Rust Stream. This function will return a
+    /// new StreamReadable, and the Readable (accessible as as_raw) will stream data to the
+    /// JavaScript stream, as JsValues.
+    pub async fn from_stream<St>(stream: St) -> Self
+    where
+        St: Stream<Item = Result<JsValue, JsValue>>,
+    {
+        // TODO: this is an extremely "hacky" implementation, that uses a legacy trait of
+        // streams in Node, and wraps an EventEmitter, emitting data from the Rust Stream,
+        // using the Readable.wrap, turning it into a proper Node ReadableStream. Once (if)
+        // dwn-sdk-js is on Web Streams, we can remove this (or someone can find a better way).
+        let ee = EventEmitter::new();
+        let readable = Readable::new().wrap(JsCast::unchecked_into::<Readable>(ee.clone()));
+        readable.resume();
+
+        pin_mut!(stream);
+
+        while let Some(item) = stream.next().await {
+            let item = match item {
+                Ok(i) => i,
+                Err(e) => {
+                    if e.is_null() {
+                        ee.emit("end", JsValue::NULL);
+                    } else {
+                        ee.emit("error", e);
+                    }
+                    return Self::new(readable);
+                }
+            };
+
+            ee.emit("data", item.clone());
+        }
+
+        Self::new(readable)
     }
 
     /// into_stream creates a new Stream from the StreamReadable stream. This function locks the StreamReadable in

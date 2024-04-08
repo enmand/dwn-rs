@@ -9,6 +9,9 @@ extern "C" {
     /// This is a very simple wrapper on the EventEmitter class in node.js (and provided by the `events module).
     pub type EventEmitter;
 
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> EventEmitter;
+
     #[wasm_bindgen(method, js_name = on)]
     pub fn on(this: &EventEmitter, event: &str, callback: &Function);
 
@@ -19,7 +22,7 @@ extern "C" {
     pub fn off(this: &EventEmitter, event: &str, callback: &Function);
 
     #[wasm_bindgen(method, js_name = emit)]
-    pub fn emit(this: &EventEmitter, event: &str, args: Box<[JsValue]>);
+    pub fn emit(this: &EventEmitter, event: &str, args: JsValue);
 }
 
 // Basic bindings to the node.js Writable stream module.
