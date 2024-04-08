@@ -1,5 +1,6 @@
 use js_sys::{AsyncIterator, Function, Iterator, Object};
 use wasm_bindgen::prelude::*;
+use web_sys::AbortSignal;
 
 #[wasm_bindgen(module = "events")]
 extern "C" {
@@ -141,4 +142,10 @@ extern "C" {
     #[wasm_bindgen(extends = Transform, js_name = "PassThrough", typescript_type = "PassThrough")]
     #[derive(Debug, Clone)]
     pub type PassThrough;
+}
+
+#[wasm_bindgen(module = "/src/streams/readable.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = makeReadable)]
+    pub fn make_readable(write: JsValue, abort: AbortSignal) -> Readable;
 }

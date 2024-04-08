@@ -7,8 +7,10 @@ use futures_util::{pin_mut, StreamExt};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::Stream;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::spawn_local;
+use web_sys::AbortController;
 
-use crate::streams::sys::EventEmitter;
+use crate::streams::sys::make_readable;
 
 use super::sys::Readable;
 
@@ -50,33 +52,42 @@ impl StreamReadable {
     where
         St: Stream<Item = Result<JsValue, JsValue>>,
     {
-        // TODO: this is an extremely "hacky" implementation, that uses a legacy trait of
-        // streams in Node, and wraps an EventEmitter, emitting data from the Rust Stream,
-        // using the Readable.wrap, turning it into a proper Node ReadableStream. Once (if)
-        // dwn-sdk-js is on Web Streams, we can remove this (or someone can find a better way).
-        let ee = EventEmitter::new();
-        let readable = Readable::new().wrap(JsCast::unchecked_into::<Readable>(ee.clone()));
-        readable.resume();
-
         pin_mut!(stream);
+        let (data_tx, mut data_rx) = unbounded_channel::<JsValue>();
+        let controller = AbortController::new().unwrap();
 
         while let Some(item) = stream.next().await {
-            let item = match item {
-                Ok(i) => i,
-                Err(e) => {
-                    if e.is_null() {
-                        ee.emit("end", JsValue::NULL);
-                    } else {
-                        ee.emit("error", e);
+            let data_tx = data_tx.clone();
+            let controller = controller.clone();
+            spawn_local(async move {
+                match item {
+                    Ok(i) => {
+                        data_tx.send(i).unwrap();
                     }
-                    return Self::new(readable);
+                    Err(e) => {
+                        if e.is_null() {
+                            data_tx.send(JsValue::NULL).unwrap();
+                        } else {
+                            controller.abort();
+                        }
+                    }
                 }
-            };
-
-            ee.emit("data", item.clone());
+            });
         }
 
-        Self::new(readable)
+        let newr = make_readable(
+            // TODO: the closure should take a `size` argument, and properly buffer the data
+            Closure::wrap(Box::new(move |_size| -> JsValue {
+                match data_rx.blocking_recv() {
+                    Some(d) => d,
+                    None => JsValue::NULL,
+                }
+            }) as Box<dyn FnMut(JsValue) -> JsValue>)
+            .into_js_value(),
+            controller.signal(),
+        );
+
+        Self::new(newr)
     }
 
     /// into_stream creates a new Stream from the StreamReadable stream. This function locks the StreamReadable in
