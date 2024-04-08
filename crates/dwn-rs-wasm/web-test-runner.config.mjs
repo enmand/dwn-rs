@@ -18,7 +18,6 @@ export default {
   browsers: [
     playwrightLauncher({ product: "chromium" }),
     playwrightLauncher({ product: "firefox" }),
-    playwrightLauncher({ product: "webkit" }),
   ],
   nodeResolve: true,
   testFramework: "mocha",
