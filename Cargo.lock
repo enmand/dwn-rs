@@ -944,6 +944,7 @@ name = "dwn-rs-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "from_variants",
  "ipld-core",
  "serde",
  "serde_json",
@@ -958,7 +959,6 @@ dependencies = [
  "chrono",
  "cid",
  "dwn-rs-core",
- "from_variants",
  "futures-util",
  "ipld-core",
  "multicodec",
