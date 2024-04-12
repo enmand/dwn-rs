@@ -142,6 +142,19 @@ impl<'de> serde::Deserialize<'de> for Value {
 
                 Ok(Value::Map(values))
             }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut values = Vec::new();
+
+                while let Some(value) = seq.next_element::<Value>()? {
+                    values.push(value);
+                }
+
+                Ok(Value::Array(values))
+            }
         }
 
         deserializer.deserialize_any(IndexValueVisitor)
