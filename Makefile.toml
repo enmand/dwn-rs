@@ -9,16 +9,16 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "wasm-pack"
 args = [
-  "build",
-  "--target",
-  "nodejs",
-  "--out-name",
-  "index",
-  "--release",
-  "--",
-  "--no-default-features",
-  "--features",
-  "surrealdb-wasm",
+    "build",
+    "--target",
+    "nodejs",
+    "--out-name",
+    "index",
+    "--release",
+    "--",
+    "--no-default-features",
+    "--features",
+    "surrealdb-wasm",
 ]
 dependencies = ["install-wasm-pack"]
 
@@ -27,18 +27,18 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "wasm-pack"
 args = [
-  "build",
-  "--target",
-  "web",
-  "--out-name",
-  "index",
-  "--release",
-  "--out-dir",
-  "browsers",
-  "--",
-  "--no-default-features",
-  "--features",
-  "surrealdb-wasm",
+    "build",
+    "--target",
+    "web",
+    "--out-name",
+    "index",
+    "--release",
+    "--out-dir",
+    "browsers",
+    "--",
+    "--no-default-features",
+    "--features",
+    "surrealdb-wasm",
 ]
 dependencies = ["install-wasm-pack"]
 
@@ -64,7 +64,7 @@ args = ["wtr"]
 dependencies = ["build-wasm-browser", "install-npm-deps", "_playwright-install"]
 
 [tasks._playwright-install]
-args = ["playwright", "install"]
+args = ["playwright", "install", "--with-deps"]
 workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "npx"
