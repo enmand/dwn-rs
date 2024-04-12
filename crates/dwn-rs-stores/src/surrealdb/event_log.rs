@@ -1,9 +1,10 @@
 use async_trait::async_trait;
+use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Range, Table, Thing};
 
 use crate::{
-    Cursor, EventLog, EventLogError, Filters, Indexes, MessageCidSort, Pagination, Query,
-    QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
+    Cursor, EventLog, EventLogError, Filters, MessageCidSort, Pagination, Query, QueryReturn,
+    StoreError, SurrealDB, SurrealDBError, SurrealQuery,
 };
 
 use super::models::{CreateEvent, GetEvent};
@@ -24,7 +25,7 @@ impl EventLog for SurrealDB {
         &mut self,
         tenant: &str,
         cid: String,
-        indexes: Indexes,
+        indexes: MapValue,
     ) -> Result<(), EventLogError> {
         let id = Thing::from((
             Table::from(tenant.to_string()).to_string(),

@@ -1,5 +1,5 @@
 use dwn_rs_core::MapValue;
-use dwn_rs_stores::{filters::Indexes, surrealdb::SurrealDB, MessageStore};
+use dwn_rs_stores::{surrealdb::SurrealDB, MessageStore};
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
@@ -69,11 +69,9 @@ impl SurrealMessageStore {
     ) -> Result<(), JsValue> {
         check_aborted(options)?;
 
-        let indexes: Indexes = serde_wasm_bindgen::from_value::<MapValue>(indexes.into())?.into();
-
         let _: Result<_, JsError> = self
             .store
-            .put(tenant, message.into(), indexes)
+            .put(tenant, message.into(), indexes.into())
             .await
             .map_err(Into::<JsError>::into)
             .map_err(Into::into);
