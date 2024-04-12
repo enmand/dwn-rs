@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
-use dwn_rs_stores::{
-    filters::{value::Value, Indexes},
-    surrealdb::SurrealDB,
-    MessageStore,
-};
+use dwn_rs_core::{MapValue, Value};
+use dwn_rs_stores::{filters::Indexes, surrealdb::SurrealDB, MessageStore};
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
@@ -74,8 +71,7 @@ impl SurrealMessageStore {
     ) -> Result<(), JsValue> {
         check_aborted(options)?;
 
-        let indexes: Indexes =
-            serde_wasm_bindgen::from_value::<BTreeMap<String, Value>>(indexes.into())?.into();
+        let indexes: Indexes = serde_wasm_bindgen::from_value::<MapValue>(indexes.into())?.into();
 
         let _: Result<_, JsError> = self
             .store

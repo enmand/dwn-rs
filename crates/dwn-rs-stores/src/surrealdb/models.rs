@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, Indexes, MessageCidSort, MessageSort, Value};
+use crate::{CursorValue, Indexes, MessageCidSort, MessageSort};
+use dwn_rs_core::Value;
 use ipld_core::cid::Cid;
-use ipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
@@ -12,7 +12,7 @@ pub(crate) struct CreateEncodedMessage {
     pub(super) tenant: String,
     pub(super) encoded_message: Vec<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) encoded_data: Option<Ipld>,
+    pub(super) encoded_data: Option<Value>,
     #[serde(flatten)]
     pub(super) indexes: Indexes,
 }
@@ -24,7 +24,7 @@ pub(crate) struct GetEncodedMessage {
     pub(super) tenant: String,
     pub(super) encoded_message: Vec<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) encoded_data: Option<Ipld>,
+    pub(super) encoded_data: Option<Value>,
     #[serde(flatten)]
     pub(super) indexes: Indexes,
 }
