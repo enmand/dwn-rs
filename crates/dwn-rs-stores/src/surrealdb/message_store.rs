@@ -2,10 +2,6 @@ use std::str::FromStr;
 
 use async_trait::async_trait;
 use cid::Cid;
-use ipld_core::{
-    ipld::Ipld,
-    serde::{from_ipld, to_ipld},
-};
 use multihash_codetable::{Code, MultihashDigest};
 use surrealdb::sql::{Id, Table, Thing};
 
@@ -14,7 +10,7 @@ use crate::{
     Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
 use crate::{StoreError, SurrealQuery};
-use dwn_rs_core::Message;
+use dwn_rs_core::{Message, Value};
 
 use super::{
     errors::SurrealDBError,
@@ -37,11 +33,12 @@ impl MessageStore for SurrealDB {
         mut message: Message,
         indexes: Indexes,
     ) -> Result<Cid, MessageStoreError> {
-        let mut data: Option<Ipld> = None;
+        let mut data: Option<Value> = None;
         if message.extra.contains_key("encodedData") {
             data = message.extra.remove("encodedData");
         }
-        let i = serde_ipld_dagcbor::to_vec(&to_ipld(&message)?)?;
+
+        let i = serde_ipld_dagcbor::to_vec(&message)?;
         let mh = Code::Sha2_256.digest(i.as_slice());
         let cid = Cid::new_v1(multicodec::Codec::Dag_Cbor.code().into(), mh);
 
@@ -87,9 +84,7 @@ impl MessageStore for SurrealDB {
             return Err(MessageStoreError::StoreError(StoreError::NotFound));
         }
 
-        let mut from = from_ipld::<Message>(serde_ipld_dagcbor::from_slice(
-            &encoded_message.encoded_message,
-        )?)?;
+        let mut from: Message = serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
 
         if let Some(data) = encoded_message.encoded_data {
             from.extra.insert("encodedData".to_string(), data);
@@ -130,8 +125,7 @@ impl MessageStore for SurrealDB {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
                 }
 
-                let mut msg =
-                    from_ipld::<Message>(serde_ipld_dagcbor::from_slice(&m.encoded_message)?)?;
+                let mut msg: Message = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
                     msg.extra.insert("encodedData".to_string(), data);

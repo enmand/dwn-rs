@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::value::Value;
 use chrono::{DateTime, Utc};
-use ipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -11,9 +11,9 @@ pub struct JWS {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signatures: Option<Vec<SignatureEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub header: Option<BTreeMap<String, Ipld>>,
+    pub header: Option<BTreeMap<String, Value>>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Ipld>,
+    pub extra: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -25,7 +25,7 @@ pub struct SignatureEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Ipld>,
+    pub extra: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -38,7 +38,7 @@ pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation: Option<JWS>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Ipld>,
+    pub extra: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -70,9 +70,9 @@ pub struct Descriptor {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub published: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub definition: Option<Ipld>,
+    pub definition: Option<Value>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Ipld>,
+    pub extra: BTreeMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -80,5 +80,5 @@ pub struct MessageFilter {
     #[serde(rename = "dateCreated", skip_serializing_if = "Option::is_none")]
     pub date_created: Option<DateTime<Utc>>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Ipld>,
+    pub extra: BTreeMap<String, Value>,
 }

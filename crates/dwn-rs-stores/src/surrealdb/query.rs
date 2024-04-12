@@ -24,7 +24,7 @@ where
     U: DeserializeOwned,
     T: Directional + Default + Ordorable + Sync + Copy,
 {
-    binds: BTreeMap<String, crate::filters::value::Value>,
+    binds: BTreeMap<String, dwn_rs_core::value::Value>,
 
     db: Arc<surrealdb::Surreal<Any>>,
 
@@ -46,7 +46,7 @@ where
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
             db,
-            binds: BTreeMap::<String, crate::filters::value::Value>::new(),
+            binds: BTreeMap::<String, dwn_rs_core::value::Value>::new(),
             stmt: SelectStatement::default(),
             from: String::default(),
             limit: None,
@@ -166,7 +166,7 @@ where
                         ),
                         Filter::OneOf(v) => {
                             self.binds
-                                .insert(var.clone(), crate::filters::value::Value::Array(v));
+                                .insert(var.clone(), dwn_rs_core::value::Value::Array(v));
 
                             Ok(SCond::try_from((k, Operator::Inside, format!("${}", var)))?)
                         }
@@ -310,7 +310,7 @@ pub(self) fn cursor_cond<T: Ordorable + Directional>(
     stmt: &SelectStatement,
     cursor: Option<Cursor>,
     order: Option<T>,
-) -> Result<Option<(Cond, BTreeMap<String, crate::filters::value::Value>)>, ValueError> {
+) -> Result<Option<(Cond, BTreeMap<String, dwn_rs_core::value::Value>)>, ValueError> {
     if let (
         Some(Cursor {
             cursor: c,
@@ -330,7 +330,7 @@ pub(self) fn cursor_cond<T: Ordorable + Directional>(
         binds.insert("_cursor_val".to_owned(), v.clone());
         binds.insert(
             "_cursor".to_owned(),
-            crate::filters::value::Value::String(c.to_string()),
+            dwn_rs_core::value::Value::String(c.to_string()),
         );
 
         let cur_cond = Value::Subquery(Box::new(Subquery::Value(

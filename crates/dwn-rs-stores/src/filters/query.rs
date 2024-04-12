@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use dwn_rs_core::Value;
 use ipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -19,7 +20,7 @@ pub struct Cursor {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "messageCid")]
     pub cursor: Cid,
-    pub value: Option<crate::filters::value::Value>,
+    pub value: Option<Value>,
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Copy, Clone, Default)]
@@ -151,5 +152,5 @@ where
 
 pub trait CursorValue<T> {
     fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: T) -> crate::filters::value::Value;
+    fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }

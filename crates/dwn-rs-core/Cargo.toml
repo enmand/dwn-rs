@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 chrono = { version = "0.4.30", features = ["serde"] }
 ipld-core = { version = "0.4.1", features = ["serde"] }
+from_variants = "1.0.2"
 serde = { version = "1.0.183", features = ["derive"] }
 
 [dev-dependencies]

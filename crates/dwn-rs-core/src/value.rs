@@ -5,6 +5,8 @@ use from_variants::FromVariants;
 use ipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
+pub type MapValue = BTreeMap<String, Value>;
+
 #[derive(Debug, Clone, FromVariants, PartialEq)]
 pub enum Value {
     Null,
@@ -13,7 +15,7 @@ pub enum Value {
     Number(i64),
     Float(f64),
     Cid(Cid),
-    Map(BTreeMap<String, Value>),
+    Map(MapValue),
     Array(Vec<Value>),
     DateTime(DateTime<Utc>),
 }
@@ -132,9 +134,9 @@ impl<'de> serde::Deserialize<'de> for Value {
             where
                 V: serde::de::MapAccess<'de>,
             {
-                let mut values = BTreeMap::new();
+                let mut values = MapValue::new();
 
-                while let Some((key, value)) = map.next_entry::<String, Value>()? {
+                while let Some((key, value)) = map.next_entry()? {
                     values.insert(key, value);
                 }
 
