@@ -32,7 +32,7 @@ mod tests {
         }
         let now = Utc::now();
         let d = Descriptor {
-            timestamp: Some(now.clone()),
+            timestamp: Some(now),
             ..Default::default()
         };
 
