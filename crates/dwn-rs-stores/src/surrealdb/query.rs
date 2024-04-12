@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::ops::Bound;
-use std::{collections::BTreeMap, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 use dwn_rs_core::MapValue;
@@ -25,7 +25,7 @@ where
     U: DeserializeOwned,
     T: Directional + Default + Ordorable + Sync + Copy,
 {
-    binds: BTreeMap<String, dwn_rs_core::value::Value>,
+    binds: MapValue,
 
     db: Arc<surrealdb::Surreal<Any>>,
 
@@ -47,7 +47,7 @@ where
     pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
         Self {
             db,
-            binds: BTreeMap::<String, dwn_rs_core::value::Value>::new(),
+            binds: MapValue::new(),
             stmt: SelectStatement::default(),
             from: String::default(),
             limit: None,
@@ -320,7 +320,7 @@ fn cursor_cond<T: Ordorable + Directional>(
         Some(o),
     ) = (&cursor, &order)
     {
-        let mut binds = BTreeMap::new();
+        let mut binds = MapValue::new();
 
         // get the direction of the sort, and set the operator to MoreThan if ASC, LessThan if DESC
         let op = match o.get_direction() {

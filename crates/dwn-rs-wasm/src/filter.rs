@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use dwn_rs_core::MapValue;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -52,5 +53,15 @@ impl From<Filters> for Filter {
         }
 
         wasm_bindgen::JsValue::default().into()
+    }
+}
+
+impl From<IndexMap> for MapValue {
+    fn from(value: IndexMap) -> Self {
+        if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
+            return m;
+        }
+
+        MapValue::default()
     }
 }

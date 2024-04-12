@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, Indexes, MessageCidSort, MessageSort};
-use dwn_rs_core::Value;
+use crate::{CursorValue, MessageCidSort, MessageSort};
+use dwn_rs_core::{MapValue, Value};
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
@@ -14,7 +14,7 @@ pub(crate) struct CreateEncodedMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) encoded_data: Option<Value>,
     #[serde(flatten)]
-    pub(super) indexes: Indexes,
+    pub(super) indexes: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -26,22 +26,15 @@ pub(crate) struct GetEncodedMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) encoded_data: Option<Value>,
     #[serde(flatten)]
-    pub(super) indexes: Indexes,
+    pub(super) indexes: MapValue,
 }
 
 impl CursorValue<MessageSort> for GetEncodedMessage {
     fn cursor_value(&self, sort: MessageSort) -> Value {
         match sort {
-            MessageSort::DateCreated(_) => self.indexes.indexes.get("dateCreated").unwrap().clone(),
-            MessageSort::DatePublished(_) => {
-                self.indexes.indexes.get("datePublished").unwrap().clone()
-            }
-            MessageSort::Timestamp(_) => self
-                .indexes
-                .indexes
-                .get("messageTimestamp")
-                .unwrap()
-                .clone(),
+            MessageSort::DateCreated(_) => self.indexes.get("dateCreated").unwrap().clone(),
+            MessageSort::DatePublished(_) => self.indexes.get("datePublished").unwrap().clone(),
+            MessageSort::Timestamp(_) => self.indexes.get("messageTimestamp").unwrap().clone(),
         }
     }
 
@@ -73,7 +66,7 @@ pub(crate) struct CreateEvent {
     pub(super) cid: String,
     pub(super) watermark: String,
     #[serde(flatten)]
-    pub(super) indexes: Indexes,
+    pub(super) indexes: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

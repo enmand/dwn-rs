@@ -7,10 +7,10 @@ use surrealdb::sql::{Id, Table, Thing};
 
 use super::core::SurrealDB;
 use crate::{
-    Filters, Indexes, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
+    Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
 use crate::{StoreError, SurrealQuery};
-use dwn_rs_core::{Message, Value};
+use dwn_rs_core::{MapValue, Message, Value};
 
 use super::{
     errors::SurrealDBError,
@@ -31,7 +31,7 @@ impl MessageStore for SurrealDB {
         &self,
         tenant: &str,
         mut message: Message,
-        indexes: Indexes,
+        indexes: MapValue,
     ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Value> = None;
         if message.extra.contains_key("encodedData") {

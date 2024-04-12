@@ -6,10 +6,10 @@ use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Cursor, DataStoreError, EventLogError, Filters, Indexes, MessageSort, MessageStoreError,
-    Pagination, QueryReturn,
+    Cursor, DataStoreError, EventLogError, Filters, MessageSort, MessageStoreError, Pagination,
+    QueryReturn,
 };
-use dwn_rs_core::Message;
+use dwn_rs_core::{MapValue, Message};
 
 #[async_trait]
 pub trait MessageStore {
@@ -21,7 +21,7 @@ pub trait MessageStore {
         &self,
         tenant: &str,
         message: Message,
-        indexes: Indexes,
+        indexes: MapValue,
     ) -> Result<Cid, MessageStoreError>;
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError>;
@@ -90,7 +90,7 @@ pub trait EventLog {
         &mut self,
         tenant: &str,
         cid: String,
-        indexes: Indexes,
+        indexes: MapValue,
     ) -> Result<(), EventLogError>;
 
     async fn get_events(

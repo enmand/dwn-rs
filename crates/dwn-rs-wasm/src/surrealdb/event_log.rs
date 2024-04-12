@@ -1,4 +1,3 @@
-use dwn_rs_core::MapValue;
 use dwn_rs_stores::{
     surrealdb::{Database, SurrealDB},
     Cursor, EventLog, EventLogError, QueryReturn, StoreError, SurrealDBError,
@@ -68,10 +67,8 @@ impl SurrealEventLog {
         cid: &str,
         indexes: IndexMap,
     ) -> Result<(), JsError> {
-        let indexes = serde_wasm_bindgen::from_value::<MapValue>(indexes.into())?.into();
-
         self.store
-            .append(tenant, cid.to_string(), indexes)
+            .append(tenant, cid.to_string(), indexes.into())
             .await
             .map_err(EventLogError::from)
             .map_err(Into::into)
