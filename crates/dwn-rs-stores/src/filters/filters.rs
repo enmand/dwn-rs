@@ -216,11 +216,10 @@ mod tests {
             output: Filters,
         }
 
-        let ref clean = Filters {
+        let clean = &Filters {
             filters: vec![vec![("foo".to_string(), Filter::Equal(Value::Number(1)))]
                 .into_iter()
                 .collect()],
-            ..Default::default()
         };
 
         let tcs = vec![
@@ -257,7 +256,6 @@ mod tests {
                     .into_iter()
                     .collect(),
             ],
-            ..Default::default()
         };
 
         let mut iter = filters.into_iter();

@@ -102,17 +102,9 @@ impl Ordorable for MessageSort {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
 pub struct MessageCidSort {
     direction: SortDirection,
-}
-
-impl Default for MessageCidSort {
-    fn default() -> Self {
-        Self {
-            direction: SortDirection::default(),
-        }
-    }
 }
 
 impl Directional for MessageCidSort {

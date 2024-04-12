@@ -224,7 +224,7 @@ where
     fn sort(&mut self, sort: Option<T>) -> &mut Self {
         self.order = match sort {
             Some(s) => Some(s),
-            None => self.order.clone(),
+            None => self.order,
         };
 
         if let Some(o) = self.order {

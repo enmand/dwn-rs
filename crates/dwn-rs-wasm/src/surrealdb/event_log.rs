@@ -22,6 +22,7 @@ enum SurrealEventLogError {
 }
 
 #[wasm_bindgen(js_name = SurrealEventLog)]
+#[derive(Default)]
 pub struct SurrealEventLog {
     store: SurrealDB,
 }
