@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use libipld_core::cid::Cid;
+use ipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::{serde_as, DisplayFromStr};
