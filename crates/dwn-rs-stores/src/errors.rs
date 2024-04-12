@@ -1,3 +1,5 @@
+use std::{collections::TryReserveError, convert::Infallible};
+
 use thiserror::Error;
 use ulid::MonotonicError;
 
@@ -24,22 +26,22 @@ pub enum MessageStoreError {
     StoreError(#[from] StoreError),
 
     #[error("failed to encode message: {0}")]
-    MessageEncodeError(#[from] libipld_core::error::Error),
+    MessageEncodeError(#[from] ipld_core::serde::SerdeError),
 
     #[error("failed to decode message: {0}")]
-    MessageDecodeError(#[source] libipld_core::error::Error),
+    MessageDecodeError(#[source] ipld_core::serde::SerdeError),
 
     #[error("failed to serde encode message: {0}")]
-    SerdeEncodeError(#[from] libipld_core::error::SerdeError),
+    SerdeEncodeError(#[from] serde_ipld_dagcbor::error::EncodeError<TryReserveError>),
 
     #[error("failed to serde decode message: {0}")]
-    SerdeDecodeError(#[source] libipld_core::error::SerdeError),
+    SerdeDecodeError(#[from] serde_ipld_dagcbor::error::DecodeError<Infallible>),
 
     #[error("failed to encode cid")]
-    CidEncodeError(#[from] libipld_core::cid::Error),
+    CidEncodeError(#[from] ipld_core::cid::Error),
 
     #[error("failed to decode cid")]
-    CidDecodeError(#[source] libipld_core::cid::Error),
+    CidDecodeError(#[source] ipld_core::cid::Error),
 
     #[error("unable to perform query")]
     QueryError(#[from] QueryError),

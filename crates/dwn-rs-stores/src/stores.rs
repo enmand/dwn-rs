@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use async_trait::async_trait;
 use futures_util::Stream;
-use libipld_core::cid::Cid;
+use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 
 use crate::{

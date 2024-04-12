@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use from_variants::FromVariants;
-use libipld_core::cid::Cid;
+use ipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
 #[derive(Debug, Clone, FromVariants, PartialEq)]
@@ -76,7 +76,7 @@ impl<'de> serde::Deserialize<'de> for Value {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a valid RFC3339 datetime or a valid IndexValue variant")
+                formatter.write_str("a valid RFC3339 datetime or a valid Value variant")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -85,7 +85,7 @@ impl<'de> serde::Deserialize<'de> for Value {
             {
                 match DateTime::parse_from_rfc3339(value) {
                     Ok(dt) => Ok(Value::DateTime(dt.with_timezone(&chrono::Utc))),
-                    Err(_) => match libipld_core::cid::Cid::try_from(value) {
+                    Err(_) => match ipld_core::cid::Cid::try_from(value) {
                         Ok(cid) => Ok(Value::Cid(cid)),
                         Err(_) => {
                             if value == "true" {

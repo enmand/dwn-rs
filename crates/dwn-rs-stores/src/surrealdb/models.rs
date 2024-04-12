@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::{CursorValue, Indexes, MessageCidSort, MessageSort, Value};
-use libipld_core::cid::Cid;
-use libipld_core::ipld::Ipld;
+use ipld_core::cid::Cid;
+use ipld_core::ipld::Ipld;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
