@@ -5,8 +5,9 @@ use from_variants::FromVariants;
 use ipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
-pub type MapValue = BTreeMap<String, Value>;
-
+/// Value represents a JSON-like value, that can be serialized and deserialized and
+/// used in DWN to represent data frmo various sources, such as Messages.
+///
 #[derive(Debug, Clone, FromVariants, PartialEq)]
 pub enum Value {
     Null,
@@ -134,7 +135,7 @@ impl<'de> serde::Deserialize<'de> for Value {
             where
                 V: serde::de::MapAccess<'de>,
             {
-                let mut values = MapValue::new();
+                let mut values = MapValue::default();
 
                 while let Some((key, value)) = map.next_entry()? {
                     values.insert(key, value);
@@ -160,3 +161,7 @@ impl<'de> serde::Deserialize<'de> for Value {
         deserializer.deserialize_any(IndexValueVisitor)
     }
 }
+
+/// MapValue is a type alias for a BTreeMap of String to Value, used for map values
+/// such as indexes.
+pub type MapValue = BTreeMap<String, Value>;

@@ -3,6 +3,7 @@ use std::ops::Bound;
 use std::{collections::BTreeMap, marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
+use dwn_rs_core::MapValue;
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -306,11 +307,11 @@ pub(super) fn value(s: &str) -> Result<Value, ValueError> {
 /// ordering. If the cursor is set, the condition will be set to the value of the cursor
 /// and the ordering will be set to the direction of the ordering. If the cursor is not
 /// set, the condition will be set to None.
-pub(self) fn cursor_cond<T: Ordorable + Directional>(
+fn cursor_cond<T: Ordorable + Directional>(
     stmt: &SelectStatement,
     cursor: Option<Cursor>,
     order: Option<T>,
-) -> Result<Option<(Cond, BTreeMap<String, dwn_rs_core::value::Value>)>, ValueError> {
+) -> Result<Option<(Cond, MapValue)>, ValueError> {
     if let (
         Some(Cursor {
             cursor: c,

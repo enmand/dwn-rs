@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use crate::value::Value;
+use crate::{value::Value, MapValue};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -11,9 +9,9 @@ pub struct JWS {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signatures: Option<Vec<SignatureEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub header: Option<BTreeMap<String, Value>>,
+    pub header: Option<MapValue>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Value>,
+    pub extra: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -25,7 +23,7 @@ pub struct SignatureEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Value>,
+    pub extra: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -38,7 +36,7 @@ pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation: Option<JWS>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Value>,
+    pub extra: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -72,7 +70,7 @@ pub struct Descriptor {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub definition: Option<Value>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Value>,
+    pub extra: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -80,5 +78,5 @@ pub struct MessageFilter {
     #[serde(rename = "dateCreated", skip_serializing_if = "Option::is_none")]
     pub date_created: Option<DateTime<Utc>>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, Value>,
+    pub extra: MapValue,
 }
