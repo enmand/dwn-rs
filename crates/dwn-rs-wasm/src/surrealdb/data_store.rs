@@ -77,16 +77,14 @@ impl SurrealDataStore {
         cid: &str,
         value: Readable,
     ) -> Result<DataStorePutResult, JsValue> {
+        let readable = StreamReadable::new(value).into_stream().map(|r| {
+            let val = serde_wasm_bindgen::to_value(&r).unwrap();
+            js_sys::Uint8Array::new(&val).to_vec()
+        });
+
         match self
             .store
-            .put(
-                tenant,
-                record_id.to_string(),
-                cid.to_string(),
-                StreamReadable::new(value)
-                    .into_stream()
-                    .map(|r| js_sys::Uint8Array::new(&r).to_vec()),
-            )
+            .put(tenant, record_id.to_string(), cid.to_string(), readable)
             .await
             .map_err(SurrealDataStoreError::from)
         {
@@ -114,7 +112,7 @@ impl SurrealDataStore {
         let size = v.size;
         let reader = stream! {
             while let Some(chunk) = v.data.next().await {
-                yield Ok(js_sys::Uint8Array::from(chunk.as_slice()).into());
+                yield Ok(serde_bytes::ByteBuf::from(chunk))
             }
 
             yield Err(JsValue::NULL);

@@ -43,3 +43,4 @@ dwn-rs-core = { path = "../dwn-rs-core" }
 dwn-rs-stores = { path = "../dwn-rs-stores", default-features = false }
 
 wasm-streams = "0.4.0"
+serde_bytes = "0.11.14"
