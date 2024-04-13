@@ -1,6 +1,6 @@
 use async_stream::stream;
 use async_trait::async_trait;
-use futures_util::{Stream, StreamExt};
+use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{
@@ -25,11 +25,13 @@ impl DataStore for SurrealDB {
         tenant: &str,
         record_id: String,
         cid: String,
-        mut value: T,
+        value: T,
     ) -> Result<PutDataResults, DataStoreError>
     where
         T: Stream<Item = Vec<u8>> + Unpin + Send,
     {
+        pin_mut!(value);
+
         let id = Thing::from((
             Table::from(tenant.to_string()).to_string(),
             Id::String(cid.to_string()),
