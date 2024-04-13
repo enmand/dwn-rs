@@ -1,4 +1,3 @@
-use dwn_rs_core::MapValue;
 use dwn_rs_stores::{surrealdb::SurrealDB, MessageStore};
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;

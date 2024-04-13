@@ -23,17 +23,6 @@ pub struct StreamReadable {
     readable: Readable,
 }
 
-/// IntoStream is the the implementation for tokio::Stream, for the StreamReadable stream. This
-/// can be used in Rust to read data from the JsvaScript stream, and return items as a JsValue.
-pub struct IntoStream {
-    inner: StreamReadable,
-    data_rx: UnboundedReceiver<JsValue>,
-    done_rx: UnboundedReceiver<()>,
-    done: bool,
-    data_cb: Closure<dyn FnMut(JsValue)>,
-    end_cb: Closure<dyn FnMut()>,
-}
-
 impl StreamReadable {
     pub fn new(r: Readable) -> Self {
         Self {
@@ -50,7 +39,7 @@ impl StreamReadable {
     /// JavaScript stream, as JsValues.
     pub async fn from_stream<St>(stream: St) -> Self
     where
-        St: Stream<Item = Result<JsValue, JsValue>>,
+        St: Stream<Item = Result<serde_bytes::ByteBuf, JsValue>>,
     {
         pin_mut!(stream);
         let (data_tx, mut data_rx) = unbounded_channel::<JsValue>();
@@ -62,7 +51,8 @@ impl StreamReadable {
             spawn_local(async move {
                 match item {
                     Ok(i) => {
-                        data_tx.send(i).unwrap();
+                        let val = serde_wasm_bindgen::to_value(&i).unwrap();
+                        data_tx.send(val).unwrap();
                     }
                     Err(e) => {
                         if e.is_null() {
@@ -98,35 +88,43 @@ impl StreamReadable {
     }
 }
 
+/// IntoStream is the the implementation for tokio::Stream, for the StreamReadable stream. This
+/// can be used in Rust to read data from the JsvaScript stream, and return items as a JsValue.
+pub struct IntoStream {
+    data_rx: UnboundedReceiver<serde_bytes::ByteBuf>,
+    done_rx: UnboundedReceiver<()>,
+    done: bool,
+}
+
 impl IntoStream {
     pub fn new(r: StreamReadable) -> Self {
         let readable = r.as_raw();
-        let (data_tx, data_rx) = unbounded_channel::<JsValue>();
+        let (data_tx, data_rx) = unbounded_channel::<serde_bytes::ByteBuf>();
         let (done_tx, done_rx) = unbounded_channel::<()>();
 
         let data_cb = Closure::wrap(Box::new(move |d| {
-            data_tx.send(d).unwrap();
-        }) as Box<dyn FnMut(JsValue)>);
+            let val = serde_wasm_bindgen::from_value(d).unwrap();
+            data_tx.send(val).unwrap();
+        }) as Box<dyn FnMut(JsValue)>)
+        .into_js_value();
         readable.on("data", data_cb.as_ref().unchecked_ref());
 
         let end_cb = Closure::wrap(Box::new(move || {
             done_tx.send(()).unwrap();
-        }) as Box<dyn FnMut()>);
+        }) as Box<dyn FnMut()>)
+        .into_js_value();
         readable.on("end", end_cb.as_ref().unchecked_ref());
 
         Self {
-            inner: r,
             data_rx,
             done_rx,
             done: false,
-            data_cb,
-            end_cb,
         }
     }
 }
 
 impl Stream for IntoStream {
-    type Item = JsValue;
+    type Item = serde_bytes::ByteBuf;
 
     // poll_next is the main function that drives the stream. It is called by the runtime to
     // read the data in the Readable, and return it as a JsValue.
@@ -150,21 +148,3 @@ impl Stream for IntoStream {
         poll
     }
 }
-
-impl Drop for IntoStream {
-    fn drop(&mut self) {
-        // Drop the event listeners so that we don't try to call them after the stream is dropped.
-        self.inner
-            .readable
-            .off("data", self.data_cb.as_ref().unchecked_ref());
-        self.inner
-            .readable
-            .off("end", self.end_cb.as_ref().unchecked_ref());
-    }
-}
-
-// The following unsafe implementations are required to ensure the vector data can be sent
-// between WASM calls, where threads are not allowed.
-// TODO: we should find a better way to do this, and remove this unsafe impl. (e.g. for WASIX
-// environments that do support threads.)
-unsafe impl Send for IntoStream {}
