@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{pin_mut, Future, StreamExt};
+use futures_util::{pin_mut, StreamExt};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::Stream;
 use wasm_bindgen::prelude::*;
