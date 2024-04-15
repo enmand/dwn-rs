@@ -112,10 +112,10 @@ impl SurrealDataStore {
         let size = v.size;
         let reader = stream! {
             while let Some(chunk) = v.data.next().await {
-                yield Ok(serde_bytes::ByteBuf::from(chunk))
+                yield Some(serde_bytes::ByteBuf::from(chunk))
             }
 
-            yield Err(JsValue::NULL);
+            yield None;
         };
 
         let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
@@ -123,7 +123,7 @@ impl SurrealDataStore {
         Reflect::set(
             &obj,
             &"dataStream".into(),
-            StreamReadable::from_stream(reader).await.as_raw(),
+            StreamReadable::from_stream(reader).await?.as_raw(),
         )?;
 
         Ok(Some(obj))
