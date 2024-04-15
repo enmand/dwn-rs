@@ -37,33 +37,34 @@ impl StreamReadable {
     /// from_stream creates a new StreamReadable from a Rust Stream. This function will return a
     /// new StreamReadable, and the Readable (accessible as as_raw) will stream data to the
     /// JavaScript stream, as JsValues.
-    pub async fn from_stream<St>(stream: St) -> Self
+    pub async fn from_stream<St>(stream: St) -> Result<Self, JsValue>
     where
-        St: Stream<Item = Result<serde_bytes::ByteBuf, JsValue>>,
+        St: Stream<Item = Option<serde_bytes::ByteBuf>> + 'static,
     {
-        pin_mut!(stream);
         let (data_tx, mut data_rx) = unbounded_channel::<JsValue>();
-        let controller = AbortController::new().unwrap();
+        let controller = AbortController::new()?;
 
-        while let Some(item) = stream.next().await {
-            let data_tx = data_tx.clone();
-            let controller = controller.clone();
-            spawn_local(async move {
+        let read_controller = controller.clone();
+        spawn_local(async move {
+            pin_mut!(stream);
+            loop {
+                let item = stream.next().await;
+
                 match item {
-                    Ok(i) => {
-                        let val = serde_wasm_bindgen::to_value(&i).unwrap();
-                        data_tx.send(val).unwrap();
-                    }
-                    Err(e) => {
-                        if e.is_null() {
-                            data_tx.send(JsValue::NULL).unwrap();
-                        } else {
-                            controller.abort();
+                    Some(i) => match serde_wasm_bindgen::to_value(&i) {
+                        Ok(v) => data_tx.send(v).unwrap_throw(),
+                        Err(_) => {
+                            read_controller.abort();
+                            break;
                         }
+                    },
+                    None => {
+                        data_tx.send(JsValue::NULL).unwrap_throw();
+                        break;
                     }
-                }
-            });
-        }
+                };
+            }
+        });
 
         let newr = make_readable(
             // TODO: the closure should take a `size` argument, and properly buffer the data
@@ -77,7 +78,7 @@ impl StreamReadable {
             controller.signal(),
         );
 
-        Self::new(newr)
+        Ok(Self::new(newr))
     }
 
     /// into_stream creates a new Stream from the StreamReadable stream. This function locks the StreamReadable in
