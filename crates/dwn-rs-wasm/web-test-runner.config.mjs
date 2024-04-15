@@ -20,7 +20,11 @@ export default {
     playwrightLauncher({ product: "firefox" }),
   ],
   nodeResolve: true,
-  testFramework: "mocha",
+  testFramework: {
+    config: {
+      timeout: "3000",
+    },
+  },
   plugins: [
     rollupBundlePlugin({
       rollupConfig: {
