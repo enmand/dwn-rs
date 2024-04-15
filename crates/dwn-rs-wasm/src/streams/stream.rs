@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{pin_mut, StreamExt};
+use futures_util::{pin_mut, Future, StreamExt};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::Stream;
 use wasm_bindgen::prelude::*;
@@ -104,14 +104,14 @@ impl IntoStream {
         let (done_tx, done_rx) = unbounded_channel::<()>();
 
         let data_cb = Closure::wrap(Box::new(move |d| {
-            let val = serde_wasm_bindgen::from_value(d).unwrap();
-            data_tx.send(val).unwrap();
+            let val = serde_wasm_bindgen::from_value(d).unwrap_throw();
+            data_tx.send(val).unwrap_throw();
         }) as Box<dyn FnMut(JsValue)>)
         .into_js_value();
         readable.on("data", data_cb.as_ref().unchecked_ref());
 
         let end_cb = Closure::wrap(Box::new(move || {
-            done_tx.send(()).unwrap();
+            done_tx.send(()).unwrap_throw();
         }) as Box<dyn FnMut()>)
         .into_js_value();
         readable.on("end", end_cb.as_ref().unchecked_ref());
