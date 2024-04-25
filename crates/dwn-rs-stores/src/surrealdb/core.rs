@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use surrealdb::{engine::any::Any, Surreal};
+use serde::Serialize;
+use surrealdb::{
+    engine::any::Any,
+    opt::auth::{self, Credentials},
+    Surreal,
+};
 use ulid::Generator;
 
 use crate::StoreError;
@@ -87,7 +92,14 @@ impl SurrealDB {
     ) -> Result<(), SurrealDBError> {
         self.db_name = db_name;
         self._constr = connstr.into();
+        let (connstr, auth) = parse_connstr(connstr);
         self.db.connect(connstr).await?;
+        if let Some(auth) = auth {
+            self.db
+                .signin(auth)
+                .await
+                .map_err(Into::<SurrealDBError>::into)?;
+        }
         self.db
             .health()
             .await
@@ -111,4 +123,53 @@ impl SurrealDB {
 
         Ok(())
     }
+}
+
+#[derive(Serialize, Clone)]
+#[serde(untagged)]
+enum Auth<'a> {
+    Root(auth::Root<'a>),
+    Namespace(auth::Namespace<'a>),
+    Database(auth::Database<'a>),
+}
+
+impl<'a> Credentials<auth::Signin, auth::Jwt> for Auth<'a> {}
+
+// parse the connection string for authentication information that can be used to sign in. The
+// connection string, with credentials, is expected to be in the format:
+//   `<proto>://<username>:<password>@<host>:<port>/<database>?ns=<namespace>&scope=<scope>`
+// Returns the connection string and the credentials.
+fn parse_connstr(connstr: &str) -> (String, Option<Auth>) {
+    let connstr = connstr.trim();
+    let (proto, connstr) = connstr.split_once("://").unwrap_or_default();
+    let (auth, connstr) = connstr.split_once('@').unwrap_or(("", connstr));
+    let (username, password) = auth.split_once(':').unwrap_or(("", ""));
+    let (connstr, db) = connstr.split_once('/').unwrap_or((connstr, ""));
+    let (db, ns) = db.split_once("?ns=").unwrap_or(("", ""));
+
+    let connstr = format!("{}://{}", proto, connstr);
+
+    let creds = match (
+        username.is_empty(),
+        password.is_empty(),
+        db.is_empty(),
+        ns.is_empty(),
+    ) {
+        (true, _, _, _) | (_, true, _, _) => None,
+        (_, _, true, true) => Some(Auth::Root(auth::Root { username, password })),
+        (_, _, false, false) => Some(Auth::Database(auth::Database {
+            database: db,
+            username,
+            password,
+            namespace: ns,
+        })),
+        (_, _, _, false) => Some(Auth::Namespace(auth::Namespace {
+            namespace: ns,
+            username,
+            password,
+        })),
+        _ => None,
+    };
+
+    (connstr, creds)
 }
