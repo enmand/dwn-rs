@@ -125,12 +125,41 @@ impl SurrealDB {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
 enum Auth<'a> {
     Root(auth::Root<'a>),
     Namespace(auth::Namespace<'a>),
     Database(auth::Database<'a>),
+}
+
+impl PartialEq for Auth<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Auth::Root(a), Auth::Root(b)) => a.username == b.username && a.password == b.password,
+            (Auth::Namespace(a), Auth::Namespace(b)) => {
+                Auth::Root(auth::Root {
+                    username: a.username,
+                    password: a.password,
+                }) == Auth::Root(auth::Root {
+                    username: b.username,
+                    password: b.password,
+                }) && a.namespace == b.namespace
+            }
+            (Auth::Database(a), Auth::Database(b)) => {
+                Auth::Namespace(auth::Namespace {
+                    username: a.username,
+                    password: a.password,
+                    namespace: a.namespace,
+                }) == Auth::Namespace(auth::Namespace {
+                    username: b.username,
+                    password: b.password,
+                    namespace: b.namespace,
+                }) && a.database == b.database
+            }
+            _ => false,
+        }
+    }
 }
 
 impl<'a> Credentials<auth::Signin, auth::Jwt> for Auth<'a> {}
@@ -172,4 +201,53 @@ fn parse_connstr(connstr: &str) -> (String, Option<Auth>) {
     };
 
     (connstr, creds)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_connstr() {
+        let connstr = "http://user:pass@localhost:8080/db?ns=ns";
+        let (connstr, creds) = parse_connstr(connstr);
+        assert_eq!(connstr, "http://localhost:8080");
+        assert_eq!(
+            creds,
+            Some(Auth::Database(auth::Database {
+                database: "db",
+                username: "user",
+                password: "pass",
+                namespace: "ns"
+            }))
+        );
+
+        let connstr = "http://user:pass@localhost:8080/?ns=ns";
+        let (connstr, creds) = parse_connstr(connstr);
+        assert_eq!(connstr, "http://localhost:8080");
+        assert_eq!(
+            creds,
+            Some(Auth::Namespace(auth::Namespace {
+                username: "user",
+                password: "pass",
+                namespace: "ns"
+            }))
+        );
+
+        let connstr = "http://localhost:8080";
+        let (connstr, creds) = parse_connstr(connstr);
+        assert_eq!(connstr, "http://localhost:8080");
+        assert_eq!(creds, None);
+
+        let connstr = "http://user:password@localhost:8080";
+        let (connstr, creds) = parse_connstr(connstr);
+        assert_eq!(connstr, "http://localhost:8080");
+        assert_eq!(
+            creds,
+            Some(Auth::Root(auth::Root {
+                username: "user",
+                password: "password",
+            }))
+        );
+    }
 }
