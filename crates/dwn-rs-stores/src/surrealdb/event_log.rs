@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use dwn_rs_core::MapValue;
-use surrealdb::sql::{Id, Range, Table, Thing};
+use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{
     Cursor, EventLog, EventLogError, Filters, MessageCidSort, Pagination, Query, QueryReturn,
@@ -8,8 +8,6 @@ use crate::{
 };
 
 use super::models::{CreateEvent, GetEvent};
-
-trait IntoRange: Into<Range> + Sized {}
 
 const EVENTS_TABLE: &str = "events";
 
