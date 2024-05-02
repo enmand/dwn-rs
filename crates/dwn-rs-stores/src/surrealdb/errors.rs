@@ -1,4 +1,4 @@
-use crate::{QueryError, StoreError, ValueError};
+use crate::{surrealdb::auth::AuthError, QueryError, StoreError, ValueError};
 
 use thiserror::Error;
 
@@ -9,6 +9,12 @@ pub enum SurrealDBError {
 
     #[error("Surreal error: {0}")]
     SurrealError(#[from] surrealdb::Error),
+
+    #[error("no namespace provided")]
+    NoNamespace,
+
+    #[error("authentication error: {0}")]
+    AuthError(#[from] AuthError),
 }
 
 impl From<SurrealDBError> for QueryError {
@@ -28,6 +34,8 @@ impl From<SurrealDBError> for StoreError {
         match e {
             SurrealDBError::DBError(e) => Self::InternalException(e.to_string()),
             SurrealDBError::SurrealError(e) => Self::InternalException(e.to_string()),
+            SurrealDBError::NoNamespace => Self::InternalException(e.to_string()),
+            SurrealDBError::AuthError(e) => Self::InternalException(e.to_string()),
         }
     }
 }
