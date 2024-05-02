@@ -3,7 +3,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
-use surrealdb::sql::{Id, Table, Thing};
+use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
 use crate::{
@@ -16,6 +16,8 @@ use super::{
     errors::SurrealDBError,
     models::{CreateEncodedMessage, GetEncodedMessage},
 };
+
+const MESSAGES_TABLE: &str = "messages";
 
 #[async_trait]
 impl MessageStore for SurrealDB {
@@ -42,43 +44,36 @@ impl MessageStore for SurrealDB {
         let mh = Code::Sha2_256.digest(i.as_slice());
         let cid = Cid::new_v1(multicodec::Codec::Dag_Cbor.code().into(), mh);
 
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
-
-        self.db
-            .create::<Option<GetEncodedMessage>>(id.clone())
-            .content(CreateEncodedMessage {
-                cid: cid.to_string(),
-                encoded_message: i,
-                encoded_data: data,
-                tenant: tenant.to_string(),
-                indexes,
-            })
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(MessageStoreError::from)?;
+        self.as_tenant(tenant, |db| async move {
+            db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, Id::String(cid.to_string())))
+                .content(CreateEncodedMessage {
+                    cid: cid.to_string(),
+                    encoded_message: i,
+                    encoded_data: data,
+                    tenant: tenant.to_string(),
+                    indexes,
+                })
+                .await
+                .map_err(SurrealDBError::from)
+                .map_err(StoreError::from)
+        })
+        .await?;
 
         Ok(cid)
     }
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
-
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
-            .db
-            .select(id.clone())
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(MessageStoreError::from)?
-            .ok_or(MessageStoreError::StoreError(StoreError::NotFound))?;
+            .as_tenant(tenant, |db| async move {
+                db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)
+                    .expect("failed to fetch from database")
+                    .ok_or(StoreError::NotFound)
+            })
+            .await?;
 
         if encoded_message.tenant != tenant {
             return Err(MessageStoreError::StoreError(StoreError::NotFound));
@@ -100,9 +95,13 @@ impl MessageStore for SurrealDB {
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
     ) -> Result<QueryReturn<Message>, MessageStoreError> {
-        let mut qb = SurrealQuery::<GetEncodedMessage, MessageSort>::new(self.db.to_owned());
+        let mut qb = self
+            .as_tenant(tenant, |db| async move {
+                Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
+            })
+            .await?;
 
-        qb.from(tenant.to_string())
+        qb.from(MESSAGES_TABLE)
             .filter(&filters)?
             .sort(sort)
             .page(pagination.clone());
@@ -116,6 +115,7 @@ impl MessageStore for SurrealDB {
 
         let r = ms
             .into_iter()
+            .filter(|m| m.tenant == tenant)
             .map(|m: GetEncodedMessage| {
                 let cid = Cid::from_str(m.cid.as_str())?;
                 let mh = Code::Sha2_256.digest(&m.encoded_message);
@@ -133,47 +133,46 @@ impl MessageStore for SurrealDB {
 
                 Ok(msg)
             })
-            .collect::<Result<Vec<Message>, MessageStoreError>>();
+            .collect::<Result<Vec<Message>, MessageStoreError>>()?;
 
-        let qr = QueryReturn { items: r?, cursor };
-
-        Ok(qr)
+        Ok(QueryReturn { items: r, cursor })
     }
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError> {
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
+        let id = Thing::from((MESSAGES_TABLE, Id::String(cid.to_string())));
 
         // check the tenancy on the messages
         let encoded_message: Option<GetEncodedMessage> = self
-            .db
-            .select(id.clone())
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(MessageStoreError::from)?;
+            .as_tenant(tenant, |db| async move {
+                db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)
+            })
+            .await?;
 
         if let Some(msg) = encoded_message {
             if msg.tenant != tenant {
                 return Err(MessageStoreError::StoreError(StoreError::NotFound));
             }
 
-            self.db
-                .delete::<Option<CreateEncodedMessage>>(id)
-                .await
-                .map_err(SurrealDBError::from)
-                .map_err(StoreError::from)
-                .map_err(MessageStoreError::from)?;
+            self.as_tenant(tenant, |db| async move {
+                db.delete::<Option<GetEncodedMessage>>(id.clone())
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)
+            })
+            .await?;
         }
 
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), MessageStoreError> {
-        self.clear().await.map_err(MessageStoreError::from)?;
-
+        // self.clear(&MESSAGES_TABLE.into())
+        //     .await
+        //     .map_err(MessageStoreError::from)?;
+        //
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use thiserror::Error;
 use wasm_bindgen::prelude::*;
 
 use dwn_rs_stores::{
-    surrealdb::{Database, SurrealDB, SurrealDBError},
+    surrealdb::{SurrealDB, SurrealDBError},
     DataStore, DataStoreError,
 };
 
@@ -54,7 +54,7 @@ impl SurrealDataStore {
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
         self.store
-            .connect(connstr, Database::Data)
+            .connect(connstr)
             .await
             .map_err(SurrealDataStoreError::from)
             .map_err(Into::into)

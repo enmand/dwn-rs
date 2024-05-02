@@ -11,6 +11,8 @@ use super::models::{CreateEvent, GetEvent};
 
 trait IntoRange: Into<Range> + Sized {}
 
+const EVENTS_TABLE: &str = "events";
+
 #[async_trait]
 impl EventLog for SurrealDB {
     async fn open(&mut self) -> Result<(), EventLogError> {
@@ -27,24 +29,22 @@ impl EventLog for SurrealDB {
         cid: String,
         indexes: MapValue,
     ) -> Result<(), EventLogError> {
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
-
+        let id = Thing::from((EVENTS_TABLE, Id::String(cid.to_string())));
         let watermark = self.ulid_generator.generate()?.to_string();
-        self.db
-            .create::<Option<CreateEvent>>(id.clone())
-            .content(CreateEvent {
-                id,
-                watermark,
-                cid,
-                indexes,
-            })
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(EventLogError::from)?;
+
+        self.as_tenant(tenant, |db| async move {
+            db.create::<Option<CreateEvent>>(id.clone())
+                .content(CreateEvent {
+                    id,
+                    watermark,
+                    cid,
+                    indexes,
+                })
+                .await
+                .map_err(SurrealDBError::from)
+                .map_err(StoreError::from)
+        })
+        .await?;
 
         Ok(())
     }
@@ -63,14 +63,18 @@ impl EventLog for SurrealDB {
         filters: Filters,
         cursor: Option<Cursor>,
     ) -> Result<QueryReturn<String>, EventLogError> {
-        let mut qb = SurrealQuery::<GetEvent, MessageCidSort>::new(self.db.to_owned());
+        let mut qb = self
+            .as_tenant(tenant, |db| async move {
+                Ok(SurrealQuery::<GetEvent, MessageCidSort>::new(db))
+            })
+            .await?;
 
         let page = Pagination {
             limit: None,
             cursor,
         };
 
-        qb.from(tenant.to_string())
+        qb.from(EVENTS_TABLE)
             .filter(&filters)?
             .sort(Some(MessageCidSort::default()))
             .always_cursor()
@@ -86,25 +90,26 @@ impl EventLog for SurrealDB {
     }
 
     async fn delete<'a>(&self, tenant: &str, cids: &'a [&str]) -> Result<(), EventLogError> {
-        for c in cids {
-            let id = Thing::from((
-                Table::from(tenant.to_string()).to_string(),
-                Id::String(c.to_string()),
-            ));
+        Ok(self
+            .as_tenant(tenant, |db| async move {
+                for c in cids {
+                    let id = Thing::from((EVENTS_TABLE, Id::String(c.to_string())));
 
-            self.db
-                .delete::<Option<CreateEvent>>(id)
-                .await
-                .map_err(SurrealDBError::from)
-                .map_err(StoreError::from)
-                .map_err(EventLogError::from)?;
-        }
+                    db.delete::<Option<CreateEvent>>(id)
+                        .await
+                        .map_err(SurrealDBError::from)
+                        .map_err(StoreError::from)?;
+                }
 
-        Ok(())
+                Ok(())
+            })
+            .await?)
     }
 
     async fn clear(&self) -> Result<(), EventLogError> {
-        self.clear().await.map_err(EventLogError::from)?;
+        self.clear(&Table::from(EVENTS_TABLE))
+            .await
+            .map_err(EventLogError::from)?;
 
         Ok(())
     }

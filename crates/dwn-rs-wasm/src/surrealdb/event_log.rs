@@ -1,6 +1,5 @@
 use dwn_rs_stores::{
-    surrealdb::{Database, SurrealDB},
-    Cursor, EventLog, EventLogError, QueryReturn, StoreError, SurrealDBError,
+    surrealdb::SurrealDB, Cursor, EventLog, EventLogError, QueryReturn, StoreError, SurrealDBError,
 };
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
@@ -41,7 +40,7 @@ impl SurrealEventLog {
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsError> {
         self.store
-            .connect(connstr, Database::Events)
+            .connect(connstr)
             .await
             .map_err(SurrealDBError::from)
             .map_err(Into::into)
