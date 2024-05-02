@@ -1,3 +1,4 @@
+mod auth;
 pub mod core;
 pub mod data_store;
 pub mod errors;
