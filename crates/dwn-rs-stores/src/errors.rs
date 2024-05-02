@@ -43,10 +43,10 @@ pub enum MessageStoreError {
     #[error("failed to decode cid")]
     CidDecodeError(#[source] ipld_core::cid::Error),
 
-    #[error("unable to perform query")]
+    #[error("unable to perform query: {0}")]
     QueryError(#[from] QueryError),
 
-    #[error("unable to create filters")]
+    #[error("unable to create filters: {0}")]
     FilterError(#[from] FilterError),
 }
 
