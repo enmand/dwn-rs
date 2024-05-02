@@ -10,6 +10,8 @@ use crate::{
 
 use super::models::{CreateData, GetData};
 
+const DATA_TABLE: &str = "data";
+
 #[async_trait]
 impl DataStore for SurrealDB {
     async fn open(&mut self) -> Result<(), DataStoreError> {
@@ -32,42 +34,41 @@ impl DataStore for SurrealDB {
     {
         pin_mut!(value);
 
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
+        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
 
-        self.db
-            .create::<Option<GetData>>(id.clone())
-            .content(CreateData {
-                cid: cid.to_string(),
-                data: Vec::new(),
-                tenant: tenant.to_string(),
-                record_id: record_id.to_string(),
+        let len = self
+            .as_tenant(tenant, |db| async move {
+                db.create::<Option<GetData>>(id.clone())
+                    .content(CreateData {
+                        cid: cid.to_string(),
+                        data: Vec::new(),
+                        tenant: tenant.to_string(),
+                        record_id: record_id.to_string(),
+                    })
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)?;
+
+                let mut len = 0;
+                while let Some(chunk) = value.next().await {
+                    let u = db
+                        .update::<Option<GetData>>(id.clone())
+                        .merge(CreateData {
+                            cid: cid.to_string(),
+                            data: chunk,
+                            tenant: tenant.to_string(),
+                            record_id: record_id.to_string(),
+                        })
+                        .await
+                        .map_err(SurrealDBError::from)
+                        .map_err(StoreError::from)?;
+
+                    len += u.unwrap().data.len();
+                }
+
+                Ok(len)
             })
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(DataStoreError::from)?;
-
-        let mut len = 0;
-        while let Some(chunk) = value.next().await {
-            let u = self
-                .db
-                .update::<Option<GetData>>(id.clone())
-                .merge(CreateData {
-                    cid: cid.to_string(),
-                    data: chunk,
-                    tenant: tenant.to_string(),
-                    record_id: record_id.to_string(),
-                })
-                .await
-                .map_err(SurrealDBError::from)
-                .map_err(StoreError::from)
-                .map_err(DataStoreError::from)?;
-
-            len += u.unwrap().data.len();
-        }
+            .await?;
 
         Ok(PutDataResults { size: len })
     }
@@ -78,19 +79,18 @@ impl DataStore for SurrealDB {
         record_id: String,
         cid: String,
     ) -> Result<GetDataResults, DataStoreError> {
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
+        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
 
         let res: GetData = self
-            .db
-            .select(id)
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(DataStoreError::from)?
-            .ok_or(DataStoreError::StoreError(StoreError::NotFound))?;
+            .as_tenant(tenant, |db| async move {
+                db.select(id)
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)
+                    .expect("failed to fetch from database")
+                    .ok_or(StoreError::NotFound)
+            })
+            .await?;
 
         if res.record_id != record_id {
             return Err(DataStoreError::StoreError(StoreError::NotFound));
@@ -108,22 +108,22 @@ impl DataStore for SurrealDB {
     }
 
     async fn delete(&self, tenant: &str, _: String, cid: String) -> Result<(), DataStoreError> {
-        let id = Thing::from((
-            Table::from(tenant.to_string()).to_string(),
-            Id::String(cid.to_string()),
-        ));
+        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
 
-        self.db
-            .delete::<Option<GetData>>(id)
-            .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)
-            .map_err(DataStoreError::from)?;
+        self.as_tenant(tenant, |db| async move {
+            db.delete::<Option<GetData>>(id)
+                .await
+                .map_err(SurrealDBError::from)
+                .map_err(StoreError::from)
+        })
+        .await?;
 
         Ok(())
     }
 
     async fn clear(&self) -> Result<(), DataStoreError> {
-        self.clear().await.map_err(DataStoreError::from)
+        self.clear(&Table::from(DATA_TABLE))
+            .await
+            .map_err(DataStoreError::from)
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::Bound;
-use std::{marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 use dwn_rs_core::MapValue;
@@ -27,7 +27,7 @@ where
 {
     binds: MapValue,
 
-    db: Arc<surrealdb::Surreal<Any>>,
+    db: surrealdb::Surreal<Any>,
 
     stmt: SelectStatement,
     from: String,
@@ -44,7 +44,7 @@ where
     U: DeserializeOwned,
     T: Directional + Default + Ordorable + Sync + Copy,
 {
-    pub fn new(db: Arc<surrealdb::Surreal<Any>>) -> Self {
+    pub fn new(db: surrealdb::Surreal<Any>) -> Self {
         Self {
             db,
             binds: MapValue::new(),

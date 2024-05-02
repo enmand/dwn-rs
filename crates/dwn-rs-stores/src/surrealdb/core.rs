@@ -1,9 +1,13 @@
-use std::sync::Arc;
+use std::collections::BTreeMap;
 
 use surrealdb::{
     engine::any::Any,
     iam::Level,
     opt::auth::{self},
+    sql::{
+        statements::{RemoveStatement, RemoveTableStatement},
+        Table,
+    },
     Surreal,
 };
 use ulid::Generator;
@@ -13,7 +17,7 @@ use crate::{surrealdb::auth::Auth, StoreError};
 use super::errors::SurrealDBError;
 
 pub struct SurrealDB {
-    pub(super) db: Arc<Surreal<Any>>,
+    pub(super) db: Surreal<Any>,
     constr: String,
     invalid: bool,
 
@@ -50,7 +54,7 @@ impl SurrealDB {
 
     pub fn new() -> Self {
         Self {
-            db: Arc::new(surrealdb::Surreal::init()),
+            db: surrealdb::Surreal::init(),
             constr: String::new(),
             invalid: false,
 
@@ -59,7 +63,7 @@ impl SurrealDB {
     }
 
     pub fn with_db(&mut self, db: surrealdb::Surreal<Any>) -> &mut Self {
-        self.db = Arc::new(db);
+        self.db = db;
         self
     }
 
@@ -106,25 +110,49 @@ impl SurrealDB {
             .await
             .map_err(Into::<SurrealDBError>::into)?;
 
-    pub(super) async fn clear(&self) -> Result<(), StoreError> {
-        self.db
-            .query(format!(
-                "REMOVE DATABASE {}",
-                Into::<String>::into(self.db_name)
-            ))
+        Ok(())
+    }
+
+    pub(super) async fn clear(&self, table: &Table) -> Result<(), StoreError> {
+        let mut res = self
+            .db
+            .query("INFO FOR NS")
             .await
-            .map_err(SurrealDBError::from)
-            .map_err(StoreError::from)?;
+            .map_err(SurrealDBError::from)?;
+
+        let databases = res
+            .take::<Option<BTreeMap<String, String>>>((0, "databases"))
+            .map_err(SurrealDBError::from)?;
+
+        for (db_name, _) in databases.unwrap() {
+            self.as_tenant(&db_name, |db| async move {
+                db.query(RemoveStatement::Table(RemoveTableStatement {
+                    name: table.to_string().into(),
+                    if_exists: false,
+                }))
+                .bind(("table", table.clone()))
+                .await
+                .map_err(SurrealDBError::from)?;
+
+                Ok(())
+            })
+            .await?;
+        }
 
         Ok(())
     }
-}
 
+    pub async fn as_tenant<F, O, Fut>(&self, tenant: &str, f: F) -> Result<O, StoreError>
+    where
+        F: FnOnce(Surreal<Any>) -> Fut,
+        Fut: std::future::Future<Output = Result<O, StoreError>>,
+    {
+        let db = self.db.to_owned();
+        db.use_db(tenant)
+            .into_owned()
+            .await
+            .map_err(SurrealDBError::from)?;
 
-        }
-    }
-}
-
-
+        f(db).await
     }
 }

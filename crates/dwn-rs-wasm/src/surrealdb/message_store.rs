@@ -38,7 +38,7 @@ impl SurrealMessageStore {
     #[wasm_bindgen]
     pub async fn connect(&mut self, connstr: &str) -> Result<(), JsValue> {
         self.store
-            .connect(connstr, dwn_rs_stores::surrealdb::Database::Messages)
+            .connect(connstr)
             .await
             .map_err(Into::<JsError>::into)
             .map_err(Into::into)
