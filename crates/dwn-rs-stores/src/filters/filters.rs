@@ -1,56 +1,122 @@
-use std::{collections::BTreeMap, ops::Bound};
+use std::{collections::BTreeMap, fmt::Display, ops::Bound};
 
 use serde::{ser::SerializeMap, Deserialize, Serialize};
 
 use dwn_rs_core::value::Value;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct Filters {
-    pub(crate) filters: Vec<BTreeMap<String, Filter>>,
+// FilterKey represents the key-type to filter over. Currently, this can be an index or a tag.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FilterKey {
+    Index(String),
+    Tag(String),
 }
 
-impl From<Vec<BTreeMap<String, Filter>>> for Filters {
-    fn from(filters: Vec<BTreeMap<String, Filter>>) -> Self {
-        Self { filters }
+impl Display for FilterKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FilterKey::Index(s) => write!(f, "{}", s),
+            FilterKey::Tag(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl FilterKey {
+    pub fn alias(&self, alias: &str) -> Alias {
+        match self {
+            FilterKey::Index(s) => (FilterKey::Index(s.clone()), format!("{}_{}", s, alias)),
+            FilterKey::Tag(s) => (FilterKey::Tag(s.clone()), format!("{}_{}", s, alias)),
+        }
+    }
+
+    pub fn count_set(&self, i: usize) -> Alias {
+        self.alias(&i.to_string())
+    }
+}
+
+// ValueFilter is a helper type that represents the filter types, and the application of that
+// filter itself.
+pub type ValueFilter<K> = BTreeMap<K, Filter>;
+
+// FilterSet is a set of fitlers across indexes and tags. Multiple filters can be applied.
+pub type Set<K> = Vec<ValueFilter<K>>;
+
+// FilterKey represents the key-type to filter over. Currently, this can be an index or a tag.
+pub type Alias = (FilterKey, String);
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Filters {
+    pub(crate) set: Set<FilterKey>,
+}
+
+impl From<Filters> for Set<Alias> {
+    fn from(filters: Filters) -> Self {
+        filters
+            .set
+            .iter()
+            .enumerate()
+            .map(|(i, k)| {
+                k.iter()
+                    .map(|(k, v)| (k.count_set(i), v.clone()))
+                    .collect::<ValueFilter<Alias>>()
+            })
+            .collect::<Set<Alias>>()
+    }
+}
+
+impl From<Set<FilterKey>> for Filters {
+    fn from(set: Set<FilterKey>) -> Self {
+        Self { set }
+    }
+}
+
+impl From<ValueFilter<FilterKey>> for Filters {
+    fn from(filter: ValueFilter<FilterKey>) -> Self {
+        Self { set: vec![filter] }
     }
 }
 
 impl PartialEq for Filters {
     fn eq(&self, other: &Self) -> bool {
-        self.filters.len() == other.filters.len()
-            && self
-                .filters
-                .iter()
-                .zip(other.filters.iter())
-                .all(|(a, b)| a.len() == b.len())
+        self.set == other.set
     }
 }
 
-impl<const N: usize, const M: usize, S, T> From<[[(S, T); N]; M]> for Filters
+impl<const N: usize, const M: usize, T> From<[[(FilterKey, T); N]; M]> for Filters
 where
-    S: Into<String> + Clone,
     T: Into<Filter> + Clone,
 {
-    fn from(filters: [[(S, T); N]; M]) -> Self {
+    fn from(filters: [[(FilterKey, T); N]; M]) -> Self {
         Self {
-            filters: filters
+            set: filters
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(|(k, v)| (k.clone().into(), v.clone().into()))
-                        .collect::<BTreeMap<String, Filter>>()
+                        .map(|(k, v)| (k.clone(), v.clone().into()))
+                        .collect::<ValueFilter<FilterKey>>()
                 })
-                .collect::<Vec<BTreeMap<String, Filter>>>(),
+                .collect::<Vec<ValueFilter<FilterKey>>>(),
         }
     }
 }
 
 impl IntoIterator for Filters {
-    type Item = BTreeMap<String, Filter>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type Item = ValueFilter<FilterKey>;
+    type IntoIter = std::vec::IntoIter<ValueFilter<FilterKey>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.filters.into_iter()
+        self.set.into_iter()
+    }
+}
+
+impl FromIterator<Filters> for Filters {
+    fn from_iter<I: IntoIterator<Item = Filters>>(iter: I) -> Self {
+        let mut set = Vec::new();
+
+        for filters in iter {
+            set.extend(filters.set);
+        }
+
+        Self { set }
     }
 }
 
@@ -59,6 +125,7 @@ pub enum Filter {
     Equal(Value),
     Range(Bound<Value>, Bound<Value>),
     OneOf(Vec<Value>),
+    Prefix(Value),
 }
 
 impl<'de> Deserialize<'de> for Filter {
@@ -115,24 +182,27 @@ impl<'de> Deserialize<'de> for Filter {
             {
                 let mut range = (Bound::Unbounded, Bound::Unbounded);
 
-                while let Some(key) = map.next_key::<String>()? {
+                while let Some((key, value)) = map.next_entry::<String, Value>()? {
                     match key.as_str() {
                         "lt" => match range.1 {
-                            Bound::Unbounded => range.1 = Bound::Excluded(map.next_value()?),
+                            Bound::Unbounded => range.1 = Bound::Excluded(value),
                             _ => return Err(serde::de::Error::custom("multiple upper bounds")),
                         },
                         "lte" => match range.1 {
-                            Bound::Unbounded => range.1 = Bound::Included(map.next_value()?),
+                            Bound::Unbounded => range.1 = Bound::Included(value),
                             _ => return Err(serde::de::Error::custom("multiple upper bounds")),
                         },
                         "gt" => match range.0 {
-                            Bound::Unbounded => range.0 = Bound::Excluded(map.next_value()?),
+                            Bound::Unbounded => range.0 = Bound::Excluded(value),
                             _ => return Err(serde::de::Error::custom("multiple lower bounds")),
                         },
                         "gte" => match range.0 {
-                            Bound::Unbounded => range.0 = Bound::Included(map.next_value()?),
+                            Bound::Unbounded => range.0 = Bound::Included(value),
                             _ => return Err(serde::de::Error::custom("multiple lower bounds")),
                         },
+                        "prefix" => {
+                            return Ok(Filter::Prefix(value));
+                        }
                         _ => return Err(serde::de::Error::custom("invalid range key")),
                     }
                 }
@@ -177,6 +247,11 @@ impl Serialize for Filter {
                 map.end()
             }
             Filter::OneOf(v) => v.serialize(serializer),
+            Filter::Prefix(v) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("prefix", v)?;
+                map.end()
+            }
         }
     }
 }
@@ -216,23 +291,29 @@ mod tests {
             output: Filters,
         }
 
-        let clean = &Filters {
-            filters: vec![vec![("foo".to_string(), Filter::Equal(Value::Number(1)))]
-                .into_iter()
-                .collect()],
-        };
+        let clean: Filters = vec![vec![(
+            FilterKey::Index("foo".into()),
+            Filter::Equal(Value::Number(1)),
+        )]
+        .into_iter()
+        .collect()]
+        .into();
 
         let tcs = vec![
             TestCase {
                 input: vec![BTreeMap::from([(
-                    "foo".to_string(),
+                    FilterKey::Index("foo".into()),
                     Filter::Equal(Value::Number(1)),
                 )])]
                 .into(),
                 output: clean.clone(),
             },
             TestCase {
-                input: [[("foo", Filter::Equal(Value::Number(1)))]].into(),
+                input: [[(
+                    FilterKey::Index("foo".into()),
+                    Filter::Equal(Value::Number(1)),
+                )]]
+                .into(),
                 output: clean.clone(),
             },
         ];
@@ -244,19 +325,27 @@ mod tests {
 
     #[test]
     fn test_filters_into_iter() {
-        let filters = Filters {
-            filters: vec![
-                vec![
-                    ("foo".to_string(), Filter::Equal(Value::Number(1))),
-                    ("bar".to_string(), Filter::Equal(Value::Number(2))),
-                ]
-                .into_iter()
-                .collect(),
-                vec![("baz".to_string(), Filter::Equal(Value::Number(3)))]
-                    .into_iter()
-                    .collect(),
-            ],
-        };
+        let filters: Filters = vec![
+            vec![
+                (
+                    FilterKey::Index("foo".into()),
+                    Filter::Equal(Value::Number(1)),
+                ),
+                (
+                    FilterKey::Index("bar".into()),
+                    Filter::Equal(Value::Number(2)),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            vec![(
+                FilterKey::Index("baz".into()),
+                Filter::Equal(Value::Number(3)),
+            )]
+            .into_iter()
+            .collect(),
+        ]
+        .into();
 
         let mut iter = filters.into_iter();
 
@@ -264,8 +353,14 @@ mod tests {
             iter.next(),
             Some(
                 vec![
-                    ("foo".to_string(), Filter::Equal(Value::Number(1))),
-                    ("bar".to_string(), Filter::Equal(Value::Number(2))),
+                    (
+                        FilterKey::Index("foo".into()),
+                        Filter::Equal(Value::Number(1))
+                    ),
+                    (
+                        FilterKey::Index("bar".into()),
+                        Filter::Equal(Value::Number(2))
+                    ),
                 ]
                 .into_iter()
                 .collect()
@@ -275,9 +370,12 @@ mod tests {
         assert_eq!(
             iter.next(),
             Some(
-                vec![("baz".to_string(), Filter::Equal(Value::Number(3)))]
-                    .into_iter()
-                    .collect()
+                vec![(
+                    FilterKey::Index("baz".into()),
+                    Filter::Equal(Value::Number(3))
+                )]
+                .into_iter()
+                .collect()
             )
         );
 

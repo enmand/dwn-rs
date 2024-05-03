@@ -169,10 +169,10 @@ impl MessageStore for SurrealDB {
     }
 
     async fn clear(&self) -> Result<(), MessageStoreError> {
-        // self.clear(&MESSAGES_TABLE.into())
-        //     .await
-        //     .map_err(MessageStoreError::from)?;
-        //
+        self.clear(&MESSAGES_TABLE.into())
+            .await
+            .map_err(MessageStoreError::from)?;
+
         Ok(())
     }
 }
