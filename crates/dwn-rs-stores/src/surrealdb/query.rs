@@ -1,6 +1,8 @@
-use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::ops::Bound;
+use std::{
+    fmt::Debug,
+    ops::{Bound, RangeBounds},
+};
 
 use async_trait::async_trait;
 use dwn_rs_core::MapValue;
@@ -12,13 +14,16 @@ use surrealdb::{
 };
 
 use super::expr::{SCond, SOrders};
-use crate::filters::{
-    errors::{FilterError, QueryError, ValueError},
-    filters::{Filter, Filters},
-    query::{Cursor, CursorValue, Pagination, Query, SortDirection},
-    Directional,
+use crate::{
+    filters::{
+        errors::{FilterError, QueryError, ValueError},
+        filters::{Filter, Filters},
+        query::{Cursor, CursorValue, Pagination, Query, SortDirection},
+        Directional,
+    },
+    FilterKey, Set,
 };
-use crate::Ordorable;
+use crate::{Alias, Ordorable};
 
 pub struct SurrealQuery<U, T>
 where
@@ -97,95 +102,63 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        self.stmt.cond = filters
-            .clone()
+        let filters = Into::<Set<Alias>>::into(filters.clone() as Filters)
             .into_iter()
-            .enumerate()
-            .map(|(s, k)| -> Vec<((String, String), Filter)> {
-                k.into_iter()
-                    .map(|(k, v)| ((k.clone(), format!("{}_{}", k, &s)), v))
-                    .collect()
-            })
-            .map(|f| -> Result<SCond, ValueError> {
-                match f
-                    .into_iter()
-                    .map(|((k, var), val)| match val {
-                        Filter::Equal(v) => {
-                            self.binds.insert(var.clone(), v);
+            .filter_map(|f| {
+                f.into_iter()
+                    .map(|((fk, alias), val)| {
+                        let k = match fk {
+                            FilterKey::Tag(_) => format!("tags.{}", fk),
+                            _ => fk.to_string(),
+                        };
 
-                            Ok(SCond::try_from((k, Operator::Equal, format!("${}", var)))?)
-                        }
-                        Filter::Range(lower, upper) => Ok(
-                            match (
-                                match lower {
-                                    Bound::Included(l) => Some((
-                                        Operator::MoreThanOrEqual,
-                                        format!("{}_lower", var),
-                                        l,
-                                    )),
-                                    Bound::Excluded(l) => {
-                                        Some((Operator::MoreThan, format!("{}_lower", var), l))
-                                    }
-                                    _ => None,
-                                },
-                                match upper {
-                                    Bound::Included(u) => Some((
-                                        Operator::LessThanOrEqual,
-                                        format!("{}_upper", var),
-                                        u,
-                                    )),
-                                    Bound::Excluded(u) => {
-                                        Some((Operator::LessThan, format!("{}_upper", var), u))
-                                    }
-                                    _ => None,
-                                },
-                            ) {
-                                (Some(l), Some(u)) => {
-                                    self.binds.insert(l.1.clone(), l.2);
-                                    self.binds.insert(u.1.clone(), u.2);
+                        match val {
+                            Filter::Prefix(v) => {
+                                self.binds.insert(alias.clone(), v);
 
-                                    SCond::try_from((k.clone(), l.0, format!("${}", l.1)))?
-                                        .and(SCond::try_from((k, u.0, format!("${}", u.1)))?)
-                                }
-                                (Some(l), None) => {
-                                    self.binds.insert(l.1.to_string(), l.2);
+                                Ok(Value::Function(Box::new(Function::Normal(
+                                    "string::startsWith".into(),
+                                    vec![Idiom::from(k).into(), format!("${}", alias).into()],
+                                )))
+                                .into())
+                            }
+                            Filter::Equal(v) => {
+                                self.binds.insert(alias.clone(), v);
 
-                                    SCond::try_from((k, l.0, format!("${}", l.1)))?
-                                }
-                                (None, Some(u)) => {
-                                    self.binds.insert(u.1.to_string(), u.2);
+                                Ok((k, Operator::Equal, format!("${}", alias)).try_into()?)
+                            }
+                            Filter::Range(lower, upper) => {
+                                let (cond, binds) =
+                                    handle_range_filter((k, alias), (lower, upper))?;
 
-                                    SCond::try_from((k, u.0, format!("${}", u.1)))?
-                                }
-                                (None, None) => {
-                                    return Err(FilterError::UnparseableFilter(
-                                        "Could not parse filter".to_owned(),
-                                    )
-                                    .into())
-                                }
-                            },
-                        ),
-                        Filter::OneOf(v) => {
-                            self.binds
-                                .insert(var.clone(), dwn_rs_core::value::Value::Array(v));
+                                self.binds.extend(binds);
+                                Ok(cond)
+                            }
+                            Filter::OneOf(v) => {
+                                self.binds.insert(alias.clone(), v.into());
 
-                            Ok(SCond::try_from((k, Operator::Inside, format!("${}", var)))?)
+                                Ok((k, Operator::Inside, format!("${}", alias)).try_into()?)
+                            }
                         }
                     })
-                    .filter_map(|e: Result<SCond, ValueError>| e.ok())
-                    .reduce(|acc: SCond, e: SCond| acc.and(e))
-                {
-                    Some(cond) => Ok(cond),
-                    None => Err(FilterError::UnparseableFilter(
-                        "Could not parse filter".to_owned(),
+                    .reduce(
+                        |acc: Result<SCond, FilterError>, e: Result<SCond, FilterError>| {
+                            Ok(acc?.and(e?))
+                        },
                     )
-                    .into()),
-                }
             })
-            .filter_map(|e| e.ok())
-            .map(|c| SCond(Cond(Value::Subquery(Box::new(Subquery::Value(c.into()))))))
-            .reduce(|acc, e| acc.or(e))
-            .map(|c| c.into());
+            .map(|c| {
+                Ok(SCond(Cond(Value::Subquery(Box::new(Subquery::Value(
+                    c?.into(),
+                ))))))
+            })
+            .reduce(
+                |acc: Result<SCond, FilterError>, e: Result<SCond, FilterError>| Ok(acc?.or(e?)),
+            );
+
+        if let Some(filters) = filters {
+            self.stmt.cond = Some(filters?.into());
+        }
 
         Ok(self)
     }
@@ -301,6 +274,56 @@ where
 
 pub(super) fn value(s: &str) -> Result<Value, ValueError> {
     surreal_value(s).map_err(|e| ValueError::InvalidValue(e.to_string()))
+}
+
+fn handle_range_filter<R>(
+    (fk, alias): (String, String),
+    range: R,
+) -> Result<(SCond, MapValue), FilterError>
+where
+    R: RangeBounds<dwn_rs_core::Value> + Debug,
+{
+    let lower = match range.start_bound() {
+        Bound::Included(l) => Some((Operator::MoreThanOrEqual, l)),
+        Bound::Excluded(l) => Some((Operator::MoreThan, l)),
+        _ => None,
+    };
+
+    let upper = match range.end_bound() {
+        Bound::Included(u) => Some((Operator::LessThanOrEqual, u)),
+        Bound::Excluded(u) => Some((Operator::LessThan, u)),
+        _ => None,
+    };
+
+    match (lower, upper) {
+        (Some((l_op, l)), Some((u_op, u))) => {
+            let l_cond = SCond::try_from((fk.clone(), l_op, format!("${}_lower", alias)))?;
+            let u_cond = SCond::try_from((fk.clone(), u_op, format!("${}_upper", alias)))?;
+
+            let mut binds = MapValue::new();
+            binds.insert(format!("{}_lower", alias), l.clone());
+            binds.insert(format!("{}_upper", alias), u.clone());
+
+            Ok((l_cond.and(u_cond), binds))
+        }
+        (Some((l_op, l)), None) => {
+            let l_cond = SCond::try_from((fk, l_op, format!("${}_lower", alias)))?;
+
+            let mut binds = MapValue::new();
+            binds.insert(format!("{}_lower", alias), l.clone());
+
+            Ok((l_cond, binds))
+        }
+        (None, Some((u_op, u))) => {
+            let u_cond = SCond::try_from((fk, u_op, format!("${}_upper", alias)))?;
+
+            let mut binds = MapValue::new();
+            binds.insert(format!("{}_upper", alias), u.clone());
+
+            Ok((u_cond, binds))
+        }
+        _ => Err(FilterError::UnparseableFilter("Invalid range".to_owned())),
+    }
 }
 
 /// Create the cursor condition for the query to SurrealDB using the provided cursor and

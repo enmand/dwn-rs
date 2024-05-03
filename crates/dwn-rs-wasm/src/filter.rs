@@ -1,12 +1,9 @@
 use std::collections::BTreeMap;
 
 use dwn_rs_core::MapValue;
-use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::{Filter as DBFilter, Filters};
-
-use crate::ser::serializer;
+use dwn_rs_stores::{FilterKey, Filters, ValueFilter};
 
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";
@@ -27,41 +24,50 @@ extern "C" {
     pub type IndexMap;
 }
 
-impl From<&Filter> for Filters {
-    fn from(value: &Filter) -> Self {
-        match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, DBFilter>>>(value.into()) {
-            Ok(m) => m.into(),
-            Err(_) => Filters::default(),
+impl From<Filter> for Filters {
+    fn from(value: Filter) -> Self {
+        match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, dwn_rs_stores::Filter>>>(
+            value.into(),
+        ) {
+            Ok(m) => m
+                .into_iter()
+                .map(|f: BTreeMap<String, dwn_rs_stores::Filter>| {
+                    let fs = f
+                        .into_iter()
+                        .fold(ValueFilter::default(), |mut filters, (k, v)| {
+                            if let Some(tag) = k.strip_prefix("tag.") {
+                                filters.insert(FilterKey::Tag(tag.to_string()), v);
+                            } else {
+                                filters.insert(FilterKey::Index(k), v);
+                            }
+
+                            filters
+                        });
+                    Into::<Filters>::into(fs)
+                })
+                .collect(),
+            Err(err) => panic!("{}", err),
         }
     }
 }
 
-impl TryFrom<Filter> for Filters {
-    type Error = JsError;
-
-    fn try_from(value: Filter) -> Result<Self, Self::Error> {
-        serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, DBFilter>>>(value.into())
-            .map(|m| m.into())
-            .map_err(Into::into)
-    }
-}
-
-impl From<Filters> for Filter {
-    fn from(value: Filters) -> Self {
-        if let Ok(m) = value.serialize(&serializer()) {
-            return m.into();
-        }
-
-        wasm_bindgen::JsValue::default().into()
-    }
-}
-
-impl From<IndexMap> for MapValue {
+impl From<IndexMap> for (MapValue, MapValue) {
     fn from(value: IndexMap) -> Self {
-        if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
-            return m;
+        if let Ok(m) = serde_wasm_bindgen::from_value::<MapValue>(value.into()) {
+            return m.into_iter().fold(
+                (MapValue::new(), MapValue::new()),
+                |(mut indexes, mut tags), (k, v)| {
+                    if let Some(tag) = k.strip_prefix("tag.") {
+                        tags.insert(tag.to_string(), v);
+                    } else {
+                        indexes.insert(k, v);
+                    }
+
+                    (indexes, tags)
+                },
+            );
         }
 
-        MapValue::default()
+        (MapValue::default(), MapValue::default())
     }
 }

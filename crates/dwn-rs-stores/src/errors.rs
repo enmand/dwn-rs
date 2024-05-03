@@ -70,7 +70,7 @@ pub enum EventLogError {
     #[error("error operating the store: {0}")]
     StoreError(#[from] StoreError),
 
-    #[error("unable to create filters")]
+    #[error("unable to create filters: {0}")]
     FilterError(#[from] FilterError),
 
     #[error("unable to perform query")]

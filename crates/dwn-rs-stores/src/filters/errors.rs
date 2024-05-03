@@ -5,9 +5,6 @@ pub enum ValueError {
     #[error("invalid value: {0}")]
     InvalidValue(String),
 
-    #[error("invalid value in filter: {0}")]
-    FiltersError(#[from] FilterError),
-
     #[error("unparseable value: {0}")]
     UnparseableValue(String),
 }
@@ -31,4 +28,7 @@ pub enum QueryError {
 pub enum FilterError {
     #[error("unable to create filter: {0}")]
     UnparseableFilter(String),
+
+    #[error("invalid value in filter: {0}")]
+    Value(#[from] ValueError),
 }
