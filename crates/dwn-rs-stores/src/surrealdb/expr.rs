@@ -127,6 +127,12 @@ impl TryFrom<(String, Operator, String)> for SCond {
     }
 }
 
+impl From<Value> for SCond {
+    fn from(v: Value) -> Self {
+        Self(Cond(v))
+    }
+}
+
 impl From<(SCond, Operator, SCond)> for SCond {
     fn from((l, o, r): (SCond, Operator, SCond)) -> Self {
         Self(Cond(Value::Expression(Box::new(Expression::Binary {

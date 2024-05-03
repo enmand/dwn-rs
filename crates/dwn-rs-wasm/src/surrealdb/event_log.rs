@@ -81,7 +81,7 @@ impl SurrealEventLog {
         tenant: &str,
         cursor: Option<JSPaginationCursor>,
     ) -> Result<JSQueryReturn, JsError> {
-        self.query_events(tenant, &Filter::from(JsValue::from(Array::new())), cursor)
+        self.query_events(tenant, Filter::from(JsValue::from(Array::new())), cursor)
             .await
     }
 
@@ -89,7 +89,7 @@ impl SurrealEventLog {
     pub async fn query_events(
         &self,
         tenant: &str,
-        filter: &Filter,
+        filter: Filter,
         cursor: Option<JSPaginationCursor>,
     ) -> Result<JSQueryReturn, JsError> {
         let cursor = match cursor {

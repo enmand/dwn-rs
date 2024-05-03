@@ -97,14 +97,16 @@ impl SurrealMessageStore {
                 ) => return Ok(JsValue::undefined().into()),
                 _ => return Err(Into::<JsError>::into(e).into()),
             },
-        })
+        };
+
+        Ok(msg)
     }
 
     #[wasm_bindgen]
     pub async fn query(
         &self,
         tenant: &str,
-        filter: &Filter,
+        filter: Filter,
         message_sort: Option<JSMessageSort>,
         pagination: Option<JSPagination>,
         options: Option<MessageStoreOptions>,
@@ -131,7 +133,6 @@ impl SurrealMessageStore {
         {
             Ok(v) => v.into(),
             Err(e) => {
-                web_sys::console::log_1(&e.to_string().into());
                 return Err(Into::<JsError>::into(e).into());
             }
         };

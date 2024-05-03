@@ -19,11 +19,14 @@ import { MessageSort, Pagination } from "@tbd54566975/dwn-sdk-js";
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(typescript_type = "QueryReturn")]
+    #[derive(Clone)]
     pub type JSQueryReturn;
 
+    #[derive(Clone)]
     #[wasm_bindgen(typescript_type = "MessageSort")]
     pub type JSMessageSort;
 
+    #[derive(Clone)]
     #[wasm_bindgen(typescript_type = "Pagination")]
     pub type JSPagination;
 
