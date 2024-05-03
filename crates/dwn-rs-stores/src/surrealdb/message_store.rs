@@ -34,6 +34,7 @@ impl MessageStore for SurrealDB {
         tenant: &str,
         mut message: Message,
         indexes: MapValue,
+        tags: MapValue,
     ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Value> = None;
         if message.extra.contains_key("encodedData") {
@@ -52,6 +53,7 @@ impl MessageStore for SurrealDB {
                     encoded_data: data,
                     tenant: tenant.to_string(),
                     indexes,
+                    tags,
                 })
                 .await
                 .map_err(SurrealDBError::from)

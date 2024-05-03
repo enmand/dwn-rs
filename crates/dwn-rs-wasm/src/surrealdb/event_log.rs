@@ -67,8 +67,9 @@ impl SurrealEventLog {
         cid: &str,
         indexes: IndexMap,
     ) -> Result<(), JsError> {
+        let (indexes, _) = indexes.into();
         self.store
-            .append(tenant, cid.to_string(), indexes.into())
+            .append(tenant, cid.to_string(), indexes)
             .await
             .map_err(EventLogError::from)
             .map_err(Into::into)

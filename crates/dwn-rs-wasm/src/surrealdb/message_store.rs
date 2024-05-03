@@ -68,9 +68,11 @@ impl SurrealMessageStore {
     ) -> Result<(), JsValue> {
         check_aborted(options)?;
 
+        let (indexes, tags) = indexes.into();
+
         let _: Result<_, JsError> = self
             .store
-            .put(tenant, message.into(), indexes.into())
+            .put(tenant, message.into(), indexes, tags)
             .await
             .map_err(Into::<JsError>::into)
             .map_err(Into::into);
@@ -87,7 +89,7 @@ impl SurrealMessageStore {
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
 
-        Ok(match self.store.get(tenant, cid).await {
+        let msg: GenericMessage = match self.store.get(tenant, cid).await {
             Ok(v) => v.into(),
             Err(e) => match e {
                 dwn_rs_stores::MessageStoreError::StoreError(
