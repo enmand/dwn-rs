@@ -15,6 +15,7 @@ pub(crate) struct CreateEncodedMessage {
     pub(super) encoded_data: Option<Value>,
     #[serde(flatten)]
     pub(super) indexes: MapValue,
+    pub(super) tags: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

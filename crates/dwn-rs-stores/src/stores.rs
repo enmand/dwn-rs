@@ -22,6 +22,7 @@ pub trait MessageStore {
         tenant: &str,
         message: Message,
         indexes: MapValue,
+        tags: MapValue,
     ) -> Result<Cid, MessageStoreError>;
 
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError>;
