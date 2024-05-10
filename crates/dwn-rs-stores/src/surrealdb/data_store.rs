@@ -34,7 +34,7 @@ impl DataStore for SurrealDB {
     {
         pin_mut!(value);
 
-        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
+        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         let len = self
             .as_tenant(tenant, |db| async move {
@@ -77,9 +77,9 @@ impl DataStore for SurrealDB {
         &self,
         tenant: &str,
         record_id: String,
-        cid: String,
+        _: String,
     ) -> Result<GetDataResults, DataStoreError> {
-        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
+        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         let res: GetData = self
             .as_tenant(tenant, |db| async move {
@@ -107,8 +107,13 @@ impl DataStore for SurrealDB {
         })
     }
 
-    async fn delete(&self, tenant: &str, _: String, cid: String) -> Result<(), DataStoreError> {
-        let id = Thing::from((DATA_TABLE, Id::String(cid.to_string())));
+    async fn delete(
+        &self,
+        tenant: &str,
+        record_id: String,
+        _: String,
+    ) -> Result<(), DataStoreError> {
+        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         self.as_tenant(tenant, |db| async move {
             db.delete::<Option<GetData>>(id)
