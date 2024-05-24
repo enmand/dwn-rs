@@ -13,7 +13,7 @@ jobs:
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: nightly
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
@@ -23,7 +23,7 @@ jobs:
         with:
           command: install
           args: --debug cargo-make
-          toolchain: stable
+          toolchain: nightly
       - name: Run CI
         uses: actions-rs/cargo@v1
         env:
@@ -34,7 +34,7 @@ jobs:
         with:
           command: make
           args: --no-workspace workspace-ci-flow
-          toolchain: stable
+          toolchain: nightly
   wasm-tests:
     name: "WASM (node tests)"
     runs-on: ubuntu-latest
