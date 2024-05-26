@@ -126,13 +126,13 @@ impl SurrealDB {
 
         for (db_name, _) in databases.unwrap() {
             self.as_tenant(&db_name, |db| async move {
-                db.query(RemoveStatement::Table(RemoveTableStatement {
-                    name: table.to_string().into(),
-                    if_exists: false,
-                }))
-                .bind(("table", table.clone()))
-                .await
-                .map_err(SurrealDBError::from)?;
+                let mut rts = RemoveTableStatement::default();
+                rts.name = table.to_string().into();
+                rts.if_exists = false;
+                db.query(RemoveStatement::Table(rts))
+                    .bind(("table", table.clone()))
+                    .await
+                    .map_err(SurrealDBError::from)?;
 
                 Ok(())
             })

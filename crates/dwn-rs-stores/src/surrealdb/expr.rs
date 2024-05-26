@@ -19,28 +19,11 @@ where
     S: Into<String>,
 {
     fn from((v, d): (S, bool)) -> Self {
-        Self(Order {
-            order: Idiom::from(v.into()),
-            direction: d,
-            random: false,
-            collate: false,
-            numeric: false,
-        })
-    }
-}
+        let mut o = Order::default();
+        o.order = Idiom::from(v.into());
+        o.direction = d;
 
-impl<S> From<(S, bool, bool)> for SOrder
-where
-    S: Into<String>,
-{
-    fn from((v, d, c): (S, bool, bool)) -> Self {
-        Self(Order {
-            order: Idiom::from(v.into()),
-            direction: d,
-            random: false,
-            collate: c,
-            numeric: false,
-        })
+        Self(o)
     }
 }
 
@@ -85,7 +68,10 @@ impl From<Vec<(&str, bool)>> for SOrders {
 
 impl From<SOrders> for Orders {
     fn from(s: SOrders) -> Self {
-        Self(s.0.into_iter().map(Into::<Order>::into).collect())
+        let mut o = Orders::default();
+        o.0 = s.0.into_iter().map(Into::<Order>::into).collect();
+
+        o
     }
 }
 
@@ -96,7 +82,9 @@ pub struct SCond(pub Cond);
 
 impl SCond {
     pub fn new() -> Self {
-        Self(Cond(Value::None))
+        let mut cond = Cond::default();
+        cond.0 = Value::None;
+        Self(cond)
     }
 }
 
@@ -108,44 +96,68 @@ impl From<SCond> for Cond {
 
 impl From<SCond> for Value {
     fn from(c: SCond) -> Self {
-        match c.0 {
-            Cond(v) => v,
-        }
+        c.0 .0
     }
 }
 
 impl TryFrom<(String, Operator, String)> for SCond {
     type Error = ValueError;
     fn try_from((l, o, r): (String, Operator, String)) -> Result<Self, Self::Error> {
-        Ok(Self(Cond(Value::Expression(Box::new(
-            Expression::Binary {
-                l: value(l.as_str())?,
-                o,
-                r: value(r.as_str())?,
-            },
-        )))))
+        let mut cond = Cond::default();
+
+        cond.0 = Value::Expression(Box::new(Expression::Binary {
+            l: value(l.as_str())?,
+            o,
+            r: value(r.as_str())?,
+        }));
+
+        Ok(Self(cond))
+    }
+}
+
+impl TryFrom<(String, Operator, Value)> for SCond {
+    type Error = ValueError;
+    fn try_from((l, o, r): (String, Operator, Value)) -> Result<Self, Self::Error> {
+        let mut cond = Cond::default();
+
+        cond.0 = Value::Expression(Box::new(Expression::Binary {
+            l: value(l.as_str())?,
+            o,
+            r,
+        }));
+
+        Ok(Self(cond))
     }
 }
 
 impl From<Value> for SCond {
     fn from(v: Value) -> Self {
-        Self(Cond(v))
+        let mut cond = Cond::default();
+        cond.0 = v;
+
+        Self(cond)
     }
 }
 
 impl From<(SCond, Operator, SCond)> for SCond {
     fn from((l, o, r): (SCond, Operator, SCond)) -> Self {
-        Self(Cond(Value::Expression(Box::new(Expression::Binary {
+        let mut cond = Cond::default();
+        cond.0 = Value::Expression(Box::new(Expression::Binary {
             l: l.into(),
             o,
             r: r.into(),
-        }))))
+        }));
+
+        Self(cond)
     }
 }
 
 impl From<Expression> for SCond {
     fn from(e: Expression) -> Self {
-        Self(Cond(Value::Expression(Box::new(e))))
+        let mut cond = Cond::default();
+        cond.0 = Value::Expression(Box::new(e));
+
+        Self(cond)
     }
 }
 
@@ -165,8 +177,6 @@ impl SCond {
     }
 
     pub fn to_value(&self) -> &Value {
-        match &self.0 {
-            Cond(v) => v,
-        }
+        &self.0 .0
     }
 }
