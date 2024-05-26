@@ -49,8 +49,6 @@ args = [
 
 [tasks.coverage_grcov_build_nightly.env]
 "CARGO_BUILD_TARGET_DIR" = "${COVERAGE_TARGET_DIRECTORY}"
-"RUSTFLAGS" = "-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off"
-"RUSTDOCFLAGS" = "-Cpanic=abort"
 
 [tasks.coverage_grcov_build_stable]
 condition = { rust_version = { min = "1.60.0" } }
@@ -64,8 +62,6 @@ args = [
 
 [tasks.coverage_grcov_build_stable.env]
 "CARGO_BUILD_TARGET_DIR" = "${COVERAGE_TARGET_DIRECTORY}"
-"RUSTFLAGS" = "-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off"
-"RUSTDOCFLAGS" = "-Cpanic=abort"
 
 
 [tasks.coverage_grcov_run_test_nightly]
