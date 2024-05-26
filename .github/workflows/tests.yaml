@@ -28,6 +28,8 @@ jobs:
         uses: actions-rs/cargo@v1
         env:
           CARGO_MAKE_RUN_CODECOV: true
+          RUSTFLAGS: -Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off
+          RUSTDOCFLAGS: -Cpanic=abort
         with:
           command: make
           args: --no-workspace workspace-ci-flow
