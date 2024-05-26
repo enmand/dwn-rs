@@ -47,7 +47,7 @@ serde = { version = "1.0.183", features = ["derive"] }
 serde_ipld_dagcbor = "0.6.0"
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
-surrealdb = { version = "1.4.2", default-features = false, optional = true, features = [
+surrealdb = { version = "1.5.1", default-features = false, optional = true, features = [
     "sql2",
 ] }
 

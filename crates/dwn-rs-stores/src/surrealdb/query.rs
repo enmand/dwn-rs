@@ -89,7 +89,9 @@ where
         )
         .into();
 
-        self.stmt.what = Values(vec![what]);
+        let mut values = Values::default();
+        values.0.push(what);
+        self.stmt.what = values;
 
         self
     }
@@ -129,10 +131,13 @@ where
                             }
                             Filter::Range(lower, upper) => {
                                 let (cond, binds) =
-                                    handle_range_filter((k, alias), (lower, upper))?;
+                                    handle_range_filter((k.clone(), alias), (lower, upper))?;
+
+                                let not_none: SCond =
+                                    (k, Operator::NotEqual, Value::None).try_into()?;
 
                                 self.binds.extend(binds);
-                                Ok(cond)
+                                Ok(cond.and(not_none))
                             }
                             Filter::OneOf(v) => {
                                 self.binds.insert(alias.clone(), v.into());
@@ -148,9 +153,9 @@ where
                     )
             })
             .map(|c| {
-                Ok(SCond(Cond(Value::Subquery(Box::new(Subquery::Value(
-                    c?.into(),
-                ))))))
+                let mut cond = Cond::default();
+                cond.0 = Value::Subquery(Box::new(Subquery::Value(c?.into())));
+                Ok(SCond(cond))
             })
             .reduce(
                 |acc: Result<SCond, FilterError>, e: Result<SCond, FilterError>| Ok(acc?.or(e?)),
@@ -172,7 +177,9 @@ where
         if let Some(p) = pagination {
             if let Some(l) = p.limit {
                 self.limit = Some(l);
-                self.stmt.limit = Some(Limit(Value::Number(Number::from(l + 1))));
+                let mut limit = Limit::default();
+                limit.0 = Value::Number(Number::from(l + 1));
+                self.stmt.limit = Some(limit);
             }
 
             if let Some(c) = p.cursor {
@@ -222,14 +229,15 @@ where
                 binds.append(&mut cursor_binds);
 
                 if let Some(filters) = stmt.cond {
-                    Some(Cond(
-                        Expression::Binary {
-                            l: filters.0,
-                            o: Operator::And,
-                            r: conds.0,
-                        }
-                        .into(),
-                    ))
+                    let mut cond = Cond::default();
+                    cond.0 = Expression::Binary {
+                        l: filters.0,
+                        o: Operator::And,
+                        r: conds.0,
+                    }
+                    .into();
+
+                    Some(cond)
                 } else {
                     Some(conds)
                 }
@@ -388,7 +396,9 @@ fn cursor_cond<T: Ordorable + Directional>(
             .into(),
         )));
 
-        return Ok(Some((Cond(cur_cond), binds)));
+        let mut cond = Cond::default();
+        cond.0 = cur_cond;
+        return Ok(Some((cond, binds)));
     }
 
     Ok(None)
