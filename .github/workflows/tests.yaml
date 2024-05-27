@@ -28,7 +28,9 @@ jobs:
         uses: actions-rs/cargo@v1
         env:
           CARGO_MAKE_RUN_CODECOV: true
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          super_secret: ${{ secrets.CODECOV_TOKEN }}
           command: make
           args: --no-workspace workspace-ci-flow
           toolchain: stable
