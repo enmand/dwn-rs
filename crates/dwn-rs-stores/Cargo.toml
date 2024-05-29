@@ -10,23 +10,15 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["surreal-lib"]
-surreal = []
-surreal-lib = [
-    "surreal",
+surrealdb = [
     "surrealdb/rustls",
     "surrealdb/kv-mem",
-    "surrealdb/kv-speedb",
     "surrealdb/protocol-ws",
     "surrealdb/protocol-http",
 ]
-surreal-wasm = [
-    "surreal",
-    "surrealdb/rustls",
-    "surrealdb/kv-mem",
-    "surrealdb/kv-indxdb",
-    "surrealdb/protocol-ws",
-    "surrealdb/protocol-http",
-]
+surreal-lib = ["surrealdb", "surrealdb/kv-speedb"]
+surreal-wasm = ["surrealdb", "surrealdb/kv-indxdb"]
+
 
 [dependencies]
 async-stream = "0.3.5"
