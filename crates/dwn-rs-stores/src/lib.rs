@@ -6,8 +6,8 @@ pub use errors::*;
 pub use filters::{errors::*, filters::*, query::*};
 pub use stores::*;
 
-#[cfg(feature = "surreal")]
+#[cfg(feature = "surrealdb")]
 pub mod surrealdb;
 
-#[cfg(feature = "surreal")]
+#[cfg(feature = "surrealdb")]
 pub use surrealdb::*;
