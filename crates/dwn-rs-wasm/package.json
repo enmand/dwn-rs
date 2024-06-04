@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@tbd54566975/dwn-sdk-js": "0.3.4",
-    "@types/readable-stream": "4.0.12",
+    "@types/readable-stream": "4.0.14",
     "readable-stream": "4.5.2"
   },
   "devDependencies": {
