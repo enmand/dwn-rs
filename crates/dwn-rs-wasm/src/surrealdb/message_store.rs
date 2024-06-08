@@ -1,3 +1,4 @@
+use dwn_rs_core::{GenericDescriptor, MapValue};
 use dwn_rs_stores::{surrealdb::SurrealDB, MessageStore};
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;
@@ -89,7 +90,11 @@ impl SurrealMessageStore {
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
 
-        let msg: GenericMessage = match self.store.get(tenant, cid).await {
+        let msg: GenericMessage = match self
+            .store
+            .get::<GenericDescriptor, MapValue>(tenant, cid)
+            .await
+        {
             Ok(v) => v.into(),
             Err(e) => match e {
                 dwn_rs_stores::MessageStoreError::StoreError(

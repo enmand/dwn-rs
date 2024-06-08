@@ -1,4 +1,4 @@
-use dwn_rs_core::Message;
+use dwn_rs_core::{Descriptor, Fields, Message};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -34,11 +34,19 @@ extern "C" {
     pub type JSPaginationCursor;
 }
 
-impl From<QueryReturn<Message>> for JSQueryReturn {
-    fn from(value: QueryReturn<Message>) -> Self {
+impl<D, F> From<QueryReturn<Message<D, F>>> for JSQueryReturn
+where
+    D: Descriptor + Serialize,
+    F: Fields + Serialize,
+{
+    fn from(value: QueryReturn<Message<D, F>>) -> Self {
         #[derive(Serialize)]
-        struct Wrapper<'a> {
-            messages: &'a [Message],
+        struct Wrapper<'a, D, F>
+        where
+            D: Descriptor + Serialize,
+            F: Fields + Serialize,
+        {
+            messages: &'a [Message<D, F>],
             cursor: Option<Cursor>,
         }
 
