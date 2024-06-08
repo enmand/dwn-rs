@@ -19,7 +19,7 @@ where
 mod tests {
     use chrono::SecondsFormat;
 
-    use crate::Descriptor;
+    use crate::GenericDescriptor;
 
     use super::*;
 
@@ -31,7 +31,7 @@ mod tests {
             timestamp: String,
         }
         let now = Utc::now();
-        let d = Descriptor {
+        let d = GenericDescriptor {
             timestamp: Some(now),
             ..Default::default()
         };

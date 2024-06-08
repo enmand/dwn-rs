@@ -10,7 +10,7 @@ use crate::{
     Cursor, DataStoreError, EventLogError, Filters, MessageSort, MessageStoreError, Pagination,
     QueryReturn, ResumableTaskStoreError,
 };
-use dwn_rs_core::{MapValue, Message};
+use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message};
 
 #[async_trait]
 pub trait MessageStore {
@@ -18,15 +18,19 @@ pub trait MessageStore {
 
     async fn close(&mut self);
 
-    async fn put(
+    async fn put<D: Descriptor + Serialize + Send, F: Fields + Serialize + Send>(
         &self,
         tenant: &str,
-        message: Message,
+        message: Message<D, F>,
         indexes: MapValue,
         tags: MapValue,
     ) -> Result<Cid, MessageStoreError>;
 
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError>;
+    async fn get<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
+        &self,
+        tenant: &str,
+        cid: String,
+    ) -> Result<Message<D, F>, MessageStoreError>;
 
     async fn query(
         &self,
@@ -34,7 +38,7 @@ pub trait MessageStore {
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message>, MessageStoreError>;
+    ) -> Result<QueryReturn<Message<GenericDescriptor, MapValue>>, MessageStoreError>;
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError>;
 
