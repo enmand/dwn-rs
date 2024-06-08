@@ -1,6 +1,7 @@
-pub mod message;
+pub mod auth;
+pub mod messages;
 mod serde;
 pub mod value;
 
-pub use message::*;
+pub use messages::*;
 pub use value::*;
