@@ -1,46 +1,36 @@
-use crate::{value::Value, MapValue};
+pub mod records;
+
 use chrono::{DateTime, Utc};
+pub use records::*;
+
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct JWS {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub payload: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub signatures: Option<Vec<SignatureEntry>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub header: Option<MapValue>,
-    #[serde(flatten)]
-    pub extra: MapValue,
+use crate::{auth::JWS, MapValue, Value};
+
+pub trait Descriptor: PartialEq + Default {}
+pub trait Fields: PartialEq + Default {
+    fn contains_key(&self, key: &str) -> bool;
+    fn insert(&mut self, key: String, value: Value);
+    fn remove(&mut self, key: &str) -> Option<Value>;
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct SignatureEntry {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub payload: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub protected: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub signature: Option<String>,
-    #[serde(flatten)]
-    pub extra: MapValue,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct Message {
-    pub descriptor: Descriptor,
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct Message<D: Descriptor, F: Fields> {
+    pub descriptor: D,
     #[serde(rename = "recordId", skip_serializing_if = "Option::is_none")]
     pub record_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Vec<u8>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<JWS>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation: Option<JWS>,
     #[serde(flatten)]
-    pub extra: MapValue,
+    pub fields: F,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct Descriptor {
+pub struct GenericDescriptor {
     pub interface: String,
     pub method: String,
     #[serde(rename = "dataSize", skip_serializing_if = "Option::is_none")]
@@ -71,6 +61,21 @@ pub struct Descriptor {
     pub definition: Option<Value>,
     #[serde(flatten)]
     pub extra: MapValue,
+}
+
+impl Descriptor for GenericDescriptor {}
+impl Fields for MapValue {
+    fn contains_key(&self, key: &str) -> bool {
+        self.contains_key(key)
+    }
+
+    fn remove(&mut self, key: &str) -> Option<Value> {
+        self.remove(key)
+    }
+
+    fn insert(&mut self, key: String, value: Value) {
+        self.insert(key, value);
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]

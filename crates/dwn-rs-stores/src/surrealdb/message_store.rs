@@ -3,6 +3,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
+use serde::{de::DeserializeOwned, Serialize};
 use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
@@ -10,7 +11,7 @@ use crate::{
     Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
 use crate::{StoreError, SurrealQuery};
-use dwn_rs_core::{MapValue, Message, Value};
+use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message, Value};
 
 use super::{
     errors::SurrealDBError,
@@ -29,16 +30,16 @@ impl MessageStore for SurrealDB {
         self.close().await
     }
 
-    async fn put(
+    async fn put<D: Descriptor + Serialize + Send, F: Fields + Serialize + Send>(
         &self,
         tenant: &str,
-        mut message: Message,
+        mut message: Message<D, F>,
         indexes: MapValue,
         tags: MapValue,
     ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Value> = None;
-        if message.extra.contains_key("encodedData") {
-            data = message.extra.remove("encodedData");
+        if message.fields.contains_key("encodedData") {
+            data = message.fields.remove("encodedData");
         }
 
         let i = serde_ipld_dagcbor::to_vec(&message)?;
@@ -64,7 +65,11 @@ impl MessageStore for SurrealDB {
         Ok(cid)
     }
 
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
+    async fn get<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
+        &self,
+        tenant: &str,
+        cid: String,
+    ) -> Result<Message<D, F>, MessageStoreError> {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
             .with_database(tenant, |db| async move {
@@ -81,10 +86,11 @@ impl MessageStore for SurrealDB {
             return Err(MessageStoreError::StoreError(StoreError::NotFound));
         }
 
-        let mut from: Message = serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
+        let mut from: Message<D, F> =
+            serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
 
         if let Some(data) = encoded_message.encoded_data {
-            from.extra.insert("encodedData".to_string(), data);
+            from.fields.insert("encodedData".to_string(), data);
         }
 
         Ok(from)
@@ -96,7 +102,7 @@ impl MessageStore for SurrealDB {
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message>, MessageStoreError> {
+    ) -> Result<QueryReturn<Message<GenericDescriptor, MapValue>>, MessageStoreError> {
         let mut qb = self
             .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
@@ -127,15 +133,16 @@ impl MessageStore for SurrealDB {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
                 }
 
-                let mut msg: Message = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
+                let mut msg: Message<GenericDescriptor, MapValue> =
+                    serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
-                    msg.extra.insert("encodedData".to_string(), data);
+                    msg.fields.insert("encodedData".to_string(), data);
                 }
 
                 Ok(msg)
             })
-            .collect::<Result<Vec<Message>, MessageStoreError>>()?;
+            .collect::<Result<Vec<Message<_, _>>, MessageStoreError>>()?;
 
         Ok(QueryReturn { items: r, cursor })
     }
