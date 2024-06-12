@@ -120,10 +120,12 @@ impl FromIterator<Filters> for Filters {
     }
 }
 
+pub type RangeFilter<T> = (Bound<T>, Bound<T>);
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Filter {
     Equal(Value),
-    Range(Bound<Value>, Bound<Value>),
+    Range(RangeFilter<Value>),
     OneOf(Vec<Value>),
     Prefix(Value),
 }
@@ -207,7 +209,7 @@ impl<'de> Deserialize<'de> for Filter {
                     }
                 }
 
-                Ok(Filter::Range(range.0, range.1))
+                Ok(Filter::Range((range.0, range.1)))
             }
         }
         deserializer.deserialize_any(FilterVisitor)
@@ -221,7 +223,7 @@ impl Serialize for Filter {
     {
         match self {
             Filter::Equal(v) => v.serialize(serializer),
-            Filter::Range(beg, end) => {
+            Filter::Range((beg, end)) => {
                 let mut map = serializer.serialize_map(Some(2))?;
 
                 match beg {

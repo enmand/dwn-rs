@@ -124,7 +124,7 @@ where
 
                                 Ok((k, Operator::Equal, format!("${}", alias)).try_into()?)
                             }
-                            Filter::Range(lower, upper) => {
+                            Filter::Range((lower, upper)) => {
                                 let (cond, binds) =
                                     handle_range_filter((k.clone(), alias), (lower, upper))?;
 
