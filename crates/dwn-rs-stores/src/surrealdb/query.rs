@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use dwn_rs_core::MapValue;
+use dwn_rs_core::{filters::Filter, MapValue};
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -14,16 +14,15 @@ use surrealdb::{
 };
 
 use super::expr::{SCond, SOrders};
-use crate::{
-    filters::{
-        errors::{FilterError, QueryError, ValueError},
-        filters::{Filter, Filters},
-        query::{Cursor, CursorValue, Pagination, Query, SortDirection},
-        Directional,
-    },
-    FilterKey, Set,
+use crate::filters::{
+    errors::{FilterError, QueryError, ValueError},
+    query::{Cursor, CursorValue, Pagination, Query, SortDirection},
+    Directional,
 };
-use crate::{Alias, Ordorable};
+use crate::{
+    filters::filter_key::{Alias, FilterKey, Filters, Set},
+    Ordorable,
+};
 
 pub struct SurrealQuery<U, T>
 where
