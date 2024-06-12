@@ -5,8 +5,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::{serde_as, DisplayFromStr};
 
-use crate::filters::errors;
-use crate::Filters;
+use crate::filters::{errors, Filters};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Pagination {
