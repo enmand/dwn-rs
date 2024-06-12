@@ -7,8 +7,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{
-    Cursor, DataStoreError, EventLogError, Filters, MessageSort, MessageStoreError, Pagination,
-    QueryReturn, ResumableTaskStoreError,
+    filters::filter_key::Filters, Cursor, DataStoreError, EventLogError, MessageSort,
+    MessageStoreError, Pagination, QueryReturn, ResumableTaskStoreError,
 };
 use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message};
 

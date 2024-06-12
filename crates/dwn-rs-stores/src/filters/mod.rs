@@ -1,8 +1,7 @@
 pub mod errors;
-#[allow(clippy::module_inception)]
-pub mod filters;
+pub mod filter_key;
 pub mod query;
 
 pub use errors::*;
-pub use filters::*;
+pub use filter_key::*;
 pub use query::*;
