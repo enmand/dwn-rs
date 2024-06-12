@@ -8,7 +8,7 @@ use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
 use crate::{
-    Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
+    filters::Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
 use crate::{StoreError, SurrealQuery};
 use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message, Value};

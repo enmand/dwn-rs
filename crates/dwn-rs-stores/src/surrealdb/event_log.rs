@@ -3,8 +3,8 @@ use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{
-    Cursor, EventLog, EventLogError, Filters, MessageWatermark, Pagination, Query, QueryReturn,
-    StoreError, SurrealDB, SurrealDBError, SurrealQuery,
+    filters::Filters, Cursor, EventLog, EventLogError, MessageCidSort, Pagination, Query,
+    QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
 };
 
 use super::models::{CreateEvent, GetEvent};
