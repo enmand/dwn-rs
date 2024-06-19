@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use dwn_rs_core::{MapValue, Value};
+use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
 use ulid::Ulid;
 
 use crate::{
-    Cursor, EventLog, EventLogError, Filters, MessageWatermark, Pagination, Query, QueryError,
-    QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
+    Cursor, EventLog, EventLogError, Filters, MessageWatermark, Pagination, Query, QueryReturn,
+    StoreError, SurrealDB, SurrealDBError, SurrealQuery,
 };
 
 use super::models::{CreateEvent, GetEvent};
@@ -78,7 +78,7 @@ impl EventLog for SurrealDB {
             .always_cursor()
             .page(Some(page));
 
-        let (mut events, cursor) = qb.query().await?;
+        let (events, cursor) = qb.query().await?;
 
         Ok(QueryReturn {
             items: events.into_iter().map(|e| e.cid.to_string()).collect(),
