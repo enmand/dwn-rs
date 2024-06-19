@@ -3,8 +3,8 @@ use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{
-    Cursor, EventLog, EventLogError, Filters, MessageCidSort, Pagination, Query, QueryReturn,
-    StoreError, SurrealDB, SurrealDBError, SurrealQuery,
+    Cursor, EventLog, EventLogError, Filters, MessageWatermark, Pagination, Query, QueryError,
+    QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
 };
 
 use super::models::{CreateEvent, GetEvent};
@@ -63,7 +63,7 @@ impl EventLog for SurrealDB {
     ) -> Result<QueryReturn<String>, EventLogError> {
         let mut qb = self
             .as_tenant(tenant, |db| async move {
-                Ok(SurrealQuery::<GetEvent, MessageCidSort>::new(db))
+                Ok(SurrealQuery::<GetEvent, MessageWatermark>::new(db))
             })
             .await?;
 
@@ -74,7 +74,7 @@ impl EventLog for SurrealDB {
 
         qb.from(EVENTS_TABLE)
             .filter(&filters)?
-            .sort(Some(MessageCidSort::default()))
+            .sort(Some(MessageWatermark::default()))
             .always_cursor()
             .page(Some(page));
 

@@ -73,7 +73,7 @@ pub enum EventLogError {
     #[error("unable to create filters: {0}")]
     FilterError(#[from] FilterError),
 
-    #[error("unable to perform query")]
+    #[error("unable to perform query: {0}")]
     QueryError(#[from] QueryError),
 
     #[error("unable to generate watermark: {0}")]

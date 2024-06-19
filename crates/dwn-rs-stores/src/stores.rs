@@ -88,7 +88,7 @@ pub trait EventLog {
     async fn close(&mut self);
 
     async fn append(
-        &mut self,
+        &self,
         tenant: &str,
         cid: String,
         indexes: MapValue,

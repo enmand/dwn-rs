@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, MessageCidSort, MessageSort};
+use crate::{CursorValue, MessageSort, MessageWatermark};
 use dwn_rs_core::{MapValue, Value};
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::Thing;
+use surrealdb::sql::{Id, Thing};
+use ulid::Ulid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEncodedMessage {
@@ -63,23 +64,21 @@ pub(crate) struct GetData {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEvent {
-    pub(super) id: Thing,
     pub(super) cid: String,
-    pub(super) watermark: String,
+    pub(super) watermark: Ulid,
     #[serde(flatten)]
     pub(super) indexes: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct GetEvent {
-    pub(super) id: Thing,
+    pub(super) watermark: Ulid,
     pub(super) cid: String,
-    pub(super) watermark: String,
 }
 
-impl CursorValue<MessageCidSort> for GetEvent {
-    fn cursor_value(&self, _: MessageCidSort) -> Value {
-        Value::String(self.watermark.clone())
+impl CursorValue<MessageWatermark> for GetEvent {
+    fn cursor_value(&self, _: MessageWatermark) -> Value {
+        Value::String(self.watermark.to_string())
     }
 
     fn cid(&self) -> Cid {
