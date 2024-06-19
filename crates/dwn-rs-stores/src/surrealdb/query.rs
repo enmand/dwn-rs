@@ -83,11 +83,7 @@ where
     {
         self.from = table.into();
 
-        let what = Function::Normal(
-            "type::table".into(),
-            vec![format!("{}", Table::from(self.from.clone())).into()],
-        )
-        .into();
+        let what = Table::from(self.from.clone()).into();
 
         let mut values = Values::default();
         values.0.push(what);
