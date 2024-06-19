@@ -4,7 +4,7 @@ use crate::{CursorValue, MessageSort, MessageWatermark};
 use dwn_rs_core::{MapValue, Value};
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Id, Thing};
+use surrealdb::sql::Thing;
 use ulid::Ulid;
 
 #[derive(Serialize, Deserialize, Debug)]
