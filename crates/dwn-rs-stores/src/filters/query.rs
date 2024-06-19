@@ -103,17 +103,17 @@ impl Ordorable for MessageSort {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
-pub struct MessageCidSort {
+pub struct MessageWatermark {
     direction: SortDirection,
 }
 
-impl Directional for MessageCidSort {
+impl Directional for MessageWatermark {
     fn get_direction(&self) -> &SortDirection {
         &self.direction
     }
 }
 
-impl Ordorable for MessageCidSort {
+impl Ordorable for MessageWatermark {
     fn to_order<'a, 's>(self) -> Vec<(&'a str, bool)> {
         vec![("watermark", self.direction.to_bool())]
     }
