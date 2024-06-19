@@ -57,22 +57,20 @@ impl SurrealEventLog {
             .open()
             .await
             .map_err(EventLogError::from)
-            .map_err(Into::into)
+            .map_err(Into::<JsError>::into)?;
+        Ok(())
     }
 
     #[wasm_bindgen]
-    pub async fn append(
-        &mut self,
-        tenant: &str,
-        cid: &str,
-        indexes: IndexMap,
-    ) -> Result<(), JsError> {
+    pub async fn append(&self, tenant: &str, cid: &str, indexes: IndexMap) -> Result<(), JsError> {
         let (indexes, _) = indexes.into();
         self.store
             .append(tenant, cid.to_string(), indexes)
             .await
             .map_err(EventLogError::from)
-            .map_err(Into::into)
+            .map_err(Into::<JsError>::into)?;
+
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = getEvents)]
