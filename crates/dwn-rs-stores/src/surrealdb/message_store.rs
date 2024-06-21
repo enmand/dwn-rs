@@ -43,7 +43,7 @@ impl MessageStore for SurrealDB {
 
         let i = serde_ipld_dagcbor::to_vec(&message)?;
         let mh = Code::Sha2_256.digest(i.as_slice());
-        let cid = Cid::new_v1(multicodec::Codec::DagCbor.code().into(), mh);
+        let cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
 
         self.as_tenant(tenant, |db| async move {
             db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, Id::String(cid.to_string())))
@@ -121,7 +121,7 @@ impl MessageStore for SurrealDB {
             .map(|m: GetEncodedMessage| {
                 let cid = Cid::from_str(m.cid.as_str())?;
                 let mh = Code::Sha2_256.digest(&m.encoded_message);
-                let data_cid = Cid::new_v1(multicodec::Codec::DagCbor.code().into(), mh);
+                let data_cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
 
                 if cid != data_cid {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
