@@ -92,6 +92,7 @@ pub trait EventLog {
         tenant: &str,
         cid: String,
         indexes: MapValue,
+        tags: MapValue,
     ) -> Result<(), EventLogError>;
 
     async fn get_events(

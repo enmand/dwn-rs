@@ -68,6 +68,7 @@ pub(crate) struct CreateEvent {
     pub(super) watermark: Ulid,
     #[serde(flatten)]
     pub(super) indexes: MapValue,
+    pub(super) tags: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

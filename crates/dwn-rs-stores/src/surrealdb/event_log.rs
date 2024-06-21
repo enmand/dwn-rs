@@ -26,6 +26,7 @@ impl EventLog for SurrealDB {
         tenant: &str,
         cid: String,
         indexes: MapValue,
+        tags: MapValue,
     ) -> Result<(), EventLogError> {
         // get a mutable reference to self.gen
         let watermark = self.gen.lock().await.generate()?;
@@ -37,6 +38,7 @@ impl EventLog for SurrealDB {
                     watermark,
                     cid,
                     indexes,
+                    tags,
                 })
                 .await
                 .map_err(SurrealDBError::from)
