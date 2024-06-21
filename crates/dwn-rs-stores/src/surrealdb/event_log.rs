@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
-use ulid::Ulid;
 
 use crate::{
     Cursor, EventLog, EventLogError, Filters, MessageWatermark, Pagination, Query, QueryReturn,
@@ -28,7 +27,8 @@ impl EventLog for SurrealDB {
         cid: String,
         indexes: MapValue,
     ) -> Result<(), EventLogError> {
-        let watermark = Ulid::new();
+        // get a mutable reference to self.gen
+        let watermark = self.gen.lock().await.generate()?;
         let res = Thing::from((EVENTS_TABLE, cid.to_string().as_str()));
 
         self.as_tenant(tenant, |db| async move {
