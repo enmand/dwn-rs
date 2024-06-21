@@ -10,6 +10,8 @@ use surrealdb::{
     },
     Surreal,
 };
+use tokio::sync::Mutex;
+use ulid::Generator;
 
 use crate::{surrealdb::auth::Auth, StoreError};
 
@@ -19,6 +21,8 @@ pub struct SurrealDB {
     pub(super) db: Surreal<Any>,
     constr: String,
     invalid: bool,
+
+    pub(super) gen: Mutex<Generator>,
 }
 
 impl Default for SurrealDB {
@@ -54,6 +58,8 @@ impl SurrealDB {
             db: surrealdb::Surreal::init(),
             constr: String::new(),
             invalid: false,
+
+            gen: Mutex::new(Generator::new()),
         }
     }
 
