@@ -63,9 +63,9 @@ impl SurrealEventLog {
 
     #[wasm_bindgen]
     pub async fn append(&self, tenant: &str, cid: &str, indexes: IndexMap) -> Result<(), JsError> {
-        let (indexes, _) = indexes.into();
+        let (indexes, tags) = indexes.into();
         self.store
-            .append(tenant, cid.to_string(), indexes)
+            .append(tenant, cid.to_string(), indexes, tags)
             .await
             .map_err(EventLogError::from)
             .map_err(Into::<JsError>::into)?;
