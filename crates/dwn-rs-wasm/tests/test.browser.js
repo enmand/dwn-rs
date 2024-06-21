@@ -17,7 +17,7 @@ await d.connect("mem://");
 let e = new SurrealEventLog();
 await e.connect("mem://");
 describe("Store dependent tests", () => {
-  TestSuite.runStoreDependentTests({
+  TestSuite.runInjectableDependentTests({
     messageStore: s,
     dataStore: d,
     eventLog: e,
