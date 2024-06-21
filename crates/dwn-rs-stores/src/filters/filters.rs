@@ -23,8 +23,8 @@ impl Display for FilterKey {
 impl FilterKey {
     pub fn alias(&self, alias: &str) -> Alias {
         match self {
-            FilterKey::Index(s) => (FilterKey::Index(s.clone()), format!("{}_{}", s, alias)),
-            FilterKey::Tag(s) => (FilterKey::Tag(s.clone()), format!("{}_{}", s, alias)),
+            FilterKey::Index(s) => (FilterKey::Index(s.clone()), format!("{}_{}_idx", s, alias)),
+            FilterKey::Tag(s) => (FilterKey::Tag(s.clone()), format!("{}_{}_tag", s, alias)),
         }
     }
 
