@@ -3,7 +3,7 @@
   "version": "0.1.0-dev",
   "type": "module",
   "dependencies": {
-    "@tbd54566975/dwn-sdk-js": "0.3.9",
+    "@tbd54566975/dwn-sdk-js": "0.3.10",
     "@types/readable-stream": "4.0.14",
     "readable-stream": "4.5.2"
   },
