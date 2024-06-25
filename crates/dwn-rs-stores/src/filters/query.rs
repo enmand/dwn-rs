@@ -11,7 +11,20 @@ use crate::Filters;
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Pagination {
     pub cursor: Option<Cursor>,
-    pub limit: Option<u32>,
+    pub limit: Option<u64>,
+}
+
+impl Pagination {
+    pub fn new(cursor: Option<Cursor>, limit: Option<u64>) -> Self {
+        Self { cursor, limit }
+    }
+
+    pub fn with_limit(limit: u64) -> Self {
+        Self {
+            cursor: None,
+            limit: Some(limit),
+        }
+    }
 }
 
 #[serde_as]
