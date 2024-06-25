@@ -36,7 +36,7 @@ where
 
     stmt: SelectStatement,
     from: String,
-    limit: Option<u32>,
+    limit: Option<u64>,
     order: Option<T>,
     sort_direction: Option<SortDirection>,
     cursor: Option<Cursor>,
@@ -256,7 +256,7 @@ where
         }
 
         let last_cursor_value = if let (Some(l), Some(o)) = (limit, self.order) {
-            if res.len() as u32 > l {
+            if res.len() as u64 > l {
                 if !self.always_cursor {
                     res.pop();
                 }
