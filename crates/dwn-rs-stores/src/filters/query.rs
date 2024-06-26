@@ -64,6 +64,27 @@ pub trait Ordorable {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct NoSort;
+
+impl Default for NoSort {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl Directional for NoSort {
+    fn get_direction(&self) -> &SortDirection {
+        &SortDirection::Ascending
+    }
+}
+
+impl Ordorable for NoSort {
+    fn to_order<'a>(self) -> Vec<(&'a str, bool)> {
+        vec![]
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum MessageSort {
     #[serde(rename = "dateCreated")]
     DateCreated(SortDirection),

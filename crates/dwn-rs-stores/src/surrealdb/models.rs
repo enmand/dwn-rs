@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, MessageSort, MessageWatermark};
+use crate::{CursorValue, MessageSort, MessageWatermark, NoSort};
 use dwn_rs_core::{MapValue, Value};
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::Thing;
+use surrealdb::sql::{Datetime, Thing, Value as SurrealValue};
 use ulid::Ulid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -77,6 +77,29 @@ pub(crate) struct GetEvent {
     pub(super) cid: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct Task<T: Serialize> {
+    pub(super) id: Thing,
+    pub(super) task: T,
+    pub(super) timeout: Datetime,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct CreateTask<T: Serialize> {
+    pub(super) task: T,
+    pub(super) timeout: SurrealValue,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ExtendTask {
+    pub(super) timeout: SurrealValue,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ExtendedTask {
+    pub(super) timeout: Datetime,
+}
+
 impl CursorValue<MessageWatermark> for GetEvent {
     fn cursor_value(&self, _: MessageWatermark) -> Value {
         Value::String(self.watermark.to_string())
@@ -84,5 +107,18 @@ impl CursorValue<MessageWatermark> for GetEvent {
 
     fn cid(&self) -> Cid {
         Cid::from_str(&self.cid.to_string()).unwrap()
+    }
+}
+
+impl<T> CursorValue<NoSort> for T
+where
+    T: Serialize + Sync + Send,
+{
+    fn cursor_value(&self, _: NoSort) -> Value {
+        Value::Null
+    }
+
+    fn cid(&self) -> Cid {
+        Cid::default()
     }
 }
