@@ -7,6 +7,7 @@ mod expr;
 pub mod message_store;
 mod models;
 pub mod query;
+pub mod resumable_task_store;
 
 pub use core::*;
 pub use errors::*;

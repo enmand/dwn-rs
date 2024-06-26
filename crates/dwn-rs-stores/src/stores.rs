@@ -1,13 +1,14 @@
-use std::pin::Pin;
+use std::{fmt::Debug, pin::Pin};
 
 use async_trait::async_trait;
 use futures_util::Stream;
 use ipld_core::cid::Cid;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use ulid::Ulid;
 
 use crate::{
     Cursor, DataStoreError, EventLogError, Filters, MessageSort, MessageStoreError, Pagination,
-    QueryReturn,
+    QueryReturn, ResumableTaskStoreError,
 };
 use dwn_rs_core::{MapValue, Message};
 
@@ -111,4 +112,41 @@ pub trait EventLog {
     async fn delete<'a>(&self, tenant: &str, cid: &'a [&str]) -> Result<(), EventLogError>;
 
     async fn clear(&self) -> Result<(), EventLogError>;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ManagedResumableTask<T: Serialize + Sync + Send + Debug> {
+    pub id: Ulid,
+    pub task: T,
+    pub timeout: u64,
+    pub retry_count: u64,
+}
+
+#[async_trait]
+pub trait ResumableTaskStore {
+    async fn open(&mut self) -> Result<(), ResumableTaskStoreError>;
+
+    async fn close(&mut self);
+
+    async fn register<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
+        &self,
+        task: T,
+        timeout: u64,
+    ) -> Result<ManagedResumableTask<T>, ResumableTaskStoreError>;
+
+    async fn grab<T: Serialize + Send + Sync + DeserializeOwned + Debug + Unpin>(
+        &self,
+        count: u64,
+    ) -> Result<Vec<ManagedResumableTask<T>>, ResumableTaskStoreError>;
+
+    async fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
+        &self,
+        task_id: String,
+    ) -> Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError>;
+
+    async fn extend(&self, task_id: String, timeout: u64) -> Result<(), ResumableTaskStoreError>;
+
+    async fn delete(&self, task_id: String) -> Result<(), ResumableTaskStoreError>;
+
+    async fn clear(&self) -> Result<(), ResumableTaskStoreError>;
 }

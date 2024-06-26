@@ -79,3 +79,21 @@ pub enum EventLogError {
     #[error("unable to generate watermark: {0}")]
     WatermarkError(#[from] MonotonicError),
 }
+
+#[derive(Error, Debug)]
+pub enum ResumableTaskStoreError {
+    #[error("error operating the store: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("unable to perform query: {0}")]
+    QueryError(#[from] QueryError),
+
+    #[error("unable to generate task id: {0}")]
+    IdGenerationError(#[from] MonotonicError),
+
+    #[error("unable to create filters: {0}")]
+    FilterError(#[from] FilterError),
+
+    #[error("unable to decode task id: {0}")]
+    TaskIdDecodeError(#[from] ulid::DecodeError),
+}
