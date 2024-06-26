@@ -37,7 +37,7 @@ impl DataStore for SurrealDB {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         let len = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 db.create::<Option<GetData>>(id.clone())
                     .content(CreateData {
                         cid: cid.to_string(),
@@ -82,7 +82,7 @@ impl DataStore for SurrealDB {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         let res: GetData = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 db.select(id)
                     .await
                     .map_err(SurrealDBError::from)
@@ -115,7 +115,7 @@ impl DataStore for SurrealDB {
     ) -> Result<(), DataStoreError> {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
-        self.as_tenant(tenant, |db| async move {
+        self.with_database(tenant, |db| async move {
             db.delete::<Option<GetData>>(id)
                 .await
                 .map_err(SurrealDBError::from)
