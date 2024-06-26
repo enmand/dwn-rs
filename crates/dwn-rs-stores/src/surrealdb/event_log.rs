@@ -32,7 +32,7 @@ impl EventLog for SurrealDB {
         let watermark = self.gen.lock().await.generate()?;
         let res = Thing::from((EVENTS_TABLE, cid.to_string().as_str()));
 
-        self.as_tenant(tenant, |db| async move {
+        self.with_database(tenant, |db| async move {
             db.create::<Option<CreateEvent>>(res)
                 .content(CreateEvent {
                     watermark,
@@ -64,7 +64,7 @@ impl EventLog for SurrealDB {
         cursor: Option<Cursor>,
     ) -> Result<QueryReturn<String>, EventLogError> {
         let mut qb = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEvent, MessageWatermark>::new(db))
             })
             .await?;
@@ -90,7 +90,7 @@ impl EventLog for SurrealDB {
 
     async fn delete<'a>(&self, tenant: &str, cids: &'a [&str]) -> Result<(), EventLogError> {
         Ok(self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 for c in cids {
                     let id = Thing::from((EVENTS_TABLE, Id::String(c.to_string())));
 

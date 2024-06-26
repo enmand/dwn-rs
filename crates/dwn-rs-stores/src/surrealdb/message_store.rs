@@ -45,7 +45,7 @@ impl MessageStore for SurrealDB {
         let mh = Code::Sha2_256.digest(i.as_slice());
         let cid = Cid::new_v1(multicodec::Codec::DagCbor.code().into(), mh);
 
-        self.as_tenant(tenant, |db| async move {
+        self.with_database(tenant, |db| async move {
             db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, Id::String(cid.to_string())))
                 .content(CreateEncodedMessage {
                     cid: cid.to_string(),
@@ -67,7 +67,7 @@ impl MessageStore for SurrealDB {
     async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
                     .await
                     .map_err(SurrealDBError::from)
@@ -98,7 +98,7 @@ impl MessageStore for SurrealDB {
         pagination: Option<Pagination>,
     ) -> Result<QueryReturn<Message>, MessageStoreError> {
         let mut qb = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
             })
             .await?;
@@ -145,7 +145,7 @@ impl MessageStore for SurrealDB {
 
         // check the tenancy on the messages
         let encoded_message: Option<GetEncodedMessage> = self
-            .as_tenant(tenant, |db| async move {
+            .with_database(tenant, |db| async move {
                 db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
                     .await
                     .map_err(SurrealDBError::from)
@@ -158,7 +158,7 @@ impl MessageStore for SurrealDB {
                 return Err(MessageStoreError::StoreError(StoreError::NotFound));
             }
 
-            self.as_tenant(tenant, |db| async move {
+            self.with_database(tenant, |db| async move {
                 db.delete::<Option<GetEncodedMessage>>(id.clone())
                     .await
                     .map_err(SurrealDBError::from)

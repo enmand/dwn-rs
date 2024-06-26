@@ -126,7 +126,7 @@ impl SurrealDB {
             .map_err(SurrealDBError::from)?;
 
         for (db_name, _) in databases.unwrap() {
-            self.as_tenant(&db_name, |db| async move {
+            self.with_database(&db_name, |db| async move {
                 let mut rts = RemoveTableStatement::default();
                 rts.name = table.to_string().into();
                 rts.if_exists = false;
@@ -143,13 +143,13 @@ impl SurrealDB {
         Ok(())
     }
 
-    pub async fn as_tenant<F, O, Fut>(&self, tenant: &str, f: F) -> Result<O, StoreError>
+    pub async fn with_database<F, O, Fut>(&self, database: &str, f: F) -> Result<O, StoreError>
     where
         F: FnOnce(Surreal<Any>) -> Fut,
         Fut: std::future::Future<Output = Result<O, StoreError>>,
     {
         let db = self.db.to_owned();
-        db.use_db(tenant)
+        db.use_db(database)
             .into_owned()
             .await
             .map_err(SurrealDBError::from)?;
