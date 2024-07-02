@@ -3,6 +3,7 @@ import {
   SurrealDataStore,
   SurrealMessageStore,
   SurrealEventLog,
+  SurrealResumableTaskStore,
 } from "../pkg/index.js";
 import WebSocket from "isomorphic-ws";
 
@@ -15,6 +16,8 @@ let d = new SurrealDataStore();
 await d.connect("mem://");
 let e = new SurrealEventLog();
 await e.connect("mem://");
+let t = new SurrealResumableTaskStore();
+await t.connect("mem://");
 describe("Store dependent tests", () => {
   TestSuite.runInjectableDependentTests({
     messageStore: s,

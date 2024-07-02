@@ -38,6 +38,11 @@ impl DataStore for SurrealDB {
 
         let len = self
             .with_database(tenant, |db| async move {
+                db.delete::<Option<GetData>>(id.clone())
+                    .await
+                    .map_err(SurrealDBError::from)
+                    .map_err(StoreError::from)?;
+
                 db.create::<Option<GetData>>(id.clone())
                     .content(CreateData {
                         cid: cid.to_string(),
