@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use dwn_rs_core::MapValue;
+use dwn_rs_core::{Filter as CoreFilter, MapValue};
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::{FilterKey, Filters, ValueFilter};
+use dwn_rs_stores::filters::{FilterKey, Filters, ValueFilter};
 
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";
@@ -26,12 +26,10 @@ extern "C" {
 
 impl From<Filter> for Filters {
     fn from(value: Filter) -> Self {
-        match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, dwn_rs_stores::Filter>>>(
-            value.into(),
-        ) {
+        match serde_wasm_bindgen::from_value::<Vec<BTreeMap<String, CoreFilter>>>(value.into()) {
             Ok(m) => m
                 .into_iter()
-                .map(|f: BTreeMap<String, dwn_rs_stores::Filter>| {
+                .map(|f: BTreeMap<String, CoreFilter>| {
                     let fs = f
                         .into_iter()
                         .fold(ValueFilter::default(), |mut filters, (k, v)| {

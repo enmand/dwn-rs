@@ -3,7 +3,7 @@ pub mod filters;
 pub mod stores;
 
 pub use errors::*;
-pub use filters::{errors::*, filters::*, query::*};
+pub use filters::{errors::*, query::*};
 pub use stores::*;
 
 #[cfg(feature = "surrealdb")]

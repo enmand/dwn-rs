@@ -1,7 +1,7 @@
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_core::Message;
+use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message};
 
 use crate::ser::serializer;
 
@@ -17,7 +17,7 @@ extern "C" {
     pub type GenericMessageArray;
 }
 
-impl From<&GenericMessage> for Message {
+impl From<&GenericMessage> for Message<GenericDescriptor, MapValue> {
     fn from(value: &GenericMessage) -> Self {
         if value.is_undefined() {
             return Message::default();
@@ -30,9 +30,13 @@ impl From<&GenericMessage> for Message {
     }
 }
 
-impl From<Message> for GenericMessage {
-    fn from(value: Message) -> Self {
-        if value != Message::default() {
+impl<D, F> From<Message<D, F>> for GenericMessage
+where
+    D: Descriptor + Serialize,
+    F: Fields + Serialize,
+{
+    fn from(value: Message<D, F>) -> Self {
+        if value != Message::<D, F>::default() {
             if let Ok(m) = value.serialize(&serializer()) {
                 return m.into();
             }
@@ -42,7 +46,7 @@ impl From<Message> for GenericMessage {
     }
 }
 
-impl From<&GenericMessageArray> for Vec<Message> {
+impl From<&GenericMessageArray> for Vec<Message<GenericDescriptor, MapValue>> {
     fn from(value: &GenericMessageArray) -> Self {
         if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
             return m;
@@ -52,8 +56,12 @@ impl From<&GenericMessageArray> for Vec<Message> {
     }
 }
 
-impl From<Vec<Message>> for GenericMessageArray {
-    fn from(value: Vec<Message>) -> Self {
+impl<D, F> From<Vec<Message<D, F>>> for GenericMessageArray
+where
+    D: Descriptor + Serialize,
+    F: Fields + Serialize,
+{
+    fn from(value: Vec<Message<D, F>>) -> Self {
         if let Ok(m) = value.serialize(&serializer()) {
             return m.into();
         }
