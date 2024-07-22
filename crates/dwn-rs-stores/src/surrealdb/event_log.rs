@@ -3,7 +3,7 @@ use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{
-    filters::Filters, Cursor, EventLog, EventLogError, MessageCidSort, Pagination, Query,
+    filters::Filters, Cursor, EventLog, EventLogError, MessageWatermark, Pagination, Query,
     QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
 };
 
