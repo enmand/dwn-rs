@@ -128,7 +128,7 @@ impl SurrealMessageStore {
 
         let out: JSQueryReturn = match self
             .store
-            .query(
+            .query::<GenericDescriptor, MapValue>(
                 tenant,
                 filter.into(),
                 message_sort.map(|sort| sort.into()),

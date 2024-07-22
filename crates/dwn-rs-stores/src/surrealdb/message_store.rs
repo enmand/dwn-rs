@@ -11,7 +11,7 @@ use crate::{
     filters::Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
 };
 use crate::{StoreError, SurrealQuery};
-use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message, Value};
+use dwn_rs_core::{Descriptor, Fields, MapValue, Message, Value};
 
 use super::{
     errors::SurrealDBError,
@@ -96,13 +96,13 @@ impl MessageStore for SurrealDB {
         Ok(from)
     }
 
-    async fn query(
+    async fn query<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
         &self,
         tenant: &str,
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message<GenericDescriptor, MapValue>>, MessageStoreError> {
+    ) -> Result<QueryReturn<Message<D, F>>, MessageStoreError> {
         let mut qb = self
             .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
@@ -133,8 +133,7 @@ impl MessageStore for SurrealDB {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
                 }
 
-                let mut msg: Message<GenericDescriptor, MapValue> =
-                    serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
+                let mut msg: Message<D, F> = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
                     msg.fields.insert("encodedData".to_string(), data);

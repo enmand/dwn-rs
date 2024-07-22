@@ -20,7 +20,7 @@ use crate::filters::{
     Directional,
 };
 use crate::{
-    filters::filter_key::{Alias, FilterKey, Filters, Set},
+    filters::filter_key::{Alias, FilterKey, FilterSet, Filters},
     Ordorable,
 };
 
@@ -99,7 +99,7 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        let filters = Into::<Set<Alias>>::into(filters.clone() as Filters)
+        let filters = Into::<FilterSet<Alias>>::into(filters.clone() as Filters)
             .into_iter()
             .filter_map(|f| {
                 f.into_iter()
