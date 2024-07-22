@@ -1,14 +1,16 @@
+extern crate derive_more;
+use derive_more::{Display, From, TryInto};
+
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, SecondsFormat, Utc};
-use from_variants::FromVariants;
 use ipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
 /// Value represents a JSON-like value, that can be serialized and deserialized and
 /// used in DWN to represent data frmo various sources, such as Messages.
 ///
-#[derive(Debug, Clone, FromVariants, PartialEq)]
+#[derive(Debug, Clone, From, TryInto, Display, PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -16,15 +18,11 @@ pub enum Value {
     Number(i64),
     Float(f64),
     Cid(Cid),
+    #[display(fmt = "{:?}", "_0")]
     Map(MapValue),
+    #[display(fmt = "{:?}", "_0")]
     Array(Vec<Value>),
     DateTime(DateTime<Utc>),
-}
-
-impl From<&str> for Value {
-    fn from(s: &str) -> Self {
-        Value::String(s.into())
-    }
 }
 
 impl serde::Serialize for Value {
@@ -35,15 +33,7 @@ impl serde::Serialize for Value {
         match self {
             Value::Null => serializer.serialize_none(),
             Value::Bool(b) => serializer.serialize_bool(*b),
-            Value::String(s) => {
-                // if string is rfc3339 datetime, serialize as datetime
-                if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
-                    return serializer
-                        .serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Micros, true));
-                };
-
-                serializer.serialize_str(s)
-            }
+            Value::String(s) => serializer.serialize_str(s),
             Value::Cid(c) => serializer.serialize_str(&c.to_string()),
             Value::Number(n) => serializer.serialize_i64(*n),
             Value::Float(f) => serializer.serialize_f64(*f),
@@ -67,6 +57,10 @@ impl serde::Serialize for Value {
         }
     }
 }
+
+/// MapValue is a type alias for a BTreeMap of String to Value, used for map values
+/// such as indexes.
+pub type MapValue = BTreeMap<String, Value>;
 
 impl<'de> serde::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -161,7 +155,3 @@ impl<'de> serde::Deserialize<'de> for Value {
         deserializer.deserialize_any(IndexValueVisitor)
     }
 }
-
-/// MapValue is a type alias for a BTreeMap of String to Value, used for map values
-/// such as indexes.
-pub type MapValue = BTreeMap<String, Value>;

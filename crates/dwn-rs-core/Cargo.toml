@@ -13,6 +13,7 @@ chrono = { version = "0.4.30", features = ["serde"] }
 ipld-core = { version = "0.4.1", features = ["serde"] }
 from_variants = "1.0.2"
 serde = { version = "1.0.183", features = ["derive"] }
+derive_more = "0.99.18"
 
 [dev-dependencies]
 serde_json = "1.0.113"
