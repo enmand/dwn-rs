@@ -10,7 +10,7 @@ use crate::{
     filters::filter_key::Filters, Cursor, DataStoreError, EventLogError, MessageSort,
     MessageStoreError, Pagination, QueryReturn, ResumableTaskStoreError,
 };
-use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message};
+use dwn_rs_core::{Descriptor, Fields, MapValue, Message};
 
 #[async_trait]
 pub trait MessageStore {
@@ -32,13 +32,13 @@ pub trait MessageStore {
         cid: String,
     ) -> Result<Message<D, F>, MessageStoreError>;
 
-    async fn query(
+    async fn query<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
         &self,
         tenant: &str,
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message<GenericDescriptor, MapValue>>, MessageStoreError>;
+    ) -> Result<QueryReturn<Message<D, F>>, MessageStoreError>;
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError>;
 
