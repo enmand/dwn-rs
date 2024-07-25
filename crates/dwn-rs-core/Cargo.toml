@@ -11,8 +11,9 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 chrono = { version = "0.4.30", features = ["serde"] }
 ipld-core = { version = "0.4.1", features = ["serde"] }
-from_variants = "1.0.2"
 serde = { version = "1.0.183", features = ["derive"] }
+web5 = { path = "/Users/enmand/Code/unerror/web5-rs/crates/web5" }
+url = { version = "2.5.0", features = ["serde"] }
 derive_more = "0.99.18"
 
 [dev-dependencies]
