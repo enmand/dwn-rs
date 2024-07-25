@@ -78,6 +78,22 @@ impl Fields for MapValue {
     }
 }
 
+/// Interfaces represent the different Decentralized Web Node message interface types.
+/// See https://identity.foundation/decentralized-web-node/spec/#interfaces for more information.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum Interface {
+    #[serde(rename = "records")]
+    Records,
+    #[serde(rename = "protocols")]
+    Protocols,
+    #[serde(rename = "permissions")]
+    Permissions,
+    #[serde(rename = "messages")]
+    Messages,
+    #[serde(rename = "snapshots")]
+    Snapshots,
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct MessageFilter {
     #[serde(rename = "dateCreated", skip_serializing_if = "Option::is_none")]
