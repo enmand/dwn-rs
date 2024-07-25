@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use dwn_rs_core::{Filter as CoreFilter, MapValue, Value};
+use dwn_rs_core::MapValue;
 use wasm_bindgen::prelude::*;
 
 use dwn_rs_stores::filters::{FilterKey, FilterSet, Filters, ValueFilter};
