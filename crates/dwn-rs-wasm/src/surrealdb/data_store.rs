@@ -4,10 +4,8 @@ use js_sys::{Object, Reflect};
 use thiserror::Error;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::{
-    surrealdb::{SurrealDB, SurrealDBError},
-    DataStore, DataStoreError,
-};
+use dwn_rs_core::{errors::DataStoreError, stores::DataStore};
+use dwn_rs_stores::surrealdb::{SurrealDB, SurrealDBError};
 
 use crate::{
     data::{DataStoreGetResult, DataStorePutResult},
@@ -65,7 +63,7 @@ impl SurrealDataStore {
         self.store
             .open()
             .await
-            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into)
     }
 

@@ -1,11 +1,15 @@
 use std::str::FromStr;
 
-use crate::{CursorValue, MessageSort, MessageWatermark, NoSort};
-use dwn_rs_core::{MapValue, Value};
+use dwn_rs_core::{
+    filters::{MessageSort, MessageWatermark, NoSort},
+    value::{MapValue, Value},
+};
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Datetime, Thing, Value as SurrealValue};
 use ulid::Ulid;
+
+use super::CursorValue;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateEncodedMessage {

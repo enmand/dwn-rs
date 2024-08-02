@@ -3,9 +3,10 @@ use async_trait::async_trait;
 use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::sql::{Id, Table, Thing};
 
-use crate::{
-    DataStore, DataStoreError, GetDataResults, PutDataResults, StoreError, SurrealDB,
-    SurrealDBError,
+use crate::{SurrealDB, SurrealDBError};
+use dwn_rs_core::{
+    errors::{DataStoreError, StoreError},
+    stores::{DataStore, GetDataResults, PutDataResults},
 };
 
 use super::models::{CreateData, GetData};

@@ -5,7 +5,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use dwn_rs_core::{filters::Filter, MapValue};
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -14,14 +13,15 @@ use surrealdb::{
 };
 
 use super::expr::{SCond, SOrders};
-use crate::filters::{
-    errors::{FilterError, QueryError, ValueError},
-    query::{Cursor, CursorValue, Pagination, Query, SortDirection},
-    Directional,
-};
-use crate::{
-    filters::filter_key::{Alias, FilterKey, FilterSet, Filters},
-    Ordorable,
+use dwn_rs_core::{
+    filters::{
+        errors::{FilterError, QueryError, ValueError},
+        filter::Filter,
+        filter_key::{Alias, FilterKey, FilterSet, Filters},
+        query::{Cursor, Pagination, Query, SortDirection},
+        Directional, Ordorable,
+    },
+    MapValue,
 };
 
 pub struct SurrealQuery<U, T>
@@ -62,6 +62,11 @@ where
             u_type: PhantomData,
         }
     }
+}
+
+pub trait CursorValue<T> {
+    fn cid(&self) -> ipld_core::cid::Cid;
+    fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }
 
 #[async_trait]

@@ -13,7 +13,8 @@ use surrealdb::{
 use tokio::sync::Mutex;
 use ulid::Generator;
 
-use crate::{surrealdb::auth::Auth, StoreError};
+use crate::surrealdb::auth::Auth;
+use dwn_rs_core::errors::StoreError;
 
 use super::errors::SurrealDBError;
 
@@ -34,7 +35,7 @@ impl Default for SurrealDB {
 const META_DB: &str = "_meta";
 
 impl SurrealDB {
-    pub(super) async fn open(&mut self) -> Result<(), StoreError> {
+    pub async fn open(&mut self) -> Result<(), StoreError> {
         let health = self.db.health().await;
         if health.is_err() || self.invalid {
             if self.constr.is_empty() {
@@ -48,7 +49,7 @@ impl SurrealDB {
         Ok(())
     }
 
-    pub(super) async fn close(&mut self) {
+    pub async fn close(&mut self) {
         let _ = self.db.invalidate().await;
         self.invalid = true;
     }

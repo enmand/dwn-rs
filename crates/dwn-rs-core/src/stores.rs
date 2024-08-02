@@ -7,13 +7,17 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{
-    filters::filter_key::Filters, Cursor, DataStoreError, EventLogError, MessageSort,
-    MessageStoreError, Pagination, QueryReturn, ResumableTaskStoreError,
+    errors::{DataStoreError, EventLogError, MessageStoreError, ResumableTaskStoreError},
+    filters::filter_key::Filters,
+    Cursor, MessageSort, Pagination, QueryReturn,
 };
-use dwn_rs_core::{Descriptor, Fields, MapValue, Message};
+use crate::{
+    interfaces::{Descriptor, Fields},
+    MapValue, Message,
+};
 
 #[async_trait]
-pub trait MessageStore {
+pub trait MessageStore: Default {
     async fn open(&mut self) -> Result<(), MessageStoreError>;
 
     async fn close(&mut self);
@@ -46,7 +50,7 @@ pub trait MessageStore {
 }
 
 #[async_trait]
-pub trait DataStore {
+pub trait DataStore: Default {
     async fn open(&mut self) -> Result<(), DataStoreError>;
 
     async fn close(&mut self);
@@ -87,7 +91,7 @@ pub struct GetDataResults {
 }
 
 #[async_trait]
-pub trait EventLog {
+pub trait EventLog: Default {
     async fn open(&mut self) -> Result<(), EventLogError>;
 
     async fn close(&mut self);
@@ -127,7 +131,7 @@ pub struct ManagedResumableTask<T: Serialize + Sync + Send + Debug> {
 }
 
 #[async_trait]
-pub trait ResumableTaskStore {
+pub trait ResumableTaskStore: Default {
     async fn open(&mut self) -> Result<(), ResumableTaskStoreError>;
 
     async fn close(&mut self);

@@ -32,8 +32,8 @@ impl From<&GenericMessage> for Message<GenericDescriptor, MapValue> {
 
 impl<D, F> From<Message<D, F>> for GenericMessage
 where
-    D: Descriptor + Serialize,
-    F: Fields + Serialize,
+    D: Descriptor + Serialize + PartialEq,
+    F: Fields + Serialize + PartialEq,
 {
     fn from(value: Message<D, F>) -> Self {
         if value != Message::<D, F>::default() {

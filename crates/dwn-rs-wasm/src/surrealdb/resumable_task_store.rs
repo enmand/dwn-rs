@@ -1,5 +1,5 @@
-use dwn_rs_core::Value;
-use dwn_rs_stores::{ResumableTaskStore, SurrealDB};
+use dwn_rs_core::{stores::ResumableTaskStore, Value};
+use dwn_rs_stores::SurrealDB;
 use wasm_bindgen::prelude::*;
 
 use crate::task::{JsManagedResumableTask, JsManagedResumableTaskArray};

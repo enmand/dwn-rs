@@ -1,17 +1,21 @@
-use std::fmt::Debug;
-
-use crate::{
-    stores::ResumableTaskStore,
-    surrealdb::models::{CreateTask, ExtendTask, ExtendedTask, Task},
-    ManagedResumableTask, ResumableTaskStoreError, StoreError, SurrealDB, SurrealDBError,
-};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
+use std::fmt::Debug;
 use surrealdb::sql::{
     statements::{BeginStatement, CommitStatement, SelectStatement, SetStatement, UpdateStatement},
     Cond, Data, Duration, Expression, Function, Idiom, Limit, Number, Operator, Output, Param,
     Statement, Subquery, Table, Value as SurrealValue,
 };
+
+use crate::{
+    surrealdb::models::{CreateTask, ExtendTask, ExtendedTask, Task},
+    SurrealDB, SurrealDBError,
+};
+use dwn_rs_core::{
+    errors::{ResumableTaskStoreError, StoreError},
+    stores::{ManagedResumableTask, ResumableTaskStore},
+};
+
 use ulid::Ulid;
 
 const RESUMABLE_TASKS_DB: &str = "tasks";
