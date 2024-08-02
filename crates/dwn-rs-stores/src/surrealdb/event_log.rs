@@ -1,10 +1,12 @@
 use async_trait::async_trait;
-use dwn_rs_core::MapValue;
 use surrealdb::sql::{Id, Table, Thing};
 
-use crate::{
-    filters::Filters, Cursor, EventLog, EventLogError, MessageWatermark, Pagination, Query,
-    QueryReturn, StoreError, SurrealDB, SurrealDBError, SurrealQuery,
+use crate::{SurrealDB, SurrealDBError, SurrealQuery};
+use dwn_rs_core::{
+    errors::{EventLogError, StoreError},
+    filters::{Cursor, Filters, MessageWatermark, Pagination, Query, QueryReturn},
+    stores::EventLog,
+    value::MapValue,
 };
 
 use super::models::{CreateEvent, GetEvent};

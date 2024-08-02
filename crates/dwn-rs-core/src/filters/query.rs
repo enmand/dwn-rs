@@ -1,5 +1,5 @@
+use crate::value::Value;
 use async_trait::async_trait;
-use dwn_rs_core::Value;
 use ipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -173,9 +173,4 @@ where
     fn always_cursor(&mut self) -> &mut Self;
     fn sort(&mut self, sort: Option<T>) -> &mut Self;
     async fn query(&self) -> Result<(Vec<U>, Option<crate::Cursor>), errors::QueryError>;
-}
-
-pub trait CursorValue<T> {
-    fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }

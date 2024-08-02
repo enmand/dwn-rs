@@ -1,4 +1,4 @@
-use dwn_rs_stores::PutDataResults;
+use dwn_rs_core::stores::PutDataResults;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 

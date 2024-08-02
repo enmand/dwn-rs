@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
-use dwn_rs_core::Value;
-use dwn_rs_stores::ManagedResumableTask;
+use dwn_rs_core::{stores::ManagedResumableTask, value::Value};
 use serde::Serialize;
 use wasm_bindgen::{prelude::*, throw_str};
 

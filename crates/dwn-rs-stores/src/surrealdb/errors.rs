@@ -1,4 +1,8 @@
-use crate::{surrealdb::auth::AuthError, QueryError, StoreError, ValueError};
+use crate::surrealdb::auth::AuthError;
+use dwn_rs_core::{
+    errors::StoreError,
+    filters::errors::{QueryError, ValueError},
+};
 
 use thiserror::Error;
 

@@ -1,5 +1,10 @@
-use dwn_rs_core::{GenericDescriptor, MapValue};
-use dwn_rs_stores::{surrealdb::SurrealDB, MessageStore};
+use dwn_rs_core::{
+    errors::{MessageStoreError, StoreError},
+    interfaces::GenericDescriptor,
+    stores::MessageStore,
+    value::MapValue,
+};
+use dwn_rs_stores::surrealdb::SurrealDB;
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;
@@ -97,9 +102,9 @@ impl SurrealMessageStore {
         {
             Ok(v) => v.into(),
             Err(e) => match e {
-                dwn_rs_stores::MessageStoreError::StoreError(
-                    dwn_rs_stores::StoreError::NotFound,
-                ) => return Ok(JsValue::undefined().into()),
+                MessageStoreError::StoreError(StoreError::NotFound) => {
+                    return Ok(JsValue::undefined().into())
+                }
                 _ => return Err(Into::<JsError>::into(e).into()),
             },
         };

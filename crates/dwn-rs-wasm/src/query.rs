@@ -1,8 +1,10 @@
-use dwn_rs_core::{Descriptor, Fields, Message};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::{Cursor, MessageSort, Pagination, QueryReturn};
+use dwn_rs_core::{
+    filters::{Cursor, MessageSort, Pagination, QueryReturn},
+    interfaces::{Descriptor, Fields, Message},
+};
 
 use crate::ser::serializer;
 

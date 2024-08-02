@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, fmt::Display};
 
-use dwn_rs_core::{Filter, Value};
+use super::filter::Filter;
+use crate::Value;
+
 use serde::{Deserialize, Serialize};
 
 // FilterKey represents the key-type to filter over. Currently, this can be an index or a tag.

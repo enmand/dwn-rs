@@ -7,11 +7,14 @@ use serde::{de::DeserializeOwned, Serialize};
 use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
-use crate::{
-    filters::Filters, MessageSort, MessageStore, MessageStoreError, Pagination, Query, QueryReturn,
+use crate::SurrealQuery;
+use dwn_rs_core::{
+    errors::{MessageStoreError, StoreError},
+    filters::{Filters, MessageSort, Pagination, Query, QueryReturn},
+    interfaces::{Descriptor, Fields, Message},
+    stores::MessageStore,
+    value::{MapValue, Value},
 };
-use crate::{StoreError, SurrealQuery};
-use dwn_rs_core::{Descriptor, Fields, MapValue, Message, Value};
 
 use super::{
     errors::SurrealDBError,

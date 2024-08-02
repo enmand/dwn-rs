@@ -8,8 +8,8 @@ use ipld_core::cid::Cid;
 use serde::ser::{SerializeMap, SerializeSeq};
 
 /// Value represents a JSON-like value, that can be serialized and deserialized and
-/// used in DWN to represent data frmo various sources, such as Messages.
-///
+/// used in DWN to represent data frmo various sources, such as Messages. Values
+/// are typed.
 #[derive(Debug, Clone, From, TryInto, Display, PartialEq)]
 pub enum Value {
     Null,

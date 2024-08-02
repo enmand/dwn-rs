@@ -12,7 +12,6 @@
 //! - [`messages::<D: Descriptor, F: Fields>`]
 //! - [`messages::Descriptor`]: A descriptor for a message.
 //! - [`messages::Fields`]: Additional fields that can be included in a message.
-//! - [`auth::JWS`]: A JSON Web Signature (JWS) for authenticating messages.
 //! - [`value::Value`]: A generic value type that can be used in messages.
 //! - [`value::MapValue`]: A map of values that can be used in messages.`
 //!
@@ -22,15 +21,15 @@
 //! - [`messages::records::RecordsWrite`]: A descriptor for reading records.
 //! - [`messages::records::RecordsSubscribe`]: A descriptor for reading records.
 //! - [`messages::records::RecordsDelete`]: A descriptor for reading records.
-//! - [`messages::records::ProtocolConfigure`]: A descriptor for reading records.
-//! - [`messages::records::ProtocolQuery`]: A descriptor for reading records.
 #![doc(issue_tracker_base_url = "https://github.com/enmand/dwn-rsissues/")]
 pub mod auth;
+pub mod errors;
 pub mod filters;
-pub mod messages;
+pub mod interfaces;
 mod serde;
+pub mod stores;
 pub mod value;
 
 pub use filters::*;
-pub use messages::*;
+pub use interfaces::*;
 pub use value::*;

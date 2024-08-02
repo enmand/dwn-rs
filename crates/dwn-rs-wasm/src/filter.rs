@@ -1,7 +1,9 @@
-use dwn_rs_core::MapValue;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_stores::filters::{FilterKey, FilterSet, Filters, ValueFilter};
+use dwn_rs_core::{
+    filters::{FilterKey, FilterSet, Filters, ValueFilter},
+    value::MapValue,
+};
 
 #[wasm_bindgen(typescript_custom_section)]
 const INDEX_MAP: &'static str = r#"import { Filter } from "@tbd54566975/dwn-sdk-js";

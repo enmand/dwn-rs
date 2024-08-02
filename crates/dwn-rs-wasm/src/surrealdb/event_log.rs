@@ -1,6 +1,9 @@
-use dwn_rs_stores::{
-    surrealdb::SurrealDB, Cursor, EventLog, EventLogError, QueryReturn, StoreError, SurrealDBError,
+use dwn_rs_core::{
+    errors::{EventLogError, StoreError},
+    filters::{Cursor, QueryReturn},
+    stores::EventLog,
 };
+use dwn_rs_stores::{surrealdb::SurrealDB, SurrealDBError};
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 

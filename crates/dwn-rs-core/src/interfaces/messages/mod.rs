@@ -1,17 +1,17 @@
-pub mod records;
-
 use chrono::{DateTime, Utc};
-pub use records::*;
-
 use serde::{Deserialize, Serialize};
 
 use crate::{auth::JWS, MapValue, Value};
 
-pub trait Descriptor: PartialEq + Default {}
-pub trait Fields: PartialEq + Default {
-    fn contains_key(&self, key: &str) -> bool;
-    fn insert(&mut self, key: String, value: Value);
-    fn remove(&mut self, key: &str) -> Option<Value>;
+pub trait Descriptor: Default + PartialEq {}
+pub trait Fields: Default + PartialEq {
+    fn contains_key(&self, _key: &str) -> bool {
+        false
+    }
+    fn insert(&mut self, _key: String, _value: Value) {}
+    fn remove(&mut self, _key: &str) -> Option<Value> {
+        None
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
@@ -78,10 +78,14 @@ impl Fields for MapValue {
     }
 }
 
+impl Descriptor for () {}
+
 /// Interfaces represent the different Decentralized Web Node message interface types.
-/// See https://identity.foundation/decentralized-web-node/spec/#interfaces for more information.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+/// See <https://identity.foundation/decentralized-web-node/spec/#interfaces> for more information.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
 pub enum Interface {
+    #[default]
+    Undefined,
     #[serde(rename = "records")]
     Records,
     #[serde(rename = "protocols")]
