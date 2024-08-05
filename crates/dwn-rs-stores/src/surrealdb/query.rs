@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use dwn_rs_core::MapValue;
+use dwn_rs_core::{filters::Filter, MapValue};
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -14,16 +14,15 @@ use surrealdb::{
 };
 
 use super::expr::{SCond, SOrders};
-use crate::{
-    filters::{
-        errors::{FilterError, QueryError, ValueError},
-        filters::{Filter, Filters},
-        query::{Cursor, CursorValue, Pagination, Query, SortDirection},
-        Directional,
-    },
-    FilterKey, Set,
+use crate::filters::{
+    errors::{FilterError, QueryError, ValueError},
+    query::{Cursor, CursorValue, Pagination, Query, SortDirection},
+    Directional,
 };
-use crate::{Alias, Ordorable};
+use crate::{
+    filters::filter_key::{Alias, FilterKey, FilterSet, Filters},
+    Ordorable,
+};
 
 pub struct SurrealQuery<U, T>
 where
@@ -100,7 +99,7 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        let filters = Into::<Set<Alias>>::into(filters.clone() as Filters)
+        let filters = Into::<FilterSet<Alias>>::into(filters.clone() as Filters)
             .into_iter()
             .filter_map(|f| {
                 f.into_iter()
@@ -125,7 +124,7 @@ where
 
                                 Ok((k, Operator::Equal, format!("${}", alias)).try_into()?)
                             }
-                            Filter::Range(lower, upper) => {
+                            Filter::Range((lower, upper)) => {
                                 let (cond, binds) =
                                     handle_range_filter((k.clone(), alias), (lower, upper))?;
 
