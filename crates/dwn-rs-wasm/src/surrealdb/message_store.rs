@@ -1,8 +1,6 @@
 use dwn_rs_core::{
     errors::{MessageStoreError, StoreError},
-    interfaces::GenericDescriptor,
     stores::MessageStore,
-    value::MapValue,
 };
 use dwn_rs_stores::surrealdb::SurrealDB;
 use js_sys::Reflect;
@@ -95,11 +93,7 @@ impl SurrealMessageStore {
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
 
-        let msg: GenericMessage = match self
-            .store
-            .get::<GenericDescriptor, MapValue>(tenant, cid)
-            .await
-        {
+        let msg: GenericMessage = match self.store.get(tenant, cid).await {
             Ok(v) => v.into(),
             Err(e) => match e {
                 MessageStoreError::StoreError(StoreError::NotFound) => {
@@ -133,7 +127,7 @@ impl SurrealMessageStore {
 
         let out: JSQueryReturn = match self
             .store
-            .query::<GenericDescriptor, MapValue>(
+            .query(
                 tenant,
                 filter.into(),
                 message_sort.map(|sort| sort.into()),

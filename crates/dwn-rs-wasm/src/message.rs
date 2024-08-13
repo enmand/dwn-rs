@@ -1,7 +1,7 @@
 use serde::Serialize;
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{prelude::*, throw_str};
 
-use dwn_rs_core::{Descriptor, Fields, GenericDescriptor, MapValue, Message};
+use dwn_rs_core::Message;
 
 use crate::ser::serializer;
 
@@ -17,36 +17,29 @@ extern "C" {
     pub type GenericMessageArray;
 }
 
-impl From<&GenericMessage> for Message<GenericDescriptor, MapValue> {
+impl From<&GenericMessage> for Message {
     fn from(value: &GenericMessage) -> Self {
         if value.is_undefined() {
-            return Message::default();
+            throw_str("Message is undefined");
         }
 
         match serde_wasm_bindgen::from_value(value.into()) {
             Ok(m) => m,
-            Err(_) => Message::default(),
+            Err(e) => throw_str(&format!("unable to deserialize message: {:?}", e)),
         }
     }
 }
 
-impl<D, F> From<Message<D, F>> for GenericMessage
-where
-    D: Descriptor + Serialize + PartialEq,
-    F: Fields + Serialize + PartialEq,
-{
-    fn from(value: Message<D, F>) -> Self {
-        if value != Message::<D, F>::default() {
-            if let Ok(m) = value.serialize(&serializer()) {
-                return m.into();
-            }
+impl From<Message> for GenericMessage {
+    fn from(value: Message) -> Self {
+        match value.serialize(&serializer()) {
+            Ok(m) => m.into(),
+            Err(e) => throw_str(&format!("unable to serialize message: {:?}", e)),
         }
-
-        wasm_bindgen::JsValue::undefined().into()
     }
 }
 
-impl From<&GenericMessageArray> for Vec<Message<GenericDescriptor, MapValue>> {
+impl From<&GenericMessageArray> for Vec<Message> {
     fn from(value: &GenericMessageArray) -> Self {
         if let Ok(m) = serde_wasm_bindgen::from_value(value.into()) {
             return m;
@@ -56,16 +49,11 @@ impl From<&GenericMessageArray> for Vec<Message<GenericDescriptor, MapValue>> {
     }
 }
 
-impl<D, F> From<Vec<Message<D, F>>> for GenericMessageArray
-where
-    D: Descriptor + Serialize,
-    F: Fields + Serialize,
-{
-    fn from(value: Vec<Message<D, F>>) -> Self {
-        if let Ok(m) = value.serialize(&serializer()) {
-            return m.into();
+impl From<Vec<Message>> for GenericMessageArray {
+    fn from(value: Vec<Message>) -> Self {
+        match value.serialize(&serializer()) {
+            Ok(m) => m.into(),
+            Err(e) => throw_str(&format!("unable to serialize messages: {:?}", e)),
         }
-
-        wasm_bindgen::JsValue::default().into()
     }
 }
