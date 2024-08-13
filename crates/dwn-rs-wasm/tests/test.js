@@ -10,7 +10,6 @@ import WebSocket from "isomorphic-ws";
 global.WebSocket = WebSocket;
 
 let s = new SurrealMessageStore();
-// await s.connect("ws://192.168.10.56:8000/");
 await s.connect("mem://");
 let d = new SurrealDataStore();
 await d.connect("mem://");
@@ -23,5 +22,6 @@ describe("Store dependent tests", () => {
     messageStore: s,
     dataStore: d,
     eventLog: e,
+    resumableTaskStore: t,
   });
 });
