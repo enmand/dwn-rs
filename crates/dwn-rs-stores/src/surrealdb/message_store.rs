@@ -3,7 +3,6 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
-use serde::{de::DeserializeOwned, Serialize};
 use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
@@ -11,9 +10,10 @@ use crate::SurrealQuery;
 use dwn_rs_core::{
     errors::{MessageStoreError, StoreError},
     filters::{Filters, MessageSort, Pagination, Query, QueryReturn},
-    interfaces::{Descriptor, Fields, Message},
+    interfaces::Message,
     stores::MessageStore,
     value::{MapValue, Value},
+    Fields,
 };
 
 use super::{
@@ -33,16 +33,20 @@ impl MessageStore for SurrealDB {
         self.close().await
     }
 
-    async fn put<D: Descriptor + Serialize + Send, F: Fields + Serialize + Send>(
+    async fn put(
         &self,
         tenant: &str,
-        mut message: Message<D, F>,
+        mut message: Message,
         indexes: MapValue,
         tags: MapValue,
     ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Value> = None;
-        if message.fields.contains_key("encodedData") {
-            data = message.fields.remove("encodedData");
+        match message.fields {
+            Fields::EncodedWrite(ref mut ew) => {
+                data = ew.encoded_data.clone().map(|d| Value::String(d));
+                ew.encoded_data = None;
+            }
+            _ => (),
         }
 
         let i = serde_ipld_dagcbor::to_vec(&message)?;
@@ -68,11 +72,7 @@ impl MessageStore for SurrealDB {
         Ok(cid)
     }
 
-    async fn get<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
-        &self,
-        tenant: &str,
-        cid: String,
-    ) -> Result<Message<D, F>, MessageStoreError> {
+    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
             .with_database(tenant, |db| async move {
@@ -89,23 +89,27 @@ impl MessageStore for SurrealDB {
             return Err(MessageStoreError::StoreError(StoreError::NotFound));
         }
 
-        let mut from: Message<D, F> =
-            serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
+        let mut from: Message = serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
 
         if let Some(data) = encoded_message.encoded_data {
-            from.fields.insert("encodedData".to_string(), data);
+            match from.fields {
+                Fields::EncodedWrite(ref mut ew) => {
+                    ew.encoded_data = Some(data.to_string());
+                }
+                _ => (),
+            };
         }
 
         Ok(from)
     }
 
-    async fn query<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
+    async fn query(
         &self,
         tenant: &str,
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message<D, F>>, MessageStoreError> {
+    ) -> Result<QueryReturn<Message>, MessageStoreError> {
         let mut qb = self
             .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
@@ -136,15 +140,20 @@ impl MessageStore for SurrealDB {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
                 }
 
-                let mut msg: Message<D, F> = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
+                let mut msg: Message = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
-                    msg.fields.insert("encodedData".to_string(), data);
+                    match msg.fields {
+                        Fields::EncodedWrite(ref mut ew) => {
+                            ew.encoded_data = Some(data.to_string());
+                        }
+                        _ => (),
+                    };
                 }
 
                 Ok(msg)
             })
-            .collect::<Result<Vec<Message<_, _>>, MessageStoreError>>()?;
+            .collect::<Result<Vec<Message>, MessageStoreError>>()?;
 
         Ok(QueryReturn { items: r, cursor })
     }

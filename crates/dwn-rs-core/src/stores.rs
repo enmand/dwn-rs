@@ -11,10 +11,7 @@ use crate::{
     filters::filter_key::Filters,
     Cursor, MessageSort, Pagination, QueryReturn,
 };
-use crate::{
-    interfaces::{Descriptor, Fields},
-    MapValue, Message,
-};
+use crate::{MapValue, Message};
 
 #[async_trait]
 pub trait MessageStore: Default {
@@ -22,27 +19,23 @@ pub trait MessageStore: Default {
 
     async fn close(&mut self);
 
-    async fn put<D: Descriptor + Serialize + Send, F: Fields + Serialize + Send>(
+    async fn put(
         &self,
         tenant: &str,
-        message: Message<D, F>,
+        message: Message,
         indexes: MapValue,
         tags: MapValue,
     ) -> Result<Cid, MessageStoreError>;
 
-    async fn get<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
-        &self,
-        tenant: &str,
-        cid: String,
-    ) -> Result<Message<D, F>, MessageStoreError>;
+    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError>;
 
-    async fn query<D: Descriptor + DeserializeOwned, F: Fields + DeserializeOwned>(
+    async fn query(
         &self,
         tenant: &str,
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message<D, F>>, MessageStoreError>;
+    ) -> Result<QueryReturn<Message>, MessageStoreError>;
 
     async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError>;
 

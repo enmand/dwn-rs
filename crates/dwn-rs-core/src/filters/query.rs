@@ -7,7 +7,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use crate::filters::{errors, Filters};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct Pagination {
     pub cursor: Option<Cursor>,
     pub limit: Option<u64>,
@@ -27,7 +27,7 @@ impl Pagination {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct Cursor {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "messageCid")]

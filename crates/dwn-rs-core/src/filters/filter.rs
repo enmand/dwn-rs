@@ -15,7 +15,7 @@ pub enum Filter<T> {
     Prefix(T),
 }
 
-mod range_filter_serializer {
+pub mod range_filter_serializer {
     use super::*;
     use serde::ser::{Serialize, SerializeMap, Serializer};
 
@@ -42,6 +42,20 @@ mod range_filter_serializer {
         }
 
         map.end()
+    }
+
+    pub fn serialize_optional<S, T>(
+        range_filter: &Option<(Bound<T>, Bound<T>)>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Serialize,
+    {
+        match range_filter {
+            Some(range) => serialize(range, serializer),
+            None => serializer.serialize_none(),
+        }
     }
 }
 
