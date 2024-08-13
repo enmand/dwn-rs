@@ -3,6 +3,7 @@ import init, {
   SurrealDataStore,
   SurrealMessageStore,
   SurrealEventLog,
+  SurrealResumableTaskStore,
 } from "../browsers/index.js";
 import stores from "../browsers/index_bg.wasm";
 
