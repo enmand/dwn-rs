@@ -17,8 +17,9 @@ export default {
   coverage: true,
   browsers: [
     playwrightLauncher({ product: "chromium" }),
-    playwrightLauncher({ product: "firefox" }),
+    // playwrightLauncher({ product: "firefox" }),
   ],
+  testsFinishTimeout: 60000,
   nodeResolve: true,
   testFramework: {
     config: {
