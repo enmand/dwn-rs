@@ -5,14 +5,10 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Core library components for dwn-rs"
 
-[features]
-default = []
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# actix = "0.13.5"
 async-trait = "0.1.73"
 chrono = { version = "0.4.30", features = ["serde"] }
 cid = { version = "0.11.1", features = ["serde"] }
@@ -22,16 +18,15 @@ serde = { version = "1.0.183", features = ["derive"] }
 serde_ipld_dagcbor = "0.6.0"
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
-derive_more = "0.99.18"
+derive_more = { version = "1.0", features = ["display", "from", "try_into"] }
 ssi-dids-core = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" } # latest passing commit as of 20240725
 base64 = "0.22.1"
 ssi-jwk = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" }
 ssi-jws = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" }
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
-
-dwn-rs-core-derive = { path = "../dwn-rs-core-derive" }
 thiserror = "1.0.63"
+serde_json = "1.0.113"
 
 [dev-dependencies]
 serde_json = "1.0.113"

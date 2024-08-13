@@ -26,7 +26,7 @@ pub mod auth;
 pub mod errors;
 pub mod filters;
 pub mod interfaces;
-mod serde;
+mod ser;
 pub mod stores;
 pub mod value;
 

@@ -18,9 +18,9 @@ pub enum Value {
     Number(i64),
     Float(f64),
     Cid(Cid),
-    #[display(fmt = "{:?}", "_0")]
+    #[display("{:?}", "_0")]
     Map(MapValue),
-    #[display(fmt = "{:?}", "_0")]
+    #[display("{:?}", "_0")]
     Array(Vec<Value>),
     DateTime(DateTime<Utc>),
 }
