@@ -16,10 +16,13 @@ let d = new SurrealDataStore();
 await d.connect("mem://");
 let e = new SurrealEventLog();
 await e.connect("mem://");
+let t = new SurrealResumableTaskStore();
+await t.connect("mem://");
 describe("Store dependent tests", () => {
   TestSuite.runInjectableDependentTests({
     messageStore: s,
     dataStore: d,
     eventLog: e,
+    resumableTaskStore: t,
   });
 });

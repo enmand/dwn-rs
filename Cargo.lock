@@ -742,15 +742,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "catty"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf0adb3cc1c06945672f8dcc827e42497ac6d0aff49f459ec918132b82a5cbc"
-dependencies = [
- "spin 0.9.8",
-]
-
-[[package]]
 name = "cbor4ii"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1369,10 +1360,8 @@ dependencies = [
  "ssi-jwk",
  "ssi-jws",
  "thiserror",
- "tokio",
  "ulid",
  "url",
- "xtra",
 ]
 
 [[package]]
@@ -1400,7 +1389,6 @@ dependencies = [
  "tokio-stream",
  "ulid",
  "url",
- "web-sys",
 ]
 
 [[package]]
@@ -6556,23 +6544,6 @@ dependencies = [
  "static-iref",
  "static-regular-grammar",
  "thiserror",
-]
-
-[[package]]
-name = "xtra"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1fd2fa83096d6c2e5eae3dcd265d16bb084abbe1391c38baec036a6cc1b7c7c"
-dependencies = [
- "catty",
- "event-listener 2.5.3",
- "futures-core",
- "futures-util",
- "pin-project-lite",
- "spin 0.9.8",
- "tokio",
- "wasm-bindgen",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
