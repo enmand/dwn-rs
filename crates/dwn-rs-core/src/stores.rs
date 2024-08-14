@@ -1,6 +1,5 @@
-use std::{fmt::Debug, pin::Pin};
+use std::{fmt::Debug, future::Future, pin::Pin};
 
-use async_trait::async_trait;
 use futures_util::Stream;
 use ipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -13,63 +12,70 @@ use crate::{
 };
 use crate::{MapValue, Message};
 
-#[async_trait]
 pub trait MessageStore: Default {
-    async fn open(&mut self) -> Result<(), MessageStoreError>;
+    fn open(&mut self) -> impl Future<Output = Result<(), MessageStoreError>> + Send;
 
-    async fn close(&mut self);
+    fn close(&mut self) -> impl Future<Output = ()>;
 
-    async fn put(
+    fn put(
         &self,
         tenant: &str,
         message: Message,
         indexes: MapValue,
         tags: MapValue,
-    ) -> Result<Cid, MessageStoreError>;
+    ) -> impl Future<Output = Result<Cid, MessageStoreError>> + Send;
 
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError>;
+    fn get(
+        &self,
+        tenant: &str,
+        cid: String,
+    ) -> impl Future<Output = Result<Message, MessageStoreError>> + Send;
 
-    async fn query(
+    fn query(
         &self,
         tenant: &str,
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message>, MessageStoreError>;
+    ) -> impl Future<Output = Result<QueryReturn<Message>, MessageStoreError>> + Send;
 
-    async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError>;
+    fn delete(
+        &self,
+        tenant: &str,
+        cid: String,
+    ) -> impl Future<Output = Result<(), MessageStoreError>> + Send;
 
-    async fn clear(&self) -> Result<(), MessageStoreError>;
+    fn clear(&self) -> impl Future<Output = Result<(), MessageStoreError>> + Send;
 }
 
-#[async_trait]
 pub trait DataStore: Default {
-    async fn open(&mut self) -> Result<(), DataStoreError>;
+    fn open(&mut self) -> impl Future<Output = Result<(), DataStoreError>> + Send;
 
-    async fn close(&mut self);
+    fn close(&mut self) -> impl Future<Output = ()> + Send;
 
-    async fn put<T: Stream<Item = Vec<u8>> + Send + Unpin>(
+    fn put<T: Stream<Item = Vec<u8>> + Send + Unpin>(
         &self,
         tenant: &str,
         record_id: String,
         cid: String,
         value: T,
-    ) -> Result<PutDataResults, DataStoreError>;
+    ) -> impl Future<Output = Result<PutDataResults, DataStoreError>> + Send;
 
-    async fn get(
+    fn get(
         &self,
         tenant: &str,
         record_id: String,
         cid: String,
-    ) -> Result<GetDataResults, DataStoreError>;
-    async fn delete(
+    ) -> impl Future<Output = Result<GetDataResults, DataStoreError>> + Send;
+
+    fn delete(
         &self,
         tenant: &str,
         record_id: String,
         cid: String,
-    ) -> Result<(), DataStoreError>;
+    ) -> impl Future<Output = Result<(), DataStoreError>> + Send;
 
-    async fn clear(&self) -> Result<(), DataStoreError>;
+    fn clear(&self) -> impl Future<Output = Result<(), DataStoreError>> + Send;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,36 +89,39 @@ pub struct GetDataResults {
     pub data: Pin<Box<dyn Stream<Item = Vec<u8>>>>,
 }
 
-#[async_trait]
 pub trait EventLog: Default {
-    async fn open(&mut self) -> Result<(), EventLogError>;
+    fn open(&mut self) -> impl Future<Output = Result<(), EventLogError>> + Send;
 
-    async fn close(&mut self);
+    fn close(&mut self) -> impl Future<Output = ()>;
 
-    async fn append(
+    fn append(
         &self,
         tenant: &str,
         cid: String,
         indexes: MapValue,
         tags: MapValue,
-    ) -> Result<(), EventLogError>;
+    ) -> impl Future<Output = Result<(), EventLogError>>;
 
-    async fn get_events(
+    fn get_events(
         &self,
         tenant: &str,
         cursor: Option<Cursor>,
-    ) -> Result<QueryReturn<String>, EventLogError>;
+    ) -> impl Future<Output = Result<QueryReturn<String>, EventLogError>> + Send;
 
-    async fn query_events(
+    fn query_events(
         &self,
         tenant: &str,
         filter: Filters,
         cursor: Option<Cursor>,
-    ) -> Result<QueryReturn<String>, EventLogError>;
+    ) -> impl Future<Output = Result<QueryReturn<String>, EventLogError>> + Send;
 
-    async fn delete<'a>(&self, tenant: &str, cid: &'a [&str]) -> Result<(), EventLogError>;
+    fn delete<'a>(
+        &self,
+        tenant: &str,
+        cid: &'a [&str],
+    ) -> impl Future<Output = Result<(), EventLogError>> + Send;
 
-    async fn clear(&self) -> Result<(), EventLogError>;
+    fn clear(&self) -> impl Future<Output = Result<(), EventLogError>> + Send;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -123,31 +132,39 @@ pub struct ManagedResumableTask<T: Serialize + Sync + Send + Debug> {
     pub retry_count: u64,
 }
 
-#[async_trait]
 pub trait ResumableTaskStore: Default {
-    async fn open(&mut self) -> Result<(), ResumableTaskStoreError>;
+    fn open(&mut self) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 
-    async fn close(&mut self);
+    fn close(&mut self) -> impl Future<Output = ()> + Send;
 
-    async fn register<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
+    fn register<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
         &self,
         task: T,
         timeout: u64,
-    ) -> Result<ManagedResumableTask<T>, ResumableTaskStoreError>;
+    ) -> impl Future<Output = Result<ManagedResumableTask<T>, ResumableTaskStoreError>> + Send;
 
-    async fn grab<T: Serialize + Send + Sync + DeserializeOwned + Debug + Unpin>(
+    fn grab<T: Serialize + Send + Sync + DeserializeOwned + Debug + Unpin>(
         &self,
         count: u64,
-    ) -> Result<Vec<ManagedResumableTask<T>>, ResumableTaskStoreError>;
+    ) -> impl Future<Output = Result<Vec<ManagedResumableTask<T>>, ResumableTaskStoreError>> + Send;
 
-    async fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
+    fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
         &self,
         task_id: String,
-    ) -> Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError>;
+    ) -> impl Future<Output = Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError>> + Send;
 
-    async fn extend(&self, task_id: String, timeout: u64) -> Result<(), ResumableTaskStoreError>;
+    fn extend(
+        &self,
+        task_id: String,
+        timeout: u64,
+    ) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 
-    async fn delete(&self, task_id: String) -> Result<(), ResumableTaskStoreError>;
+    fn delete(
+        &self,
+        task_id: String,
+    ) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 
-    async fn clear(&self) -> Result<(), ResumableTaskStoreError>;
+    fn clear(&self) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
+}
+
 }

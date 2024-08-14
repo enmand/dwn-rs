@@ -1,5 +1,4 @@
 use async_stream::stream;
-use async_trait::async_trait;
 use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::sql::{Id, Table, Thing};
 
@@ -13,7 +12,6 @@ use super::models::{CreateData, GetData};
 
 const DATA_TABLE: &str = "data";
 
-#[async_trait]
 impl DataStore for SurrealDB {
     async fn open(&mut self) -> Result<(), DataStoreError> {
         self.open().await.map_err(DataStoreError::from)

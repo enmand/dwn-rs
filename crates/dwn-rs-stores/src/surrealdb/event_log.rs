@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use surrealdb::sql::{Id, Table, Thing};
 
 use crate::{SurrealDB, SurrealDBError, SurrealQuery};
@@ -13,7 +12,6 @@ use super::models::{CreateEvent, GetEvent};
 
 const EVENTS_TABLE: &str = "events";
 
-#[async_trait]
 impl EventLog for SurrealDB {
     async fn open(&mut self) -> Result<(), EventLogError> {
         self.open().await.map_err(EventLogError::from)

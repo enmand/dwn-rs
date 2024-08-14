@@ -9,7 +9,6 @@ description = "Core library components for dwn-rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-async-trait = "0.1.73"
 chrono = { version = "0.4.30", features = ["serde"] }
 cid = { version = "0.11.1", features = ["serde"] }
 futures-util = "0.3.30"

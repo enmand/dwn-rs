@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 use surrealdb::sql::{
@@ -22,7 +21,6 @@ const RESUMABLE_TASKS_DB: &str = "tasks";
 const RESUMABLE_TASKS_TABLE: &str = "resumable_tasks";
 const TASK_TIMEOUT: u64 = 60;
 
-#[async_trait]
 impl ResumableTaskStore for SurrealDB {
     async fn open(&mut self) -> Result<(), ResumableTaskStoreError> {
         self.db = self.db.clone();
