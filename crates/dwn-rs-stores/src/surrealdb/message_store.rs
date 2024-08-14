@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
 use surrealdb::sql::{Id, Thing};
@@ -23,7 +22,6 @@ use super::{
 
 const MESSAGES_TABLE: &str = "messages";
 
-#[async_trait]
 impl MessageStore for SurrealDB {
     async fn open(&mut self) -> Result<(), MessageStoreError> {
         self.open().await.map_err(MessageStoreError::from)

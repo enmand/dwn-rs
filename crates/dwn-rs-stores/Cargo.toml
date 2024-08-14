@@ -22,7 +22,6 @@ surreal-wasm = ["surrealdb", "surrealdb/kv-indxdb"]
 
 [dependencies]
 async-stream = "0.3.5"
-async-trait = "0.1.73"
 futures-util = "0.3.30"
 chrono = { version = "0.4.37", features = ["serde", "wasmbind"] }
 cid = { version = "0.11.1", features = ["serde"] }

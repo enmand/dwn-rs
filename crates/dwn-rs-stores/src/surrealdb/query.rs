@@ -4,7 +4,6 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
-use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -69,7 +68,6 @@ pub trait CursorValue<T> {
     fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }
 
-#[async_trait]
 impl<U, T> Query<U, T> for SurrealQuery<U, T>
 where
     U: CursorValue<T> + DeserializeOwned + Sync + Send + Debug,

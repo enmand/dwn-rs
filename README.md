@@ -1,10 +1,13 @@
-dwn-rs
-====
+# dwn-rs
 
 dwn-rs is a Rust-based DWN implementation that can be
 used with [dwn-sdk-js](https://github.com/TBD54566975/dwn-sdk-js).
 
 # Compiling
+
+## Requirements
+
+- Rust 1.75.0+
 
 This project uses [cargo-make](https://sagiegurari.github.io/cargo-make/). To
 install it, run:

@@ -1343,7 +1343,6 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 name = "dwn-rs-core"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "base64 0.22.1",
  "chrono",
  "cid",
@@ -1368,7 +1367,6 @@ name = "dwn-rs-stores"
 version = "0.1.0"
 dependencies = [
  "async-stream",
- "async-trait",
  "chrono",
  "cid",
  "dwn-rs-core",
