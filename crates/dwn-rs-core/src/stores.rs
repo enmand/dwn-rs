@@ -166,5 +166,3 @@ pub trait ResumableTaskStore: Default {
 
     fn clear(&self) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 }
-
-}
