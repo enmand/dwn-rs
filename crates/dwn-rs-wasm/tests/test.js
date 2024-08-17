@@ -4,10 +4,14 @@ import {
   SurrealMessageStore,
   SurrealEventLog,
   SurrealResumableTaskStore,
+  init_tracing, set_tracing_level, TracingLevel,
 } from "../pkg/index.js";
 import WebSocket from "isomorphic-ws";
 
 global.WebSocket = WebSocket;
+
+set_tracing_level(TracingLevel.Error);
+init_tracing();
 
 let s = new SurrealMessageStore();
 await s.connect("mem://");
