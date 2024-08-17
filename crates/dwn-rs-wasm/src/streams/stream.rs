@@ -90,7 +90,7 @@ impl StreamReadable {
 }
 
 /// IntoStream is the the implementation for tokio::Stream, for the StreamReadable stream. This
-/// can be used in Rust to read data from the JsvaScript stream, and return items as a JsValue.
+/// can be used in Rust to read data from the JavaScript stream, and return items as a JsValue.
 pub struct IntoStream {
     data_rx: UnboundedReceiver<serde_bytes::ByteBuf>,
     done_rx: UnboundedReceiver<()>,
