@@ -11,7 +11,7 @@ import stores from "../browsers/index_bg.wasm";
 let instance = await stores();
 await init(instance);
 
-set_tracing_level(TracingLevel.Trace);
+set_tracing_level(TracingLevel.Error);
 init_tracing();
 
 let s = new SurrealMessageStore();
