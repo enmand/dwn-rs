@@ -24,12 +24,14 @@
 #![doc(issue_tracker_base_url = "https://github.com/enmand/dwn-rsissues/")]
 pub mod auth;
 pub mod errors;
+pub mod events;
 pub mod filters;
 pub mod interfaces;
 mod ser;
 pub mod stores;
 pub mod value;
 
+pub use events::*;
 pub use filters::*;
 pub use interfaces::*;
 pub use value::*;

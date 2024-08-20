@@ -126,6 +126,8 @@ impl SurrealDB {
             .take::<Option<BTreeMap<String, String>>>((0, "databases"))
             .map_err(SurrealDBError::from)?;
 
+        // TODO: clear() seems to clear tables more times than needed, see the surrealdb
+        // trace for a dwn-sdk-js test
         for (db_name, _) in databases.unwrap() {
             self.with_database(&db_name, |db| async move {
                 let mut rts = RemoveTableStatement::default();

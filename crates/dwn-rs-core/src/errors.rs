@@ -97,3 +97,12 @@ pub enum ResumableTaskStoreError {
     #[error("unable to decode task id: {0}")]
     TaskIdDecodeError(#[from] ulid::DecodeError),
 }
+
+#[derive(Error, Debug)]
+pub enum EventStreamError {
+    #[error("error operating the store: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("actor error: {0}")]
+    ActorError(#[from] xtra::Error),
+}
