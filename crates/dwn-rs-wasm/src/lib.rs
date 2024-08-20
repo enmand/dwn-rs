@@ -6,6 +6,8 @@ extern crate alloc;
 extern crate std as alloc;
 
 mod data;
+mod event_stream;
+mod events;
 mod filter;
 mod message;
 mod query;
