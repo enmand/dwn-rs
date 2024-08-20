@@ -4,6 +4,7 @@ import {
   SurrealMessageStore,
   SurrealEventLog,
   SurrealResumableTaskStore,
+  EventStream,
   init_tracing, TracingLevel,
 } from "../pkg/index.js";
 import WebSocket from "isomorphic-ws";
@@ -20,11 +21,13 @@ let e = new SurrealEventLog();
 await e.connect("mem://");
 let t = new SurrealResumableTaskStore();
 await t.connect("mem://");
+let es = new EventStream();
 describe("Store dependent tests", () => {
   TestSuite.runInjectableDependentTests({
     messageStore: s,
     dataStore: d,
     eventLog: e,
+    eventStream: es,
     resumableTaskStore: t,
   });
 });
