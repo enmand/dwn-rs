@@ -8,6 +8,15 @@ description = "Core library components for dwn-rs"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+xtra = { version = "0.6.0", features = [
+    "wasm_bindgen",
+    "sink",
+    "instrumentation",
+] }
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+xtra = { version = "0.6.0", features = ["tokio", "sink", "instrumentation"] }
+
 [dependencies]
 chrono = { version = "0.4.30", features = ["serde"] }
 cid = { version = "0.11.1", features = ["serde"] }
@@ -17,6 +26,7 @@ serde = { version = "1.0.183", features = ["derive"] }
 serde_ipld_dagcbor = "0.6.0"
 serde_repr = "0.1.17"
 serde_with = "3.4.0"
+tokio = { version = "1.39.2", features = ["io-util", "rt", "macros"] }
 derive_more = { version = "1.0", features = ["display", "from", "try_into"] }
 ssi-dids-core = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" } # latest passing commit as of 20240725
 base64 = "0.22.1"
@@ -27,7 +37,7 @@ url = { version = "2.5.0", features = ["serde"] }
 thiserror = "1.0.63"
 serde_json = "1.0.113"
 tracing = "0.1.40"
-tracing-test = "0.2.5"
+tracing-test = { version = "0.2.5", features = ["no-env-filter"] }
 
 [dev-dependencies]
 serde_json = "1.0.113"
