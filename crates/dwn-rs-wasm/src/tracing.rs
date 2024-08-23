@@ -1,18 +1,12 @@
-use std::cell::RefCell;
-
-use wasm_bindgen::prelude::*;
-
-thread_local! {
-    pub static TRACING_LEVEL: RefCell<Option<tracing::Level>> = RefCell::new(None);
-}
+use wasm_bindgen::{prelude::*, throw_str};
 
 #[wasm_bindgen]
 /// Initialize tracing with a console subscriber. This is useful for debugging
 /// in the browser. By default, the subscriber will log all events at the `Error`
 /// level. This can be adjusted by calling `set_tracing_level`, however you must
 /// call this function before any tracing events are emitted.
-pub fn init_tracing() {
-    let level = TRACING_LEVEL.with(|l| l.borrow().unwrap_or(tracing::Level::ERROR));
+pub fn init_tracing(level: TracingLevel) {
+    let level: tracing::Level = level.into();
     tracing_subscriber::fmt()
         .with_max_level(level)
         .with_writer(
@@ -21,12 +15,6 @@ pub fn init_tracing() {
         )
         .without_time()
         .init();
-}
-
-#[wasm_bindgen]
-/// Sets the global traving level. This must be called before the tracing initialization.
-pub fn set_tracing_level(level: TracingLevel) {
-    TRACING_LEVEL.with(|l| *l.borrow_mut() = Some(level.into()));
 }
 
 #[wasm_bindgen]
