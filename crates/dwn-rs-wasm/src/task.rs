@@ -7,7 +7,7 @@ use wasm_bindgen::{prelude::*, throw_str};
 use crate::ser::serializer;
 
 #[wasm_bindgen(typescript_custom_section)]
-const TASK_IMPORT: &str = r"import { ManagedResumableTask } from '@tbd54566975/dwn-sdk-js";
+const TASK_IMPORT: &str = r"import { ManagedResumableTask } from '@tbd54566975/dwn-sdk-js';";
 
 #[wasm_bindgen]
 extern "C" {
