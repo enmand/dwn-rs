@@ -1,3 +1,4 @@
+use alloc::string::String;
 use js_sys::{AsyncIterator, Function, Iterator, Object};
 use wasm_bindgen::prelude::*;
 use web_sys::AbortSignal;

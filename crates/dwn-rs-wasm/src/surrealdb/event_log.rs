@@ -1,5 +1,9 @@
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use dwn_rs_core::{
-    errors::{EventLogError, StoreError},
+    errors::EventLogError,
     filters::{Cursor, QueryReturn},
     stores::EventLog,
 };
@@ -7,21 +11,10 @@ use dwn_rs_stores::{surrealdb::SurrealDB, SurrealDBError};
 use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
-use thiserror::Error;
-
 use crate::{
     filter::{Filter, IndexMap},
     query::{JSPaginationCursor, JSQueryReturn},
 };
-
-#[derive(Error, Debug)]
-enum SurrealEventLogError {
-    #[error("Store error: {0}")]
-    StoreError(#[from] StoreError),
-
-    #[error("store connection failed: {0}")]
-    ConnectionFailed(#[from] SurrealDBError),
-}
 
 #[wasm_bindgen(js_name = SurrealEventLog)]
 #[derive(Default)]

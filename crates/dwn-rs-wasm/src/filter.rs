@@ -1,3 +1,4 @@
+use alloc::string::{String, ToString};
 use wasm_bindgen::prelude::*;
 
 use dwn_rs_core::{

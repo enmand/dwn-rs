@@ -1,3 +1,10 @@
+#![cfg_attr(feature = "no-std", no_std)]
+
+#[cfg(feature = "no-std")]
+extern crate alloc;
+#[cfg(not(feature = "no-std"))]
+extern crate std as alloc;
+
 mod data;
 mod filter;
 mod message;

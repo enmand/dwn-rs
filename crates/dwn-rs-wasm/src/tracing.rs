@@ -1,4 +1,4 @@
-use wasm_bindgen::{prelude::*, throw_str};
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 /// Initialize tracing with a console subscriber. This is useful for debugging

@@ -18,6 +18,8 @@ args = [
     "--no-default-features",
     "--features",
     "surrealdb-wasm",
+    "--features",
+    "no-std",
 ]
 dependencies = ["install-wasm-pack"]
 
@@ -36,6 +38,8 @@ args = [
     "--no-default-features",
     "--features",
     "surrealdb-wasm",
+    "--features",
+    "no-std",
 ]
 dependencies = ["install-wasm-pack"]
 
@@ -55,6 +59,8 @@ args = [
     "--no-default-features",
     "--features",
     "surrealdb-wasm",
+    "--features",
+    "no-std",
 ]
 dependencies = ["install-wasm-pack"]
 
@@ -75,6 +81,8 @@ args = [
     "--no-default-features",
     "--features",
     "surrealdb-wasm",
+    "--features",
+    "no-std",
 ]
 
 dependencies = ["install-wasm-pack"]
