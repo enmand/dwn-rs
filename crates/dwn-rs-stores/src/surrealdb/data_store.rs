@@ -1,4 +1,3 @@
-use async_stream::stream;
 use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::sql::{Id, Table, Thing};
 
@@ -101,9 +100,7 @@ impl DataStore for SurrealDB {
         }
 
         let size = res.data.len();
-        let s = stream! {
-            yield res.data;
-        };
+        let s = async_std::stream::from_iter(vec![res.data].into_iter());
 
         Ok(GetDataResults {
             size,
