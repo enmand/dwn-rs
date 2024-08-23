@@ -1,31 +1,17 @@
+use alloc::string::ToString;
 use async_stream::stream;
+
 use futures_util::StreamExt;
 use js_sys::{Object, Reflect};
-use thiserror::Error;
 use wasm_bindgen::prelude::*;
 
-use dwn_rs_core::{errors::DataStoreError, stores::DataStore};
-use dwn_rs_stores::surrealdb::{SurrealDB, SurrealDBError};
+use dwn_rs_core::stores::DataStore;
+use dwn_rs_stores::surrealdb::SurrealDB;
 
 use crate::{
     data::{DataStoreGetResult, DataStorePutResult},
     streams::{stream::StreamReadable, sys::Readable},
 };
-
-#[derive(Error, Debug)]
-enum SurrealDataStoreError {
-    #[error("Store error: {0}")]
-    StoreError(#[from] DataStoreError),
-
-    #[error("store connection failed: {0}")]
-    ConnectionFailed(#[from] SurrealDBError),
-}
-
-impl From<SurrealDataStoreError> for JsValue {
-    fn from(e: SurrealDataStoreError) -> Self {
-        JsValue::from_str(&format!("{}", e))
-    }
-}
 
 #[wasm_bindgen(js_name = SurrealDataStore)]
 pub struct SurrealDataStore {
@@ -54,7 +40,7 @@ impl SurrealDataStore {
         self.store
             .connect(connstr)
             .await
-            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into)
     }
 
@@ -84,7 +70,7 @@ impl SurrealDataStore {
             .store
             .put(tenant, record_id.to_string(), cid.to_string(), readable)
             .await
-            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::<JsError>::into)
         {
             Ok(d) => Ok(d.into()),
             Err(e) => Err(e.into()),
@@ -137,7 +123,7 @@ impl SurrealDataStore {
         self.store
             .clear()
             .await
-            .map_err(SurrealDataStoreError::from)
+            .map_err(Into::<JsError>::into)
             .map_err(Into::into)
     }
 
@@ -151,7 +137,7 @@ impl SurrealDataStore {
         self.store
             .delete(tenant, record_id.to_string(), cid.to_string())
             .await
-            .map_err(SurrealDataStoreError::from)?;
+            .map_err(Into::<JsError>::into)?;
 
         Ok(())
     }

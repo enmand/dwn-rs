@@ -1,3 +1,4 @@
+use alloc::string::String;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 

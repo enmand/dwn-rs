@@ -1,3 +1,4 @@
+use alloc::{format, string::String};
 use dwn_rs_core::{stores::ResumableTaskStore, Value};
 use dwn_rs_stores::SurrealDB;
 use wasm_bindgen::prelude::*;

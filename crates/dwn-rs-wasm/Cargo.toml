@@ -13,6 +13,7 @@ default = ["surrealdb-lib"]
 surrealdb = []
 surrealdb-lib = ["surrealdb", "dwn-rs-stores/surreal-lib"]
 surrealdb-wasm = ["surrealdb", "dwn-rs-stores/surreal-wasm"]
+no-std = []
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = true
@@ -20,15 +21,19 @@ wasm-opt = true
 [dependencies]
 async-stream = "0.3.5"
 console_error_panic_hook = "0.1.7"
-futures-util = "0.3.30"
-js-sys = "0.3.64"
-serde = { version = "1.0.183", features = ["derive"] }
+futures-util = { version = "0.3.30", default-features = false, features = [
+    "alloc",
+    "async-await",
+    "async-await-macro",
+] }
+js-sys = "0.3.70"
+serde = { version = "1.0.183", default-fatures = false, features = [
+    "derive",
+    "alloc",
+] }
 serde-wasm-bindgen = "0.6.3"
-thiserror = "1.0.47"
-wasm-bindgen = { version = "0.2.91", features = ["enable-interning"] }
-tokio = { version = "1.39.2", features = ["io-util", "rt", "macros"] }
-tokio-stream = { version = "0.1.14", default-features = false, features = [
-    "io-util",
+wasm-bindgen = { version = "0.2.93", default-features = false, features = [
+    "spans",
 ] }
 wasm-bindgen-futures = "0.4.37"
 web-sys = { version = "0.3.64", features = [
@@ -39,11 +44,29 @@ web-sys = { version = "0.3.64", features = [
     "ReadableStream",
 ] }
 
+serde_bytes = { version = "0.11.14", default-features = false, features = [
+    "alloc",
+] }
+tracing = { version = "0.1.40", default-features = false, features = [
+    "attributes",
+] }
+tracing-subscriber-wasm = "0.1.0"
+tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+    "ansi",
+    "fmt",
+    "smallvec",
+    "tracing-log",
+    "chrono",
+    "json",
+    "serde",
+    "serde_json",
+] }
+futures-channel = { version = "0.3.30", default-features = false, features = [
+    "alloc",
+] }
+futures-core = { version = "0.3.30", default-features = false, features = [
+    "alloc",
+] }
+
 dwn-rs-core = { path = "../dwn-rs-core", default-features = false }
 dwn-rs-stores = { path = "../dwn-rs-stores", default-features = false }
-
-wasm-streams = "0.4.0"
-serde_bytes = "0.11.14"
-tracing = "0.1.40"
-tracing-subscriber-wasm = "0.1.0"
-tracing-subscriber = { version = "0.3.18", features = ["chrono", "json", "serde", "serde_json"] }

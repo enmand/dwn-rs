@@ -1,5 +1,6 @@
-use std::fmt::Debug;
+use core::fmt::Debug;
 
+use alloc::{format, vec::Vec};
 use dwn_rs_core::{stores::ManagedResumableTask, value::Value};
 use serde::Serialize;
 use wasm_bindgen::{prelude::*, throw_str};

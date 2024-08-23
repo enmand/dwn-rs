@@ -1,11 +1,12 @@
-use std::{
+use core::{
     pin::Pin,
     task::{Context, Poll},
 };
 
+use alloc::boxed::Box;
+use futures_channel::mpsc::{unbounded, UnboundedReceiver};
+use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
-use tokio_stream::Stream;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::AbortController;
@@ -41,7 +42,7 @@ impl StreamReadable {
     where
         St: Stream<Item = Option<serde_bytes::ByteBuf>> + 'static,
     {
-        let (data_tx, mut data_rx) = unbounded_channel::<JsValue>();
+        let (data_tx, mut data_rx) = unbounded::<JsValue>();
         let controller = AbortController::new()?;
 
         let read_controller = controller.clone();
@@ -52,14 +53,14 @@ impl StreamReadable {
 
                 match item {
                     Some(i) => match serde_wasm_bindgen::to_value(&i) {
-                        Ok(v) => data_tx.send(v).unwrap_throw(),
+                        Ok(v) => data_tx.unbounded_send(v).unwrap_throw(),
                         Err(_) => {
                             read_controller.abort();
                             break;
                         }
                     },
                     None => {
-                        data_tx.send(JsValue::NULL).unwrap_throw();
+                        data_tx.unbounded_send(JsValue::NULL).unwrap_throw();
                         break;
                     }
                 };
@@ -69,9 +70,10 @@ impl StreamReadable {
         let newr = make_readable(
             // TODO: the closure should take a `size` argument, and properly buffer the data
             Closure::wrap(Box::new(move |_size| -> JsValue {
-                match data_rx.blocking_recv() {
-                    Some(d) => d,
-                    None => JsValue::NULL,
+                match data_rx.try_next() {
+                    Ok(Some(d)) => d,
+                    Ok(None) => JsValue::NULL,
+                    Err(_) => JsValue::NULL,
                 }
             }) as Box<dyn FnMut(JsValue) -> JsValue>)
             .into_js_value(),
@@ -91,6 +93,7 @@ impl StreamReadable {
 
 /// IntoStream is the the implementation for tokio::Stream, for the StreamReadable stream. This
 /// can be used in Rust to read data from the JavaScript stream, and return items as a JsValue.
+#[derive(Debug)]
 pub struct IntoStream {
     data_rx: UnboundedReceiver<serde_bytes::ByteBuf>,
     done_rx: UnboundedReceiver<()>,
@@ -100,18 +103,18 @@ pub struct IntoStream {
 impl IntoStream {
     pub fn new(r: StreamReadable) -> Self {
         let readable = r.as_raw();
-        let (data_tx, data_rx) = unbounded_channel::<serde_bytes::ByteBuf>();
-        let (done_tx, done_rx) = unbounded_channel::<()>();
+        let (data_tx, data_rx) = unbounded::<serde_bytes::ByteBuf>();
+        let (done_tx, done_rx) = unbounded::<()>();
 
-        let data_cb = Closure::wrap(Box::new(move |d| {
-            let val = serde_wasm_bindgen::from_value(d).unwrap_throw();
-            data_tx.send(val).unwrap_throw();
+        let data_cb = Closure::wrap(Box::new(move |d: JsValue| {
+            let val = serde_wasm_bindgen::from_value(d.clone()).unwrap_throw();
+            data_tx.unbounded_send(val).unwrap_throw();
         }) as Box<dyn FnMut(JsValue)>)
         .into_js_value();
         readable.on("data", data_cb.as_ref().unchecked_ref());
 
         let end_cb = Closure::wrap(Box::new(move || {
-            done_tx.send(()).unwrap_throw();
+            done_tx.unbounded_send(()).unwrap_throw();
         }) as Box<dyn FnMut()>)
         .into_js_value();
         readable.on("end", end_cb.as_ref().unchecked_ref());
@@ -131,8 +134,8 @@ impl Stream for IntoStream {
     // read the data in the Readable, and return it as a JsValue.
     fn poll_next<'c>(self: Pin<&mut Self>, cx: &mut Context<'c>) -> Poll<Option<Self::Item>> {
         let state = self.get_mut();
-        let data_rx = state.data_rx.poll_recv(cx);
-        let done_rx = state.done_rx.poll_recv(cx);
+        let data_rx = state.data_rx.poll_next_unpin(cx);
+        let done_rx = state.done_rx.poll_next_unpin(cx);
 
         // If we end, but the stream still has data left, we need to keep polling until the data is
         // done.
