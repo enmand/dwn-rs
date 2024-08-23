@@ -70,7 +70,7 @@ impl MessageStore for SurrealDB {
         Ok(cid)
     }
 
-    async fn get(&self, tenant: &str, cid: String) -> Result<Message, MessageStoreError> {
+    async fn get(&self, tenant: &str, cid: &str) -> Result<Message, MessageStoreError> {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
             .with_database(tenant, |db| async move {
@@ -156,7 +156,7 @@ impl MessageStore for SurrealDB {
         Ok(QueryReturn { items: r, cursor })
     }
 
-    async fn delete(&self, tenant: &str, cid: String) -> Result<(), MessageStoreError> {
+    async fn delete(&self, tenant: &str, cid: &str) -> Result<(), MessageStoreError> {
         let id = Thing::from((MESSAGES_TABLE, Id::String(cid.to_string())));
 
         // check the tenancy on the messages

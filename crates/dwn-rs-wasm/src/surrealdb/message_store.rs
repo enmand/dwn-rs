@@ -88,7 +88,7 @@ impl SurrealMessageStore {
     pub async fn get(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
         options: Option<MessageStoreOptions>,
     ) -> Result<GenericMessage, JsValue> {
         check_aborted(options)?;
@@ -148,7 +148,7 @@ impl SurrealMessageStore {
     pub async fn delete(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
         options: Option<MessageStoreOptions>,
     ) -> Result<(), JsValue> {
         check_aborted(options)?;
