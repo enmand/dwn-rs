@@ -53,14 +53,18 @@ impl StreamReadable {
 
                 match item {
                     Some(i) => match serde_wasm_bindgen::to_value(&i) {
-                        Ok(v) => data_tx.unbounded_send(v).unwrap_throw(),
+                        Ok(v) => data_tx
+                            .unbounded_send(v)
+                            .expect_throw("unable to read data on stream"),
                         Err(_) => {
                             read_controller.abort();
                             break;
                         }
                     },
                     None => {
-                        data_tx.unbounded_send(JsValue::NULL).unwrap_throw();
+                        data_tx
+                            .unbounded_send(JsValue::NULL)
+                            .expect_throw("unable to terminate stream");
                         break;
                     }
                 };
@@ -107,14 +111,19 @@ impl IntoStream {
         let (done_tx, done_rx) = unbounded::<()>();
 
         let data_cb = Closure::wrap(Box::new(move |d: JsValue| {
-            let val = serde_wasm_bindgen::from_value(d.clone()).unwrap_throw();
-            data_tx.unbounded_send(val).unwrap_throw();
+            let val = serde_wasm_bindgen::from_value(d.clone())
+                .expect_throw("unable to process data from stream");
+            data_tx
+                .unbounded_send(val)
+                .expect_throw("unable to send data on stream");
         }) as Box<dyn FnMut(JsValue)>)
         .into_js_value();
         readable.on("data", data_cb.as_ref().unchecked_ref());
 
         let end_cb = Closure::wrap(Box::new(move || {
-            done_tx.unbounded_send(()).unwrap_throw();
+            done_tx
+                .unbounded_send(())
+                .expect_throw("unable to send done signal on stream");
         }) as Box<dyn FnMut()>)
         .into_js_value();
         readable.on("end", end_cb.as_ref().unchecked_ref());
