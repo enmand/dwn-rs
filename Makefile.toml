@@ -21,6 +21,24 @@ args = [
 ]
 dependencies = ["install-wasm-pack"]
 
+[tasks.build-wasm-no-opt]
+workspace = false
+cwd = "crates/dwn-rs-wasm"
+command = "wasm-pack"
+args = [
+    "build",
+    "--no-opt",
+    "--target",
+    "nodejs",
+    "--out-name",
+    "index",
+    "--",
+    "--no-default-features",
+    "--features",
+    "surrealdb-wasm",
+]
+dependencies = ["install-wasm-pack"]
+
 [tasks.build-wasm-browser]
 workspace = false
 cwd = "crates/dwn-rs-wasm"
@@ -40,6 +58,26 @@ args = [
 ]
 dependencies = ["install-wasm-pack"]
 
+[tasks.build-wasm-browser-no-opt]
+workspace = false
+cwd = "crates/dwn-rs-wasm"
+command = "wasm-pack"
+args = [
+    "build",
+    "--no-opt",
+    "--target",
+    "web",
+    "--out-name",
+    "index",
+    "--out-dir",
+    "browsers",
+    "--",
+    "--no-default-features",
+    "--features",
+    "surrealdb-wasm",
+]
+
+dependencies = ["install-wasm-pack"]
 [tasks.install-npm-deps]
 workspace = false
 cwd = "crates/dwn-rs-wasm"
@@ -51,7 +89,7 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "node"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
-dependencies = ["build-wasm", "install-npm-deps"]
+dependencies = ["build-wasm-no-opt", "install-npm-deps"]
 
 
 [tasks.test-store-js-browser]
@@ -59,7 +97,11 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "npx"
 args = ["wtr"]
-dependencies = ["build-wasm-browser", "install-npm-deps", "_playwright-install"]
+dependencies = [
+    "build-wasm-browser-no-opt",
+    "install-npm-deps",
+    "_playwright-install",
+]
 
 [tasks._playwright-install]
 args = ["playwright", "install", "--with-deps"]
