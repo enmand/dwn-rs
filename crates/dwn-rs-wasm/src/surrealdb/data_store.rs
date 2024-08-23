@@ -1,5 +1,3 @@
-use async_stream::stream;
-
 use futures_util::StreamExt;
 use js_sys::{Object, Reflect};
 use wasm_bindgen::prelude::*;
@@ -83,19 +81,13 @@ impl SurrealDataStore {
         record_id: &str,
         cid: &str,
     ) -> Result<Option<DataStoreGetResult>, JsValue> {
-        let mut v = match self.store.get(tenant, record_id, cid).await {
+        let v = match self.store.get(tenant, record_id, cid).await {
             Ok(d) => d,
             Err(_) => return Ok(None),
         };
 
         let size = v.size;
-        let reader = stream! {
-            while let Some(chunk) = v.data.next().await {
-                yield Some(serde_bytes::ByteBuf::from(chunk))
-            }
-
-            yield None;
-        };
+        let reader = v.data.map(|r| Some(serde_bytes::ByteBuf::from(r)));
 
         let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
         Reflect::set(&obj, &"dataSize".into(), &size.into())?;
