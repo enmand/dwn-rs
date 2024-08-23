@@ -24,7 +24,7 @@ impl EventLog for SurrealDB {
     async fn append(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
         indexes: MapValue,
         tags: MapValue,
     ) -> Result<(), EventLogError> {
@@ -36,7 +36,7 @@ impl EventLog for SurrealDB {
             db.create::<Option<CreateEvent>>(res)
                 .content(CreateEvent {
                     watermark,
-                    cid,
+                    cid: cid.to_string(),
                     indexes,
                     tags,
                 })

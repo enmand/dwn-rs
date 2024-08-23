@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use async_stream::stream;
 
 use futures_util::StreamExt;
@@ -68,7 +67,7 @@ impl SurrealDataStore {
 
         match self
             .store
-            .put(tenant, record_id.to_string(), cid.to_string(), readable)
+            .put(tenant, record_id, cid, readable)
             .await
             .map_err(Into::<JsError>::into)
         {
@@ -84,11 +83,7 @@ impl SurrealDataStore {
         record_id: &str,
         cid: &str,
     ) -> Result<Option<DataStoreGetResult>, JsValue> {
-        let mut v = match self
-            .store
-            .get(tenant, record_id.to_string(), cid.to_string())
-            .await
-        {
+        let mut v = match self.store.get(tenant, record_id, cid).await {
             Ok(d) => d,
             Err(_) => return Ok(None),
         };
@@ -135,7 +130,7 @@ impl SurrealDataStore {
         cid: &str,
     ) -> Result<(), JsValue> {
         self.store
-            .delete(tenant, record_id.to_string(), cid.to_string())
+            .delete(tenant, record_id, cid)
             .await
             .map_err(Into::<JsError>::into)?;
 

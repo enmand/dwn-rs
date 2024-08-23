@@ -156,7 +156,7 @@ impl ResumableTaskStore for SurrealDB {
 
     async fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
         &self,
-        task_id: String,
+        task_id: &str,
     ) -> Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError> {
         match self
             .db
@@ -175,7 +175,7 @@ impl ResumableTaskStore for SurrealDB {
         }
     }
 
-    async fn extend(&self, task_id: String, timeout: u64) -> Result<(), ResumableTaskStoreError> {
+    async fn extend(&self, task_id: &str, timeout: u64) -> Result<(), ResumableTaskStoreError> {
         let timeout = timeout_expr(timeout);
         self.db
             .update::<Option<ExtendedTask>>((RESUMABLE_TASKS_TABLE, task_id))
@@ -187,7 +187,7 @@ impl ResumableTaskStore for SurrealDB {
         Ok(())
     }
 
-    async fn delete(&self, task_id: String) -> Result<(), ResumableTaskStoreError> {
+    async fn delete(&self, task_id: &str) -> Result<(), ResumableTaskStoreError> {
         self.db
             .delete::<Option<ExtendedTask>>((RESUMABLE_TASKS_TABLE, task_id))
             .await

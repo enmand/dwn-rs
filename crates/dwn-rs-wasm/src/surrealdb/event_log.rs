@@ -1,7 +1,4 @@
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use dwn_rs_core::{
     errors::EventLogError,
     filters::{Cursor, QueryReturn},
@@ -61,7 +58,7 @@ impl SurrealEventLog {
     pub async fn append(&self, tenant: &str, cid: &str, indexes: IndexMap) -> Result<(), JsError> {
         let (indexes, tags) = indexes.into();
         self.store
-            .append(tenant, cid.to_string(), indexes, tags)
+            .append(tenant, cid, indexes, tags)
             .await
             .map_err(EventLogError::from)
             .map_err(Into::<JsError>::into)?;

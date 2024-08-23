@@ -1,4 +1,3 @@
-use alloc::{format, string::String};
 use dwn_rs_core::{stores::ResumableTaskStore, Value};
 use dwn_rs_stores::SurrealDB;
 use wasm_bindgen::prelude::*;
@@ -25,7 +24,8 @@ impl SurrealResumableTaskStore {
         self.store
             .connect(connstr)
             .await
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map_err(JsError::from)
+            .map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -33,7 +33,8 @@ impl SurrealResumableTaskStore {
         self.store
             .open()
             .await
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+            .map_err(JsError::from)
+            .map_err(Into::into)
     }
 
     #[wasm_bindgen]
@@ -65,7 +66,7 @@ impl SurrealResumableTaskStore {
     }
 
     #[wasm_bindgen]
-    pub async fn read(&self, id: String) -> Result<Option<JsManagedResumableTask>, JsValue> {
+    pub async fn read(&self, id: &str) -> Result<Option<JsManagedResumableTask>, JsValue> {
         let t = self
             .store
             .read::<Value>(id)
@@ -80,7 +81,7 @@ impl SurrealResumableTaskStore {
     }
 
     #[wasm_bindgen]
-    pub async fn extend(&self, id: String, timeout: u32) -> Result<(), JsValue> {
+    pub async fn extend(&self, id: &str, timeout: u32) -> Result<(), JsValue> {
         self.store
             .extend(id, timeout as u64)
             .await
@@ -89,7 +90,7 @@ impl SurrealResumableTaskStore {
     }
 
     #[wasm_bindgen]
-    pub async fn delete(&self, id: String) -> Result<(), JsValue> {
+    pub async fn delete(&self, id: &str) -> Result<(), JsValue> {
         self.store
             .delete(id)
             .await

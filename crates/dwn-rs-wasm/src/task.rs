@@ -1,9 +1,9 @@
 use core::fmt::Debug;
 
-use alloc::{format, vec::Vec};
+use alloc::vec::Vec;
 use dwn_rs_core::{stores::ManagedResumableTask, value::Value};
 use serde::Serialize;
-use wasm_bindgen::{prelude::*, throw_str};
+use wasm_bindgen::prelude::*;
 
 use crate::ser::serializer;
 
@@ -24,10 +24,9 @@ where
     T: Serialize + Sync + Send + Debug,
 {
     fn from(task: ManagedResumableTask<T>) -> Self {
-        match task.serialize(&serializer()) {
-            Ok(t) => t.into(),
-            Err(e) => throw_str(&format!("{:?}", e)),
-        }
+        task.serialize(&serializer())
+            .expect_throw("unable to serialize task")
+            .into()
     }
 }
 
@@ -45,9 +44,9 @@ where
 
 impl From<Vec<ManagedResumableTask<Value>>> for JsManagedResumableTaskArray {
     fn from(tasks: Vec<ManagedResumableTask<Value>>) -> Self {
-        match tasks.serialize(&serializer()) {
-            Ok(t) => t.into(),
-            Err(e) => throw_str(&format!("{:?}", e)),
-        }
+        tasks
+            .serialize(&serializer())
+            .expect_throw("unable to serialize tasks")
+            .into()
     }
 }

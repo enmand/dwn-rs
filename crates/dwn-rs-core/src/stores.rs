@@ -28,7 +28,7 @@ pub trait MessageStore: Default {
     fn get(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
     ) -> impl Future<Output = Result<Message, MessageStoreError>> + Send;
 
     fn query(
@@ -42,7 +42,7 @@ pub trait MessageStore: Default {
     fn delete(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
     ) -> impl Future<Output = Result<(), MessageStoreError>> + Send;
 
     fn clear(&self) -> impl Future<Output = Result<(), MessageStoreError>> + Send;
@@ -56,23 +56,23 @@ pub trait DataStore: Default {
     fn put<T: Stream<Item = Vec<u8>> + Send + Unpin>(
         &self,
         tenant: &str,
-        record_id: String,
-        cid: String,
+        record_id: &str,
+        cid: &str,
         value: T,
     ) -> impl Future<Output = Result<PutDataResults, DataStoreError>> + Send;
 
     fn get(
         &self,
         tenant: &str,
-        record_id: String,
-        cid: String,
+        record_id: &str,
+        cid: &str,
     ) -> impl Future<Output = Result<GetDataResults, DataStoreError>> + Send;
 
     fn delete(
         &self,
         tenant: &str,
-        record_id: String,
-        cid: String,
+        record_id: &str,
+        cid: &str,
     ) -> impl Future<Output = Result<(), DataStoreError>> + Send;
 
     fn clear(&self) -> impl Future<Output = Result<(), DataStoreError>> + Send;
@@ -97,7 +97,7 @@ pub trait EventLog: Default {
     fn append(
         &self,
         tenant: &str,
-        cid: String,
+        cid: &str,
         indexes: MapValue,
         tags: MapValue,
     ) -> impl Future<Output = Result<(), EventLogError>>;
@@ -150,18 +150,18 @@ pub trait ResumableTaskStore: Default {
 
     fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
         &self,
-        task_id: String,
+        task_id: &str,
     ) -> impl Future<Output = Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError>> + Send;
 
     fn extend(
         &self,
-        task_id: String,
+        task_id: &str,
         timeout: u64,
     ) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 
     fn delete(
         &self,
-        task_id: String,
+        task_id: &str,
     ) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;
 
     fn clear(&self) -> impl Future<Output = Result<(), ResumableTaskStoreError>> + Send;

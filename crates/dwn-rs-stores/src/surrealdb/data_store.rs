@@ -24,8 +24,8 @@ impl DataStore for SurrealDB {
     async fn put<T>(
         &self,
         tenant: &str,
-        record_id: String,
-        cid: String,
+        record_id: &str,
+        cid: &str,
         value: T,
     ) -> Result<PutDataResults, DataStoreError>
     where
@@ -80,8 +80,8 @@ impl DataStore for SurrealDB {
     async fn get(
         &self,
         tenant: &str,
-        record_id: String,
-        _: String,
+        record_id: &str,
+        _: &str,
     ) -> Result<GetDataResults, DataStoreError> {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
@@ -111,12 +111,7 @@ impl DataStore for SurrealDB {
         })
     }
 
-    async fn delete(
-        &self,
-        tenant: &str,
-        record_id: String,
-        _: String,
-    ) -> Result<(), DataStoreError> {
+    async fn delete(&self, tenant: &str, record_id: &str, _: &str) -> Result<(), DataStoreError> {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
 
         self.with_database(tenant, |db| async move {
