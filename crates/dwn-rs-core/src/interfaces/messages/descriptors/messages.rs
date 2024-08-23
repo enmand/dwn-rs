@@ -27,36 +27,6 @@ pub struct QueryDescriptor {
     pub cursor: Option<crate::Cursor>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum QueryInterfaces {
-    Protocols,
-    Read,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum QueryMethods {
-    Configure,
-    Delete,
-    Write,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct QueryMessageTimestamp {
-    pub from: Option<chrono::DateTime<chrono::Utc>>,
-    pub to: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct QueryFilter {
-    pub interface: Option<QueryInterfaces>,
-    pub method: Option<QueryMethods>,
-    pub protocol: Option<String>,
-    #[serde(rename = "messageTimestamp")]
-    pub message_timestamp: Option<QueryMessageTimestamp>,
-}
-
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SubscribeDescriptor {
@@ -67,4 +37,72 @@ pub struct SubscribeDescriptor {
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub filters: Vec<crate::Filters>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use chrono::Utc;
+    use serde_json::json;
+
+    #[test]
+    fn test_read_descriptor() {
+        let message_timestamp = Utc::now();
+        // new random DagCbor encoded CID
+        let message_cid = Cid::new_v1(0x71, cid::multihash::Multihash::default());
+        let descriptor = ReadDescriptor {
+            message_timestamp,
+            message_cid: Some(message_cid),
+        };
+        let json = json!({
+            "messageTimestamp": message_timestamp,
+            "messageCid": message_cid,
+        });
+        assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
+        assert_eq!(
+            serde_json::from_value::<ReadDescriptor>(json).unwrap(),
+            descriptor
+        );
+    }
+
+    #[test]
+    fn test_query_descriptor() {
+        let message_timestamp = Utc::now();
+        let filters = vec![crate::Filters::default()];
+        let cursor = Some(crate::Cursor::default());
+        let descriptor = QueryDescriptor {
+            message_timestamp,
+            filters,
+            cursor: cursor.clone(),
+        };
+        let json = json!({
+            "messageTimestamp": message_timestamp,
+            "filters": [crate::Filters::default()],
+            "cursor": cursor,
+        });
+        assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
+        assert_eq!(
+            serde_json::from_value::<QueryDescriptor>(json).unwrap(),
+            descriptor
+        );
+    }
+
+    #[test]
+    fn test_subscribe_descriptor() {
+        let message_timestamp = Utc::now();
+        let filters = vec![crate::Filters::default()];
+        let descriptor = SubscribeDescriptor {
+            message_timestamp,
+            filters,
+        };
+        let json = json!({
+            "messageTimestamp": &message_timestamp,
+            "filters": [crate::Filters::default()],
+        });
+        assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
+        assert_eq!(
+            serde_json::from_value::<SubscribeDescriptor>(json).unwrap(),
+            descriptor
+        );
+    }
 }
