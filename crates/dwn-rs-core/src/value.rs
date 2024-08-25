@@ -150,8 +150,100 @@ impl<'de> serde::Deserialize<'de> for Value {
 
                 Ok(Value::Array(values))
             }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(Value::Null)
+            }
         }
 
         deserializer.deserialize_any(IndexValueVisitor)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use super::*;
+    use chrono::{DateTime, SecondsFormat, Utc};
+    use serde_json::json;
+    use tracing_test::traced_test;
+
+    #[test]
+    #[traced_test]
+    fn test_value_serde() {
+        struct TestCase {
+            value: Value,
+            json: serde_json::Value,
+        }
+
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        );
+
+        let cases = vec![
+            TestCase {
+                value: Value::Null,
+                json: json!(null),
+            },
+            TestCase {
+                value: Value::Bool(true),
+                json: json!(true),
+            },
+            TestCase {
+                value: Value::Bool(false),
+                json: json!(false),
+            },
+            TestCase {
+                value: Value::String("foo".to_string()),
+                json: json!("foo"),
+            },
+            TestCase {
+                value: Value::Number(1),
+                json: json!(1),
+            },
+            TestCase {
+                value: Value::Float(1.0),
+                json: json!(1.0),
+            },
+            TestCase {
+                value: Value::DateTime(message_timestamp.unwrap()),
+                json: json!(message_timestamp
+                    .unwrap()
+                    .to_rfc3339_opts(SecondsFormat::Micros, true)),
+            },
+            TestCase {
+                value: Value::Cid(Cid::new_v1(0x71, cid::multihash::Multihash::default())),
+                json: json!(Cid::new_v1(0x71, cid::multihash::Multihash::default()).to_string()),
+            },
+            TestCase {
+                value: Value::Map(MapValue::default()),
+                json: json!({}),
+            },
+            TestCase {
+                value: Value::Array(vec![]),
+                json: json!([]),
+            },
+        ];
+
+        for tc in cases {
+            tracing::debug!(?tc.value);
+            assert_eq!(serde_json::to_value(&tc.value).unwrap(), tc.json);
+            assert_eq!(serde_json::from_value::<Value>(tc.json).unwrap(), tc.value);
+        }
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_value_map_serde() {
+        let map = MapValue::default();
+        let json = json!({});
+        assert_eq!(serde_json::to_value(&map).unwrap(), json);
+        assert_eq!(serde_json::from_value::<MapValue>(json).unwrap(), map);
     }
 }

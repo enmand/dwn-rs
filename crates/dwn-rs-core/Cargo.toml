@@ -27,6 +27,7 @@ url = { version = "2.5.0", features = ["serde"] }
 thiserror = "1.0.63"
 serde_json = "1.0.113"
 tracing = "0.1.40"
+tracing-test = "0.2.5"
 
 [dev-dependencies]
 serde_json = "1.0.113"
