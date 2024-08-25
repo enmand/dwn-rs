@@ -41,13 +41,21 @@ pub struct SubscribeDescriptor {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
-    use chrono::Utc;
+    use chrono::{DateTime, SecondsFormat, Utc};
     use serde_json::json;
 
     #[test]
     fn test_read_descriptor() {
-        let message_timestamp = Utc::now();
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         // new random DagCbor encoded CID
         let message_cid = Cid::new_v1(0x71, cid::multihash::Multihash::default());
         let descriptor = ReadDescriptor {
@@ -67,7 +75,13 @@ mod test {
 
     #[test]
     fn test_query_descriptor() {
-        let message_timestamp = Utc::now();
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let filters = vec![crate::Filters::default()];
         let cursor = Some(crate::Cursor::default());
         let descriptor = QueryDescriptor {
@@ -89,14 +103,20 @@ mod test {
 
     #[test]
     fn test_subscribe_descriptor() {
-        let message_timestamp = Utc::now();
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let filters = vec![crate::Filters::default()];
         let descriptor = SubscribeDescriptor {
             message_timestamp,
             filters,
         };
         let json = json!({
-            "messageTimestamp": &message_timestamp,
+            "messageTimestamp": message_timestamp,
             "filters": [crate::Filters::default()],
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
