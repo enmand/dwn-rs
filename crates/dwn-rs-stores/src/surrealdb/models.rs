@@ -52,7 +52,6 @@ impl CursorValue<MessageSort> for GetEncodedMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CreateData {
     pub(super) cid: String,
-    pub(super) data: Vec<u8>,
     pub(super) tenant: String,
     pub(super) record_id: String,
 }
@@ -61,9 +60,23 @@ pub(crate) struct CreateData {
 pub(crate) struct GetData {
     pub(super) id: Thing,
     pub(super) cid: String,
-    pub(super) data: Vec<u8>,
     pub(super) tenant: String,
     pub(super) record_id: String,
+    pub(super) chunks: Option<usize>,
+    pub(super) length: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct DataChunkSize {
+    pub(super) length: Option<usize>,
+    pub(super) chunks: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct DataChunk {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) id: Option<Thing>,
+    pub(super) data: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

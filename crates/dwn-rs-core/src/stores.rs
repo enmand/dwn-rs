@@ -53,7 +53,7 @@ pub trait DataStore: Default {
 
     fn close(&mut self) -> impl Future<Output = ()> + Send;
 
-    fn put<T: Stream<Item = Vec<u8>> + Send + Unpin>(
+    fn put<T: Stream<Item = u8> + Send + Unpin>(
         &self,
         tenant: &str,
         record_id: &str,
@@ -86,7 +86,7 @@ pub struct PutDataResults {
 
 pub struct GetDataResults {
     pub size: usize,
-    pub data: Pin<Box<dyn Stream<Item = Vec<u8>>>>,
+    pub data: Pin<Box<dyn Stream<Item = u8>>>,
 }
 
 pub trait EventLog: Default {
