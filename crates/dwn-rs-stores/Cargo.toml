@@ -18,6 +18,7 @@ surrealdb = [
 ]
 surreal-lib = ["surrealdb", "surrealdb/kv-speedb"]
 surreal-wasm = ["surrealdb", "surrealdb/kv-indxdb"]
+no-std = []
 
 
 [dependencies]
