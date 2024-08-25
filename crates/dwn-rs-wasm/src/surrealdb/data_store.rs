@@ -10,6 +10,8 @@ use crate::{
     streams::{stream::StreamReadable, sys::Readable},
 };
 
+const READ_CHUNK_SIZE: usize = 512 * 1024;
+
 #[wasm_bindgen(js_name = SurrealDataStore)]
 pub struct SurrealDataStore {
     store: SurrealDB,
@@ -58,9 +60,9 @@ impl SurrealDataStore {
         cid: &str,
         value: Readable,
     ) -> Result<DataStorePutResult, JsValue> {
-        let readable = StreamReadable::new(value).into_stream().map(|r| {
+        let readable = StreamReadable::new(value).into_stream().flat_map(|r| {
             let val = serde_wasm_bindgen::to_value(&r).unwrap();
-            js_sys::Uint8Array::new(&val).to_vec()
+            async_std::stream::from_iter(js_sys::Uint8Array::new(&val).to_vec())
         });
 
         match self
@@ -87,7 +89,10 @@ impl SurrealDataStore {
         };
 
         let size = v.size;
-        let reader = v.data.map(|r| Some(serde_bytes::ByteBuf::from(r)));
+        let reader = v
+            .data
+            .chunks(READ_CHUNK_SIZE)
+            .map(|r| Some(serde_bytes::ByteBuf::from(r)));
 
         let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
         Reflect::set(&obj, &"dataSize".into(), &size.into())?;
