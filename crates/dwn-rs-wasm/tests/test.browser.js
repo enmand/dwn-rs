@@ -4,15 +4,14 @@ import init, {
   SurrealMessageStore,
   SurrealEventLog,
   SurrealResumableTaskStore,
-  init_tracing, set_tracing_level, TracingLevel
+  init_tracing, TracingLevel
 } from "../browsers/index.js";
 import stores from "../browsers/index_bg.wasm";
 
 let instance = await stores();
 await init(instance);
 
-set_tracing_level(TracingLevel.Error);
-init_tracing();
+init_tracing(TracingLevel.Error);
 
 let s = new SurrealMessageStore();
 // await s.connect("ws://192.168.10.56:8000/");
