@@ -1393,7 +1393,6 @@ dependencies = [
  "console_error_panic_hook",
  "dwn-rs-core",
  "dwn-rs-stores",
- "futures-channel",
  "futures-core",
  "futures-util",
  "js-sys",

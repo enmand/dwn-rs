@@ -1,3 +1,5 @@
+use alloc::{boxed::Box, string::String};
+
 use async_std::channel::unbounded;
 use dwn_rs_core::{
     emitter::EventStreamer, subscription::SubscriptionFn, MapValue,
@@ -44,21 +46,21 @@ impl EventStream {
     pub async fn emit(&self, tenant: &str, evt: &MessageEvent, indexes: IndexMap) {
         trace!("emitting event from wasm");
         let indextags = indexes.into();
-        self.events.emit(tenant.into(), evt.into(), indextags).await;
+        self.events.emit(tenant, evt.into(), indextags).await;
     }
 
     #[wasm_bindgen]
     pub async fn subscribe(
         &self,
         tenant: &str,
-        id: String,
+        id: &str,
         listener: js_sys::Function,
     ) -> Result<EventSubscription, JsError> {
         trace!("subscribing js function to event stream");
-        let sub = subscription_for_func(id.clone(), listener).await?.run();
+        let sub = subscription_for_func(id, listener).await?.run();
 
         self.events
-            .subscribe(tenant.into(), id, SubscriptionFn::channel(sub))
+            .subscribe(tenant, id, SubscriptionFn::channel(sub))
             .await
             .map_err(JsError::from)
             .map(|s| s.try_into().expect_throw("unable to convert subscription"))
@@ -67,7 +69,7 @@ impl EventStream {
 
 #[instrument]
 async fn subscription_for_func(
-    id: String,
+    id: &str,
     listener: js_sys::Function,
 ) -> Result<SubscriptionFn, JsError> {
     trace!("creating subscription for js function");

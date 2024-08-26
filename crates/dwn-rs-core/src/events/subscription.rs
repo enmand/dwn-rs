@@ -38,10 +38,13 @@ impl Handler<Event> for SubscriptionFn {
 
 impl SubscriptionFn {
     pub fn new(
-        id: String,
+        id: &str,
         f: Box<dyn Fn(String, MessageEvent, MapValue) + Send + Sync + 'static>,
     ) -> Self {
-        Self { id, f }
+        Self {
+            id: id.to_string(),
+            f,
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
