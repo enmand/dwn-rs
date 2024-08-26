@@ -107,12 +107,23 @@ pub struct DeleteDescriptor {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
+    use chrono::{DateTime, SecondsFormat, Utc};
+
     use super::*;
 
     #[test]
     fn test_read_descriptor() {
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let rd = ReadDescriptor {
-            message_timestamp: chrono::Utc::now(),
+            message_timestamp,
             record_id: "test".to_string(),
         };
 
@@ -124,8 +135,15 @@ mod test {
 
     #[test]
     fn test_query_descriptor() {
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let qd = QueryDescriptor {
-            message_timestamp: chrono::Utc::now(),
+            message_timestamp,
             filter: Default::default(),
             pagination: None,
             date_sort: None,
@@ -139,6 +157,13 @@ mod test {
 
     #[test]
     fn test_write_descriptor() {
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let wd = WriteDescriptor {
             protocol: None,
             protocol_path: None,
@@ -148,8 +173,8 @@ mod test {
             parent_id: None,
             data_cid: "test".to_string(),
             data_size: 0,
-            date_created: chrono::Utc::now(),
-            message_timestamp: chrono::Utc::now(),
+            date_created: message_timestamp.clone(),
+            message_timestamp,
             published: None,
             date_published: None,
             data_format: "test".to_string(),
@@ -163,8 +188,15 @@ mod test {
 
     #[test]
     fn test_subscribe_descriptor() {
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let sd = SubscribeDescriptor {
-            message_timestamp: chrono::Utc::now(),
+            message_timestamp,
             filter: Default::default(),
         };
 
@@ -176,8 +208,15 @@ mod test {
 
     #[test]
     fn test_delete_descriptor() {
+        let message_timestamp = DateTime::from_str(
+            Utc::now()
+                .to_rfc3339_opts(SecondsFormat::Micros, true)
+                .as_str(),
+        )
+        .unwrap();
+
         let dd = DeleteDescriptor {
-            message_timestamp: chrono::Utc::now(),
+            message_timestamp,
             record_id: "test".to_string(),
             prune: false,
         };
