@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use ssi_dids_core::DIDBuf;
 
 use crate::{
-    filter::range_filter_serializer, value::Value, Filter, MapValue, Pagination, RangeFilter,
+    MapValue, Pagination,
 };
 
 /// ReadDescriptor represents the RecordsRead interface method for reading a given
@@ -30,38 +28,10 @@ pub struct QueryDescriptor {
         serialize_with = "crate::ser::serialize_datetime"
     )]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
-    pub filter: crate::Filters, // QueryFilter,
+    pub filter: crate::Filters,
     pub pagination: Option<Pagination>,
     #[serde(rename = "dateSort")]
     pub date_sort: Option<DateSort>,
-}
-
-/// QueryFilter represents the filter criteria for querying records in the DWN. Filters exist
-/// for various elements of message properties, such as `protocol`, `author`, `attester`,
-/// `recipient`. Records can be filtered by `tags`.
-/// TODO: Is this necessary? Can we just use the `Filters` type?
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct QueryFilter {
-    pub protocol: Option<String>,
-    #[serde(rename = "protocolPath")]
-    pub protocol_path: Option<String>,
-    pub author: Option<DIDBuf>,
-    pub attester: Option<DIDBuf>,
-    pub recipient: Option<DIDBuf>,
-    #[serde(rename = "contextId")]
-    pub context_id: Option<String>,
-    pub schema: Option<url::Url>,
-    pub tags: Option<BTreeMap<String, Filter<Value>>>,
-    #[serde(rename = "recordId")]
-    pub record_id: Option<String>,
-    #[serde(rename = "parentId")]
-    pub parent_id: Option<String>,
-    #[serde(
-        rename = "dateCreated",
-        serialize_with = "range_filter_serializer::serialize_optional"
-    )]
-    pub date_created: Option<RangeFilter<chrono::DateTime<chrono::Utc>>>,
 }
 
 /// DataSort represents Records ordering for queries.
@@ -123,7 +93,7 @@ pub struct SubscribeDescriptor {
         serialize_with = "crate::ser::serialize_datetime"
     )]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
-    pub filter: crate::Filters, //QueryFilter,
+    pub filter: crate::Filters,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
