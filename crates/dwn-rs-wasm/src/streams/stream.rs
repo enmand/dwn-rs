@@ -4,7 +4,7 @@ use core::{
 };
 
 use alloc::boxed::Box;
-use futures_channel::mpsc::{unbounded, UnboundedReceiver};
+use async_std::channel::{unbounded, Receiver};
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use wasm_bindgen::prelude::*;
@@ -42,7 +42,7 @@ impl StreamReadable {
     where
         St: Stream<Item = Option<serde_bytes::ByteBuf>> + 'static,
     {
-        let (data_tx, mut data_rx) = unbounded::<JsValue>();
+        let (data_tx, data_rx) = unbounded::<JsValue>();
         let controller = AbortController::new()?;
 
         let read_controller = controller.clone();
@@ -54,7 +54,8 @@ impl StreamReadable {
                 match item {
                     Some(i) => match serde_wasm_bindgen::to_value(&i) {
                         Ok(v) => data_tx
-                            .unbounded_send(v)
+                            .send(v)
+                            .await
                             .expect_throw("unable to read data on stream"),
                         Err(_) => {
                             read_controller.abort();
@@ -63,7 +64,8 @@ impl StreamReadable {
                     },
                     None => {
                         data_tx
-                            .unbounded_send(JsValue::NULL)
+                            .send(JsValue::NULL)
+                            .await
                             .expect_throw("unable to terminate stream");
                         break;
                     }
@@ -74,9 +76,8 @@ impl StreamReadable {
         let newr = make_readable(
             // TODO: the closure should take a `size` argument, and properly buffer the data
             Closure::wrap(Box::new(move |_size| -> JsValue {
-                match data_rx.try_next() {
-                    Ok(Some(d)) => d,
-                    Ok(None) => JsValue::NULL,
+                match data_rx.recv_blocking() {
+                    Ok(d) => d,
                     Err(_) => JsValue::NULL,
                 }
             }) as Box<dyn FnMut(JsValue) -> JsValue>)
@@ -99,8 +100,8 @@ impl StreamReadable {
 /// can be used in Rust to read data from the JavaScript stream, and return items as a JsValue.
 #[derive(Debug)]
 pub struct IntoStream {
-    data_rx: UnboundedReceiver<serde_bytes::ByteBuf>,
-    done_rx: UnboundedReceiver<()>,
+    data_rx: Receiver<serde_bytes::ByteBuf>,
+    done_rx: Receiver<()>,
     done: bool,
 }
 
@@ -114,7 +115,7 @@ impl IntoStream {
             let val = serde_wasm_bindgen::from_value(d.clone())
                 .expect_throw("unable to process data from stream");
             data_tx
-                .unbounded_send(val)
+                .send_blocking(val)
                 .expect_throw("unable to send data on stream");
         }) as Box<dyn FnMut(JsValue)>)
         .into_js_value();
@@ -122,7 +123,7 @@ impl IntoStream {
 
         let end_cb = Closure::wrap(Box::new(move || {
             done_tx
-                .unbounded_send(())
+                .send_blocking(())
                 .expect_throw("unable to send done signal on stream");
         }) as Box<dyn FnMut()>)
         .into_js_value();
