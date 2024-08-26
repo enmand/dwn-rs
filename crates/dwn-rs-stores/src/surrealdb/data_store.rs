@@ -1,7 +1,9 @@
 use async_std::stream::{self, from_iter};
 use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::sql::{
-    statements::RelateStatement, Data, Id, Ident, Idiom, Operator, Param, Table, Thing, Value,
+    statements::{RelateStatement, SelectStatement},
+    Cond, Data, Dir, Expression, Field, Fields, Graph, Id, Ident, Idiom, Operator, Param, Part,
+    Query, Statement, Table, Thing, Value, Values,
 };
 use tracing::Instrument;
 
@@ -22,6 +24,7 @@ const CHUNK_CAPACITY: usize = 512 * 1024;
 
 impl DataStore for SurrealDB {
     async fn open(&mut self) -> Result<(), DataStoreError> {
+        let _ = chunks_graph_query(); // compile the chunks graph query on open
         self.open().await.map_err(DataStoreError::from)
     }
 
@@ -122,6 +125,7 @@ impl DataStore for SurrealDB {
         _: &str,
     ) -> Result<GetDataResults, DataStoreError> {
         let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
+        let query = chunks_graph_query();
 
         let (res, s) = self
             .with_database(tenant, |db| async move {
@@ -137,6 +141,7 @@ impl DataStore for SurrealDB {
 
                 let i = from_iter(0..chunks)
                     .flat_map(move |offset| {
+                        let query = query.clone();
                         let db = db.clone();
                         let id = id.clone();
 
@@ -144,14 +149,8 @@ impl DataStore for SurrealDB {
                             async move {
                                 tracing::trace!(?id, "fetching data");
 
-                                 let r = db
-                                    .query(
-                                        "
-                                SELECT
-                                    <->(data_for WHERE offset = $offset)<->data_chunks.data AS chunks
-                                FROM ONLY $from
-                            ",
-                                    )
+                                let r = db
+                                    .query(query.clone())
                                     .bind(("from", id.clone()))
                                     .bind(("offset", offset))
                                     .await
@@ -162,17 +161,20 @@ impl DataStore for SurrealDB {
                                     .map_err(StoreError::from)?;
 
                                 Ok(r)
-
-
                             }
                             .instrument(tracing::trace_span!("fetching data", offset)),
                         )
                     })
-                    .flat_map(|r| stream::from_iter(r.unwrap_or_else(|e: StoreError| {
-                        tracing::error!(err=?e, "unable to fetch data");
-                        Vec::new()
-                    }).into_iter().flatten()));
-
+                    .flat_map(|r| {
+                        stream::from_iter(
+                            r.unwrap_or_else(|e: StoreError| {
+                                tracing::error!(err=?e, "unable to fetch data");
+                                Vec::new()
+                            })
+                            .into_iter()
+                            .flatten(),
+                        )
+                    });
 
                 Ok((d, i))
             })
@@ -213,4 +215,62 @@ impl DataStore for SurrealDB {
             .await
             .map_err(DataStoreError::from)
     }
+}
+
+/// Creates a memoizable query for fetching data chunks for a given record.
+/// The query includes parameters for $offset (chunk offset) and $from
+/// (record).
+///
+/// The query is:
+/// ```sql
+///     SELECT
+///         <->(data_for WHERE offset = $offset)<->data_chunks.data AS chunks
+///     FROM ONLY $from
+/// ```
+//
+// The query is memoized to avoid recompilation on each call. The
+// `surrealdb::sql::parse` is not used, as it can result in a runtime
+// error if the query is not valid. The query is guaranteed to be valid
+// at compile time.
+#[memoize::memoize]
+fn chunks_graph_query() -> Query {
+    // <->(data_for WHERE $offset = offset)
+    let mut offset_graph = Graph::default();
+    offset_graph.dir = Dir::Both; // <->
+    offset_graph.expr = Fields::all();
+    offset_graph.what = Table::from("data_for").into();
+    let mut offset_cond = Cond::default();
+    offset_cond.0 = Expression::Binary {
+        l: Idiom::from("offset").into(),
+        o: Operator::Equal,
+        r: Param::from("offset").into(),
+    }
+    .into();
+    offset_graph.cond = Some(offset_cond);
+
+    // <->data_chunks.data
+    let mut chunk_graph = Graph::default();
+    chunk_graph.dir = Dir::Both;
+    chunk_graph.expr = Fields::all();
+    chunk_graph.what = Table::from("data_chunks").into();
+
+    // FROM ONLY $from
+    let mut graph_edge = Values::default();
+    graph_edge.0.push(Value::Param(Param::from("from")));
+
+    // SELECT for graph elements
+    let mut query = SelectStatement::default();
+    query.expr.0.push(Field::Single {
+        expr: Idiom::from(vec![
+            Part::Graph(offset_graph),
+            Part::Graph(chunk_graph),
+            Part::Field(Ident::from("data")),
+        ])
+        .into(),
+        alias: Some(Idiom::from("chunks")),
+    });
+    query.only = true; // single chunk per poll
+    query.what = graph_edge;
+
+    Statement::Select(query).into()
 }

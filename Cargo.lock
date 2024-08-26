@@ -1369,6 +1369,7 @@ dependencies = [
  "dwn-rs-core",
  "futures-util",
  "ipld-core",
+ "memoize",
  "multicodec",
  "multihash",
  "multihash-codetable",
@@ -2602,9 +2603,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "766f1ea32a9e5cdf4253263bbceae8ce08cf55347574ee44430af4c1e7a8d5f7"
+checksum = "0a5e03a47a0118ce03ca3a843d1cc1d6d89c91c0b035dab53ed57ad07068b4a3"
 dependencies = [
  "contextual",
  "futures",
@@ -2623,9 +2624,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-compaction"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d23410e2552840da1028543edbc2f99714e0e48e290828518f3aa159acc3aa82"
+checksum = "5fec236664e058a0a43e46ad28bbf00858a7cede40ad17ffdced395a9628a928"
 dependencies = [
  "contextual",
  "educe 0.4.23",
@@ -2645,9 +2646,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-context-processing"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c09344f0096b7852c330cae06283e1aaf77da19a95238cae4efe4855d0a563ed"
+checksum = "6aaf38d5a714ed573340f921a67c212935335e055ff2bb785337d38f6be282a4"
 dependencies = [
  "contextual",
  "futures",
@@ -2662,9 +2663,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-core"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eac93039c0cbaca8be42906ce2b502af5565c56fce0e42be1d9a4a4c8be380a6"
+checksum = "2a82b473e2951a3cc3fed5061eb62dfbe3f984bdfb9e918214ad571674f09c8b"
 dependencies = [
  "contextual",
  "educe 0.4.23",
@@ -2691,9 +2692,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-expansion"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f8653bee486b828e8d7ecad0f98839833226e4846589958bb6bfd8e8d0f6252"
+checksum = "f05cf1f43e51f7360a889f83b2ccb075d21b8229d325f3c80764fb0bce49f1ce"
 dependencies = [
  "contextual",
  "educe 0.4.23",
@@ -2712,9 +2713,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-serialization"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f98afb9d8c99960f2200c19856e1a520b27c2ef7f6c3a7a01a9c6b4d8d074cf"
+checksum = "9fe6e8a89c6aff8c955a6b9128be4da54f1d64b9564bcd647995610c657e2a4e"
 dependencies = [
  "indexmap 2.2.6",
  "iref",
@@ -2728,9 +2729,9 @@ dependencies = [
 
 [[package]]
 name = "json-ld-syntax"
-version = "0.19.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "918ed89f82b9a79757ca52640ca0618fa80fa29f559270424c2124cfeb230bae"
+checksum = "8a52919be632986e14dd1dbcfe12ce4573db02bf7044a09e7ec882a1ec2af7e6"
 dependencies = [
  "contextual",
  "decoded-char",
@@ -3159,6 +3160,28 @@ name = "memchr"
 version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
+
+[[package]]
+name = "memoize"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5df4051db13d0816cf23196d3baa216385ae099339f5d0645a8d9ff2305e82b8"
+dependencies = [
+ "lazy_static",
+ "memoize-inner",
+]
+
+[[package]]
+name = "memoize-inner"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bdece7e91f0d1e33df7b46ec187a93ea0d4e642113a1039ac8bfdd4a3273ac"
+dependencies = [
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "miette"
@@ -5254,12 +5277,14 @@ dependencies = [
 
 [[package]]
 name = "ssi-claims-core"
-version = "0.1.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ca10ead311b434b7ec0055575fe839d7c7c20fb62fafbf05e989b9572795909"
 dependencies = [
  "chrono",
  "educe 0.4.23",
  "ssi-core",
+ "ssi-crypto",
  "ssi-eip712",
  "ssi-json-ld",
  "thiserror",
@@ -5267,13 +5292,15 @@ dependencies = [
 
 [[package]]
 name = "ssi-contexts"
-version = "0.1.5"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "728dde2f51db62c4667686139f2958b59ab920f8d9d8531b59fc5a01ef0a3896"
 
 [[package]]
 name = "ssi-core"
 version = "0.2.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09a9bcf4043b59fdb6990c9fb34e6e613f457d0c1341f8c017a9feb3082365e8"
 dependencies = [
  "async-trait",
  "pin-project",
@@ -5284,7 +5311,8 @@ dependencies = [
 [[package]]
 name = "ssi-crypto"
 version = "0.2.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7bc78e7fc34a598ce6a1f0e4693db6b936512a7e7ff6e9f12231546e95a3408"
 dependencies = [
  "async-trait",
  "bs58",
@@ -5296,6 +5324,7 @@ dependencies = [
  "keccak-hash",
  "pin-project",
  "ripemd160",
+ "serde",
  "sha2 0.10.8",
  "static-iref",
  "thiserror",
@@ -5305,7 +5334,8 @@ dependencies = [
 [[package]]
 name = "ssi-dids-core"
 version = "0.1.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b00e795981717258410174f3d31157846d13271e2251766b59c802b9553bd2f"
 dependencies = [
  "async-trait",
  "iref",
@@ -5328,7 +5358,8 @@ dependencies = [
 [[package]]
 name = "ssi-eip712"
 version = "0.1.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54107b8d19db3e8c7e65d04910a118172d636ecd1819f4691fa6c0b2428d62bc"
 dependencies = [
  "hex",
  "indexmap 2.2.6",
@@ -5346,7 +5377,8 @@ dependencies = [
 [[package]]
 name = "ssi-json-ld"
 version = "0.3.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15dd9afa49d9c980304622d0d548f7b7f6e42bf5212504caff55e5e0af218c45"
 dependencies = [
  "async-std",
  "combination",
@@ -5369,8 +5401,9 @@ dependencies = [
 
 [[package]]
 name = "ssi-jwk"
-version = "0.2.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9548df4ddf50fe2ce3ad91f8505d1babf0e18cfc28b7b3d0e5d096990764d195"
 dependencies = [
  "base64 0.12.3",
  "ed25519-dalek",
@@ -5399,8 +5432,9 @@ dependencies = [
 
 [[package]]
 name = "ssi-jws"
-version = "0.2.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcacab32207ac1ba86912e735cc4c46d7f66a0cbfbe82a10adcfa248927c44c7"
 dependencies = [
  "base64 0.12.3",
  "blake2",
@@ -5427,7 +5461,8 @@ dependencies = [
 [[package]]
 name = "ssi-multicodec"
 version = "0.2.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fec8cbdadfc90aec4839fd79f03aa887364f5f210c3aecbf9c6f7d76ab79055"
 dependencies = [
  "csv",
  "thiserror",
@@ -5437,9 +5472,11 @@ dependencies = [
 [[package]]
 name = "ssi-rdf"
 version = "0.1.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a07a869c976c5c84c1fb605a95a153da92a3a0472f4233ea776282f27ef15b11"
 dependencies = [
  "combination",
+ "indexmap 2.2.6",
  "iref",
  "linked-data",
  "rdf-types",
@@ -5450,7 +5487,8 @@ dependencies = [
 [[package]]
 name = "ssi-verification-methods-core"
 version = "0.1.0"
-source = "git+https://github.com/spruceid/ssi.git?rev=30f29a98148a25a7970d232c786ae2a2324cb516#30f29a98148a25a7970d232c786ae2a2324cb516"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a96a8b0881b0198076ceb078b48e02bf83fe42f1a0e1c500c0546218cf964d6"
 dependencies = [
  "bs58",
  "educe 0.4.23",
