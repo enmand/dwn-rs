@@ -1,10 +1,7 @@
-
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::{
-    MapValue, Pagination,
-};
+use crate::{MapValue, Pagination};
 
 /// ReadDescriptor represents the RecordsRead interface method for reading a given
 /// record by ID.
@@ -106,4 +103,88 @@ pub struct DeleteDescriptor {
     #[serde(rename = "recordId")]
     pub record_id: String,
     pub prune: bool,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_read_descriptor() {
+        let rd = ReadDescriptor {
+            message_timestamp: chrono::Utc::now(),
+            record_id: "test".to_string(),
+        };
+
+        let ser = serde_json::to_string(&rd).unwrap();
+        let de: ReadDescriptor = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(rd, de);
+    }
+
+    #[test]
+    fn test_query_descriptor() {
+        let qd = QueryDescriptor {
+            message_timestamp: chrono::Utc::now(),
+            filter: Default::default(),
+            pagination: None,
+            date_sort: None,
+        };
+
+        let ser = serde_json::to_string(&qd).unwrap();
+        let de: QueryDescriptor = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(qd, de);
+    }
+
+    #[test]
+    fn test_write_descriptor() {
+        let wd = WriteDescriptor {
+            protocol: None,
+            protocol_path: None,
+            recipient: None,
+            schema: None,
+            tags: None,
+            parent_id: None,
+            data_cid: "test".to_string(),
+            data_size: 0,
+            date_created: chrono::Utc::now(),
+            message_timestamp: chrono::Utc::now(),
+            published: None,
+            date_published: None,
+            data_format: "test".to_string(),
+        };
+
+        let ser = serde_json::to_string(&wd).unwrap();
+        let de: WriteDescriptor = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(wd, de);
+    }
+
+    #[test]
+    fn test_subscribe_descriptor() {
+        let sd = SubscribeDescriptor {
+            message_timestamp: chrono::Utc::now(),
+            filter: Default::default(),
+        };
+
+        let ser = serde_json::to_string(&sd).unwrap();
+        let de: SubscribeDescriptor = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(sd, de);
+    }
+
+    #[test]
+    fn test_delete_descriptor() {
+        let dd = DeleteDescriptor {
+            message_timestamp: chrono::Utc::now(),
+            record_id: "test".to_string(),
+            prune: false,
+        };
+
+        let ser = serde_json::to_string(&dd).unwrap();
+        let de: DeleteDescriptor = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(dd, de);
+    }
 }
