@@ -28,10 +28,10 @@ serde_repr = "0.1.17"
 serde_with = "3.4.0"
 tokio = { version = "1.39.2", features = ["io-util", "rt", "macros"] }
 derive_more = { version = "1.0", features = ["display", "from", "try_into"] }
-ssi-dids-core = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" } # latest passing commit as of 20240725
+ssi-dids-core = "0.1.0"
 base64 = "0.22.1"
-ssi-jwk = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" }
-ssi-jws = { git = "https://github.com/spruceid/ssi.git", rev = "30f29a98148a25a7970d232c786ae2a2324cb516" }
+ssi-jwk = "0.2.1"
+ssi-jws = "0.2.1"
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 thiserror = "1.0.63"
