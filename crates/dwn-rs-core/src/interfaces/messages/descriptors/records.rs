@@ -173,7 +173,7 @@ mod test {
             parent_id: None,
             data_cid: "test".to_string(),
             data_size: 0,
-            date_created: message_timestamp.clone(),
+            date_created: message_timestamp,
             message_timestamp,
             published: None,
             date_published: None,
