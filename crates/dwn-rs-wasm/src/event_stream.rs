@@ -1,9 +1,9 @@
+use async_std::channel::unbounded;
 use dwn_rs_core::{
     emitter::EventStreamer, subscription::SubscriptionFn, MapValue,
     MessageEvent as CoreMessageEvent,
 };
 use js_sys::Promise;
-use tokio::sync::mpsc::unbounded_channel;
 use tracing::{instrument, trace};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
@@ -71,10 +71,10 @@ async fn subscription_for_func(
     listener: js_sys::Function,
 ) -> Result<SubscriptionFn, JsError> {
     trace!("creating subscription for js function");
-    let (tx, mut rx) = unbounded_channel::<(String, CoreMessageEvent, MapValue)>();
+    let (tx, rx) = unbounded::<(String, CoreMessageEvent, MapValue)>();
 
     spawn_local(async move {
-        while let Some((tenant, evt, indexes)) = rx.recv().await {
+        while let Ok((tenant, evt, indexes)) = rx.recv().await {
             trace!(
                 tenant = ?tenant,
                 indexes = ?indexes,
@@ -102,7 +102,7 @@ async fn subscription_for_func(
         id,
         Box::new(move |tenant, evt, indexes| {
             trace!("sending event to listener");
-            tx.send((tenant, evt, indexes)).unwrap_throw();
+            tx.send_blocking((tenant, evt, indexes)).unwrap_throw();
         }),
     );
 
