@@ -18,7 +18,7 @@ use super::models::{CreateData, GetData};
 
 const DATA_TABLE: &str = "data";
 const CHUNK_TABLE: &str = "data_chunks";
-const CHUNK_CAPACITY: usize = 1024 * 1024;
+const CHUNK_CAPACITY: usize = 512 * 1024;
 
 impl DataStore for SurrealDB {
     async fn open(&mut self) -> Result<(), DataStoreError> {
@@ -144,7 +144,7 @@ impl DataStore for SurrealDB {
                             async move {
                                 tracing::trace!(?id, "fetching data");
 
-                                db
+                                 let r = db
                                     .query(
                                         "
                                 SELECT
@@ -155,16 +155,23 @@ impl DataStore for SurrealDB {
                                     .bind(("from", id.clone()))
                                     .bind(("offset", offset))
                                     .await
-                                    .expect("failed to bind")
-                                    // .map_err(SurrealDBError::from)
-                                    // .map_err(StoreError::from)?;
+                                    .map_err(SurrealDBError::from)
+                                    .map_err(StoreError::from)?
                                     .take::<Vec<Vec<u8>>>((0, "chunks"))
-                                    .expect("failed to take 0")
+                                    .map_err(SurrealDBError::from)
+                                    .map_err(StoreError::from)?;
+
+                                Ok(r)
+
+
                             }
                             .instrument(tracing::trace_span!("fetching data", offset)),
                         )
                     })
-                    .flat_map(|r| stream::from_iter(r.into_iter().flatten()));
+                    .flat_map(|r| stream::from_iter(r.unwrap_or_else(|e: StoreError| {
+                        tracing::error!(err=?e, "unable to fetch data");
+                        Vec::new()
+                    }).into_iter().flatten()));
 
 
                 Ok((d, i))
