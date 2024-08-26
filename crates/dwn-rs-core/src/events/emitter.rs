@@ -39,22 +39,34 @@ impl EventStreamer {
     }
 
     #[instrument]
-    pub async fn emit(&self, ns: String, evt: MessageEvent, indexes: MapValue) {
+    pub async fn emit(&self, ns: &str, evt: MessageEvent, indexes: MapValue) {
         if let Some(addr) = &self.0 {
-            let _ = addr.send(Emit { ns, evt, indexes }).await;
+            let _ = addr
+                .send(Emit {
+                    ns: ns.to_string(),
+                    evt,
+                    indexes,
+                })
+                .await;
         }
     }
 
     #[instrument]
     pub async fn subscribe(
         &self,
-        ns: String,
-        id: String,
+        ns: &str,
+        id: &str,
         listener: EventChannel,
     ) -> Result<Subscription, EventStreamError> {
         if let Some(addr) = &self.0 {
             trace!("subscribing to event stream");
-            let sub = addr.send(Subscribe { ns, id, listener }).await?;
+            let sub = addr
+                .send(Subscribe {
+                    ns: ns.to_string(),
+                    id: id.to_string(),
+                    listener,
+                })
+                .await?;
             return Ok(sub);
         }
 

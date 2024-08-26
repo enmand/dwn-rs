@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 use dwn_rs_core::{MessageEvent as CoreMessageEvent, Subscription};
 use futures_util::FutureExt;
 use js_sys::{Object, Promise, Reflect};
@@ -19,19 +21,20 @@ extern "C" {
 
 impl From<&MessageEvent> for CoreMessageEvent {
     fn from(value: &MessageEvent) -> Self {
-        match serde_wasm_bindgen::from_value(value.into()) {
-            Ok(m) => m,
-            Err(e) => throw_str(&format!("unable to deserialize event: {:?}", e)),
+        if value.is_undefined() {
+            throw_str("MessageEvent is undefined");
         }
+
+        serde_wasm_bindgen::from_value(value.into()).expect_throw("unable to deserialize event")
     }
 }
 
 impl From<CoreMessageEvent> for MessageEvent {
     fn from(value: CoreMessageEvent) -> Self {
-        match value.serialize(&crate::ser::serializer()) {
-            Ok(m) => m.into(),
-            Err(e) => throw_str(&format!("unable to serialize event: {:?}", e)),
-        }
+        value
+            .serialize(&crate::ser::serializer())
+            .expect_throw("unable to serialize event")
+            .into()
     }
 }
 
@@ -47,10 +50,8 @@ impl TryFrom<Subscription> for EventSubscription {
             &Closure::once(Box::new(move || {
                 wasm_bindgen_futures::future_to_promise((value.close)().map(
                     |r| -> Result<JsValue, JsValue> {
-                        match r {
-                            Ok(_) => Ok(JsValue::UNDEFINED),
-                            Err(e) => throw_str(&format!("{:?}", e)),
-                        }
+                        r.expect_throw("unable to close subscription");
+                        Ok(JsValue::UNDEFINED)
                     },
                 ))
             }) as Box<dyn Fn() -> Promise>)
@@ -61,8 +62,8 @@ impl TryFrom<Subscription> for EventSubscription {
     }
 }
 
-impl std::fmt::Debug for MessageEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for MessageEvent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("MessageEvent").finish()
     }
 }

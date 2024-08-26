@@ -85,10 +85,7 @@ impl From<JSMessageSort> for MessageSort {
             return MessageSort::default();
         }
 
-        match serde_wasm_bindgen::from_value(value.into()) {
-            Ok(m) => m,
-            Err(_) => MessageSort::default(),
-        }
+        serde_wasm_bindgen::from_value(value.into()).unwrap_or_default()
     }
 }
 

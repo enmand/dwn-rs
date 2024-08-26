@@ -1,5 +1,5 @@
 use alloc::string::{String, ToString};
-use wasm_bindgen::{prelude::*, throw_str};
+use wasm_bindgen::prelude::*;
 
 use dwn_rs_core::{
     filters::{FilterKey, FilterSet, Filters, ValueFilter},
@@ -50,44 +50,42 @@ impl From<Filter> for Filters {
 
 impl From<IndexMap> for (MapValue, MapValue) {
     fn from(value: IndexMap) -> Self {
-        match serde_wasm_bindgen::from_value::<MapValue>(value.into()) {
-            Ok(m) => m.into_iter().fold(
-                (MapValue::new(), MapValue::new()),
-                |(mut indexes, mut tags), (k, v)| {
-                    if let Some(tag) = k.strip_prefix("tag.") {
-                        tags.insert(tag.to_string(), v);
-                    } else {
-                        indexes.insert(k, v);
-                    }
+        let m = serde_wasm_bindgen::from_value::<MapValue>(value.into())
+            .expect_throw("unable to deserialize indexes");
 
-                    (indexes, tags)
-                },
-            ),
-            Err(e) => throw_str(&format!("unable to deserialize indexes: {:?}", e)),
-        }
+        m.into_iter().fold(
+            (MapValue::new(), MapValue::new()),
+            |(mut indexes, mut tags), (k, v)| {
+                if let Some(tag) = k.strip_prefix("tag.") {
+                    tags.insert(tag.to_string(), v);
+                } else {
+                    indexes.insert(k, v);
+                }
+
+                (indexes, tags)
+            },
+        )
     }
 }
 
 impl From<IndexMap> for MapValue {
     fn from(value: IndexMap) -> Self {
-        match serde_wasm_bindgen::from_value::<MapValue>(value.into()) {
-            Ok(m) => m,
-            Err(e) => throw_str(&format!("unable to deserialize indexes: {:?}", e)),
-        }
+        serde_wasm_bindgen::from_value::<MapValue>(value.into())
+            .expect_throw("unable to deserialize indexes")
     }
 }
 
 impl From<MapValue> for IndexMap {
     fn from(value: MapValue) -> Self {
-        match value.serialize(&crate::ser::serializer()) {
-            Ok(m) => m.into(),
-            Err(e) => throw_str(&format!("unable to serialize indexes: {:?}", e)),
-        }
+        value
+            .serialize(&crate::ser::serializer())
+            .expect_throw("unable to serialize indexes")
+            .into()
     }
 }
 
-impl std::fmt::Debug for IndexMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for IndexMap {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("IndexMap").finish()
     }
 }
