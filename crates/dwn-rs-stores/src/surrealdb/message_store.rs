@@ -39,12 +39,10 @@ impl MessageStore for SurrealDB {
         tags: MapValue,
     ) -> Result<Cid, MessageStoreError> {
         let mut data: Option<Value> = None;
-        match message.fields {
-            Fields::EncodedWrite(ref mut ew) => {
-                data = ew.encoded_data.clone().map(|d| Value::String(d));
-                ew.encoded_data = None;
-            }
-            _ => (),
+
+        if let Fields::EncodedWrite(ref mut ew) = message.fields {
+            data = ew.encoded_data.clone().map(Value::String);
+            ew.encoded_data = None;
         }
 
         let i = serde_ipld_dagcbor::to_vec(&message)?;
@@ -90,11 +88,8 @@ impl MessageStore for SurrealDB {
         let mut from: Message = serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
 
         if let Some(data) = encoded_message.encoded_data {
-            match from.fields {
-                Fields::EncodedWrite(ref mut ew) => {
-                    ew.encoded_data = Some(data.to_string());
-                }
-                _ => (),
+            if let Fields::EncodedWrite(ref mut ew) = from.fields {
+                ew.encoded_data = Some(data.to_string());
             };
         }
 
@@ -141,11 +136,8 @@ impl MessageStore for SurrealDB {
                 let mut msg: Message = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
-                    match msg.fields {
-                        Fields::EncodedWrite(ref mut ew) => {
-                            ew.encoded_data = Some(data.to_string());
-                        }
-                        _ => (),
+                    if let Fields::EncodedWrite(ref mut ew) = msg.fields {
+                        ew.encoded_data = Some(data.to_string());
                     };
                 }
 
