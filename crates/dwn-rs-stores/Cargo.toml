@@ -11,13 +11,13 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["surreal-lib"]
 surrealdb = [
-    "surrealdb/rustls",
-    "surrealdb/kv-mem",
-    "surrealdb/protocol-ws",
-    "surrealdb/protocol-http",
+    "surrealdb-beta/rustls",
+    "surrealdb-beta/kv-mem",
+    "surrealdb-beta/protocol-ws",
+    "surrealdb-beta/protocol-http",
 ]
-surreal-lib = ["surrealdb", "surrealdb/kv-speedb"]
-surreal-wasm = ["surrealdb", "surrealdb/kv-indxdb"]
+surreal-lib = ["surrealdb", "surrealdb-beta/kv-surrealkv"]
+surreal-wasm = ["surrealdb", "surrealdb-beta/kv-indxdb"]
 no-std = []
 
 
@@ -38,9 +38,7 @@ tracing = { version = "0.1.40", default-features = false, features = [
 serde = { version = "1.0.183", features = ["derive"] }
 serde_ipld_dagcbor = "0.6.0"
 serde_with = "3.4.0"
-surrealdb = { version = "1.5.4", default-features = false, optional = true, features = [
-    "sql2",
-] }
+surrealdb-beta = { version = "2.0.0", default-features = false, optional = true }
 
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }

@@ -1,4 +1,5 @@
-use surrealdb::sql::{Id, Table, Thing};
+use surrealdb::sql::Table;
+use tracing::instrument;
 
 use crate::{SurrealDB, SurrealDBError, SurrealQuery};
 use dwn_rs_core::{
@@ -21,6 +22,7 @@ impl EventLog for SurrealDB {
         self.close().await
     }
 
+    #[instrument]
     async fn append(
         &self,
         tenant: &str,
@@ -30,10 +32,11 @@ impl EventLog for SurrealDB {
     ) -> Result<(), EventLogError> {
         // get a mutable reference to self.gen
         let watermark = self.gen.lock().await.generate()?;
-        let res = Thing::from((EVENTS_TABLE, cid.to_string().as_str()));
+        let res = (EVENTS_TABLE, cid.to_string());
 
         self.with_database(tenant, |db| async move {
-            db.create::<Option<CreateEvent>>(res)
+            tracing::trace!(cid = ?cid, tags = ?tags, watermark = ?watermark, "appending event");
+            db.create::<Option<GetEvent>>(res)
                 .content(CreateEvent {
                     watermark,
                     cid: cid.to_string(),
@@ -92,9 +95,9 @@ impl EventLog for SurrealDB {
         Ok(self
             .with_database(tenant, |db| async move {
                 for c in cids {
-                    let id = Thing::from((EVENTS_TABLE, Id::String(c.to_string())));
+                    let id = (EVENTS_TABLE, c.to_string());
 
-                    db.delete::<Option<CreateEvent>>(id)
+                    db.delete::<Option<GetEvent>>(id)
                         .await
                         .map_err(SurrealDBError::from)
                         .map_err(StoreError::from)?;

@@ -243,10 +243,11 @@ where
             None => stmt.cond,
         };
 
+
         let mut q = self
             .db
             .query(stmt.clone())
-            .bind(&binds)
+            .bind(binds)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
 

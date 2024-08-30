@@ -1,9 +1,12 @@
-use async_std::stream::{self, from_iter};
+use async_std::stream::from_iter;
 use futures_util::{pin_mut, Stream, StreamExt};
-use surrealdb::sql::{
-    statements::{RelateStatement, SelectStatement},
-    Cond, Data, Dir, Expression, Field, Fields, Graph, Id, Ident, Idiom, Operator, Param, Part,
-    Query, Statement, Table, Thing, Value, Values,
+use surrealdb::{
+    sql::{
+        statements::{RelateStatement, SelectStatement},
+        Cond, Data, Dir, Expression, Field, Fields, Graph, Ident, Idiom, Operator, Param, Part,
+        Query, Statement, Table, Value, Values,
+    },
+    RecordId,
 };
 use tracing::Instrument;
 
@@ -45,7 +48,7 @@ impl DataStore for SurrealDB {
         let chunks = value.chunks(CHUNK_CAPACITY);
         pin_mut!(chunks);
 
-        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
+        let id: RecordId = (DATA_TABLE, record_id.to_string()).into();
 
         let len = self
             .with_database(tenant, |db| async move {
@@ -79,13 +82,14 @@ impl DataStore for SurrealDB {
 
                     let mut relate = RelateStatement::default();
                     relate.from = Value::Param(Param::from(Ident::from("chunk")));
-                    relate.kind = Value::Table(Table::from("data_for"));
+                    relate.kind = Value::Table(Table::from("chunk_of"));
                     relate.with = Value::Param(Param::from(Ident::from("data")));
                     relate.data = Some(Data::SetExpression(vec![(
                         Idiom::from("offset"),
                         Operator::Equal,
                         Value::Param(Param::from("offset")),
                     )]));
+                    relate.uniq = true;
                     relate.only = true;
 
                     tracing::trace!(relate = relate.to_string(), chunk = chunk.len());
@@ -99,7 +103,7 @@ impl DataStore for SurrealDB {
                         .map_err(StoreError::from)?;
 
                     offset += 1;
-                    len += u[0].data.len();
+                    len += chunk.len();
                 }
 
                 db.update::<Option<DataChunkSize>>(id.clone())
@@ -124,7 +128,7 @@ impl DataStore for SurrealDB {
         record_id: &str,
         _: &str,
     ) -> Result<GetDataResults, DataStoreError> {
-        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
+        let id: RecordId = (DATA_TABLE, record_id.to_string()).into();
         let query = chunks_graph_query();
 
         let (res, s) = self
@@ -147,7 +151,7 @@ impl DataStore for SurrealDB {
 
                         futures_util::stream::once(
                             async move {
-                                tracing::trace!(?id, "fetching data");
+                                tracing::trace!(?id, query = query.to_string(), "chunk");
 
                                 let r = db
                                     .query(query.clone())
@@ -156,7 +160,7 @@ impl DataStore for SurrealDB {
                                     .await
                                     .map_err(SurrealDBError::from)
                                     .map_err(StoreError::from)?
-                                    .take::<Vec<Vec<u8>>>((0, "chunks"))
+                                    .take::<Vec<Vec<u8>>>(0)
                                     .map_err(SurrealDBError::from)
                                     .map_err(StoreError::from)?;
 
@@ -166,7 +170,7 @@ impl DataStore for SurrealDB {
                         )
                     })
                     .flat_map(|r| {
-                        stream::from_iter(
+                        from_iter(
                             r.unwrap_or_else(|e: StoreError| {
                                 tracing::error!(err=?e, "unable to fetch data");
                                 Vec::new()
@@ -193,7 +197,7 @@ impl DataStore for SurrealDB {
     }
 
     async fn delete(&self, tenant: &str, record_id: &str, _: &str) -> Result<(), DataStoreError> {
-        let id = Thing::from((DATA_TABLE, Id::String(record_id.to_string())));
+        let id = (DATA_TABLE, record_id.to_string());
 
         self.with_database(tenant, |db| async move {
             db.delete::<Option<GetData>>(id)
@@ -224,7 +228,7 @@ impl DataStore for SurrealDB {
 /// The query is:
 /// ```sql
 ///     SELECT
-///         <->(data_for WHERE offset = $offset)<->data_chunks.data AS chunks
+///         ->(chunk_of WHERE offset = $offset)->data_chunks.data AS chunks
 ///     FROM ONLY $from
 /// ```
 //
@@ -234,11 +238,10 @@ impl DataStore for SurrealDB {
 // at compile time.
 #[memoize::memoize]
 fn chunks_graph_query() -> Query {
-    // <->(data_for WHERE $offset = offset)
     let mut offset_graph = Graph::default();
-    offset_graph.dir = Dir::Both; // <->
+    offset_graph.dir = Dir::In; // <-
     offset_graph.expr = Fields::all();
-    offset_graph.what = Table::from("data_for").into();
+    offset_graph.what = Table::from("chunk_of").into();
     let mut offset_cond = Cond::default();
     offset_cond.0 = Expression::Binary {
         l: Idiom::from("offset").into(),
@@ -250,9 +253,9 @@ fn chunks_graph_query() -> Query {
 
     // <->data_chunks.data
     let mut chunk_graph = Graph::default();
-    chunk_graph.dir = Dir::Both;
+    chunk_graph.dir = Dir::In;
     chunk_graph.expr = Fields::all();
-    chunk_graph.what = Table::from("data_chunks").into();
+    chunk_graph.what = Table::from(CHUNK_TABLE).into();
 
     // FROM ONLY $from
     let mut graph_edge = Values::default();
@@ -260,6 +263,7 @@ fn chunks_graph_query() -> Query {
 
     // SELECT for graph elements
     let mut query = SelectStatement::default();
+    query.expr.1 = true; // VALUE
     query.expr.0.push(Field::Single {
         expr: Idiom::from(vec![
             Part::Graph(offset_graph),
@@ -267,7 +271,7 @@ fn chunks_graph_query() -> Query {
             Part::Field(Ident::from("data")),
         ])
         .into(),
-        alias: Some(Idiom::from("chunks")),
+        alias: None,
     });
     query.only = true; // single chunk per poll
     query.what = graph_edge;

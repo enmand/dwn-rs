@@ -137,7 +137,7 @@ pub trait ResumableTaskStore: Default {
 
     fn close(&mut self) -> impl Future<Output = ()> + Send;
 
-    fn register<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
+    fn register<T: Serialize + Send + Sync + DeserializeOwned + Debug + 'static>(
         &self,
         task: T,
         timeout: u64,

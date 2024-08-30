@@ -6,7 +6,10 @@ use dwn_rs_core::{
 };
 use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Datetime, Thing, Value as SurrealValue};
+use surrealdb::{
+    sql::{Datetime, Value as SurrealValue},
+    RecordId,
+};
 use ulid::Ulid;
 
 use super::CursorValue;
@@ -25,7 +28,7 @@ pub(crate) struct CreateEncodedMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct GetEncodedMessage {
-    pub(super) id: Thing,
+    pub(super) id: RecordId,
     pub(super) cid: String,
     pub(super) tenant: String,
     pub(super) encoded_message: Vec<u8>,
@@ -58,7 +61,7 @@ pub(crate) struct CreateData {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct GetData {
-    pub(super) id: Thing,
+    pub(super) id: RecordId,
     pub(super) cid: String,
     pub(super) tenant: String,
     pub(super) record_id: String,
@@ -75,7 +78,7 @@ pub(crate) struct DataChunkSize {
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct DataChunk {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) id: Option<Thing>,
+    pub(super) id: Option<RecordId>,
     pub(super) data: Vec<u8>,
 }
 
@@ -83,9 +86,9 @@ pub(crate) struct DataChunk {
 pub(crate) struct CreateEvent {
     pub(super) cid: String,
     pub(super) watermark: Ulid,
+    pub(super) tags: MapValue,
     #[serde(flatten)]
     pub(super) indexes: MapValue,
-    pub(super) tags: MapValue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -96,7 +99,7 @@ pub(crate) struct GetEvent {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Task<T: Serialize> {
-    pub(super) id: Thing,
+    pub(super) id: RecordId,
     pub(super) task: T,
     pub(super) timeout: Datetime,
 }
