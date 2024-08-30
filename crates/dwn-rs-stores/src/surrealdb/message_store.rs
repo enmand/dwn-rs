@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
-use surrealdb::sql::{Id, Thing};
 
 use super::core::SurrealDB;
 use crate::SurrealQuery;
@@ -50,7 +49,7 @@ impl MessageStore for SurrealDB {
         let cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
 
         self.with_database(tenant, |db| async move {
-            db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, Id::String(cid.to_string())))
+            db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, cid.to_string()))
                 .content(CreateEncodedMessage {
                     cid: cid.to_string(),
                     encoded_message: i,
@@ -72,7 +71,7 @@ impl MessageStore for SurrealDB {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
             .with_database(tenant, |db| async move {
-                db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
+                db.select((MESSAGES_TABLE, cid.to_string()))
                     .await
                     .map_err(SurrealDBError::from)
                     .map_err(StoreError::from)
@@ -149,12 +148,12 @@ impl MessageStore for SurrealDB {
     }
 
     async fn delete(&self, tenant: &str, cid: &str) -> Result<(), MessageStoreError> {
-        let id = Thing::from((MESSAGES_TABLE, Id::String(cid.to_string())));
+        let id = (MESSAGES_TABLE, cid.to_string());
 
         // check the tenancy on the messages
         let encoded_message: Option<GetEncodedMessage> = self
             .with_database(tenant, |db| async move {
-                db.select(Thing::from((MESSAGES_TABLE, Id::String(cid.to_string()))))
+                db.select((MESSAGES_TABLE, cid.to_string()))
                     .await
                     .map_err(SurrealDBError::from)
                     .map_err(StoreError::from)

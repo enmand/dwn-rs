@@ -1,9 +1,14 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
-use surrealdb::sql::{
-    statements::{BeginStatement, CommitStatement, SelectStatement, SetStatement, UpdateStatement},
-    Cond, Data, Duration, Expression, Function, Idiom, Limit, Number, Operator, Output, Param,
-    Statement, Subquery, Table, Value as SurrealValue,
+use surrealdb::{
+    sql::{
+        statements::{
+            BeginStatement, CommitStatement, SelectStatement, SetStatement, UpdateStatement,
+        },
+        Cond, Data, Duration, Expression, Function, Idiom, Limit, Number, Operator, Output, Param,
+        Statement, Subquery, Table, Value as SurrealValue,
+    },
+    RecordId,
 };
 
 use crate::{
@@ -40,17 +45,19 @@ impl ResumableTaskStore for SurrealDB {
         self.close().await
     }
 
-    async fn register<T: Serialize + DeserializeOwned + Sync + Send + Debug>(
+    async fn register<T: Serialize + DeserializeOwned + Sync + Send + Debug + 'static>(
         &self,
         task: T,
         timeout: u64,
     ) -> Result<ManagedResumableTask<T>, ResumableTaskStoreError> {
         let id = self.gen.lock().await.generate()?;
-        let timeout_expr = timeout_expr(timeout);
 
-        match self
+        let timeout_expr = timeout_expr(timeout);
+        let task_record: RecordId = (RESUMABLE_TASKS_TABLE, id.to_string()).into();
+
+        let task = match self
             .db
-            .create::<Option<Task<T>>>((RESUMABLE_TASKS_TABLE, id.to_string()))
+            .create::<Option<Task<T>>>(task_record)
             .content(CreateTask {
                 task,
                 timeout: timeout_expr,
@@ -68,7 +75,11 @@ impl ResumableTaskStore for SurrealDB {
             None => Err(ResumableTaskStoreError::StoreError(
                 StoreError::InternalException("Failed to register task".to_string()),
             )),
-        }
+        }?;
+
+        tracing::trace!(task = ?task, "Registered task");
+
+        Ok(task)
     }
 
     async fn grab<T: Serialize + Send + Sync + DeserializeOwned + Debug + Unpin>(
@@ -143,7 +154,7 @@ impl ResumableTaskStore for SurrealDB {
             .into_iter()
             .map(|task| {
                 Ok(ManagedResumableTask {
-                    id: Ulid::from_string(&task.id.id.to_string())?,
+                    id: Ulid::from_string(&task.id.key().to_string())?,
                     task: task.task,
                     timeout: task.timeout.timestamp() as u64,
                     retry_count: 0,
@@ -151,26 +162,31 @@ impl ResumableTaskStore for SurrealDB {
             })
             .collect();
 
-        Ok(managed_tasks?)
+        managed_tasks
     }
 
     async fn read<T: Serialize + Send + Sync + DeserializeOwned + Debug>(
         &self,
         task_id: &str,
     ) -> Result<Option<ManagedResumableTask<T>>, ResumableTaskStoreError> {
+        let id: RecordId = (RESUMABLE_TASKS_TABLE, task_id.to_string()).into();
+
         match self
             .db
-            .select::<Option<Task<T>>>((RESUMABLE_TASKS_TABLE, task_id))
+            .select::<Option<Task<T>>>(id)
             .await
             .map_err(SurrealDBError::from)
             .map_err(StoreError::from)?
         {
-            Some(task) => Ok(Some(ManagedResumableTask {
-                id: Ulid::from_string(&task.id.id.to_string())?,
-                task: task.task,
-                timeout: task.timeout.timestamp() as u64,
-                retry_count: 0,
-            })),
+            Some(task) => {
+                tracing::trace!(task = ?task, "Read task");
+                Ok(Some(ManagedResumableTask {
+                    id: Ulid::from_string(&task.id.key().to_string())?,
+                    task: task.task,
+                    timeout: task.timeout.timestamp() as u64,
+                    retry_count: 0,
+                }))
+            }
             None => Ok(None),
         }
     }

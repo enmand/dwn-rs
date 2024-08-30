@@ -45,24 +45,29 @@ impl SurrealResumableTaskStore {
     ) -> Result<JsManagedResumableTask, JsValue> {
         let task: Value = serde_wasm_bindgen::from_value(task).map_err(JsValue::from)?;
 
-        Ok(self
+        let t = self
             .store
             .register(task, timeout as u64)
             .await
             .map_err(JsError::from)
             .map_err(JsValue::from)?
-            .into())
+            .into();
+
+        Ok(t)
     }
 
     #[wasm_bindgen]
     pub async fn grab(&self, count: u32) -> Result<JsManagedResumableTaskArray, JsValue> {
-        Ok(self
+
+        let t = self
             .store
             .grab::<Value>(count as u64)
             .await
             .map_err(JsError::from)
             .map_err(JsValue::from)?
-            .into())
+            .into();
+
+        Ok(t)
     }
 
     #[wasm_bindgen]
