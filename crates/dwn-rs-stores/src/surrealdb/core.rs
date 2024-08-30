@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Debug};
 
 use surrealdb::{
     engine::any::Any,
@@ -24,6 +24,15 @@ pub struct SurrealDB {
     invalid: bool,
 
     pub(super) gen: Mutex<Generator>,
+}
+
+impl Debug for SurrealDB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SurrealDB")
+            .field("constr", &self.constr)
+            .field("invalid", &self.invalid)
+            .finish()
+    }
 }
 
 impl Default for SurrealDB {
