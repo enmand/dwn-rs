@@ -117,8 +117,6 @@ Ensure that your project is set up to serve the WASM file correctly and run your
 
 ## Roadmap 🗺️
 
-Here's a simple roadmap with checkmarks tracking our progress against the DWN specification and companion guide:
-
 ### Core Features
 
 - [x] Implement core DWN types and traits
