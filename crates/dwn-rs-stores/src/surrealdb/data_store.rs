@@ -78,7 +78,8 @@ impl DataStore for SurrealDB {
                         })
                         .await
                         .map_err(SurrealDBError::from)
-                        .map_err(StoreError::from)?;
+                        .map_err(StoreError::from)?
+                        .ok_or(StoreError::NotFound)?;
 
                     let mut relate = RelateStatement::default();
                     relate.from = Value::Param(Param::from(Ident::from("chunk")));
@@ -95,7 +96,7 @@ impl DataStore for SurrealDB {
                     tracing::trace!(relate = relate.to_string(), chunk = chunk.len());
 
                     db.query(relate)
-                        .bind(("chunk", u[0].id.clone().unwrap()))
+                        .bind(("chunk", u.id.clone().unwrap()))
                         .bind(("data", id.clone()))
                         .bind(("offset", offset))
                         .await
