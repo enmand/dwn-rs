@@ -68,7 +68,6 @@ The compiled WASM file is usually located in the `crates/dwn-rs-wasm/pks/` direc
 Use the following code to load and utilize the WASM file in your JavaScript project:
 
 ```typescript
-import { TestSuite } from "@tbd54566975/dwn-sdk-js/tests";
 import {
   SurrealDataStore,
   SurrealMessageStore,
@@ -86,26 +85,26 @@ global.WebSocket = WebSocket;
 // only required if you want logging/tracing to the console
 init_tracing(TracingLevel.Error);
 
-let s = new SurrealMessageStore();
-await s.connect("mem://");
+let messageStore = new SurrealMessageStore();
+await messageStore.connect("mem://");
 
-let d = new SurrealDataStore();
-await d.connect("mem://");
+let dataStore = new SurrealDataStore();
+await dataStore.connect("mem://");
 
-let e = new SurrealEventLog();
-await e.connect("mem://");
-let t = new SurrealResumableTaskStore();
+let eventLog = new SurrealEventLog();
+await eventLog.connect("mem://");
+
+let resumableTaskStore = new SurrealResumableTaskStore();
 await t.connect("mem://");
-let es = new EventStream();
 
-describe("Store dependent tests", () => {
-  TestSuite.runInjectableDependentTests({
-    messageStore: s,
-    dataStore: d,
-    eventLog: e,
-    eventStream: es,
-    resumableTaskStore: t,
-  });
+let eventStream = new EventStream();
+
+const dwn = await Dwn.create({
+  messageStore,
+  dataStore,
+  eventLog,
+  resumableTaskStore,
+  eventStream,
 });
 ```
 
