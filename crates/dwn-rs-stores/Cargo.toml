@@ -53,3 +53,6 @@ async-std = { version = "1.12.0", default-features = false, features = [
     "pin-project-lite",
 ] }
 memoize = { version = "0.4.2", default-features = false }
+
+[dev-dependencies]
+rand = "0.8.5"
