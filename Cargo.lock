@@ -1425,6 +1425,7 @@ dependencies = [
  "multicodec",
  "multihash",
  "multihash-codetable",
+ "rand",
  "serde",
  "serde_ipld_dagcbor",
  "serde_json",

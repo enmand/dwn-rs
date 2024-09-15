@@ -279,3 +279,100 @@ fn chunks_graph_query() -> Query {
 
     Statement::Select(query).into()
 }
+
+#[cfg(test)]
+mod test {
+    use async_std::stream::from_iter;
+    use futures_util::StreamExt;
+    use std::iter::repeat_with;
+
+    use super::*;
+    use dwn_rs_core::stores::DataStore;
+
+    #[tokio::test]
+    async fn test_open_close() {
+        let mut db = SurrealDB::new();
+        db.connect("mem://").await.unwrap();
+        db.open().await.unwrap();
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_put_get() {
+        let mut db = SurrealDB::new();
+        db.connect("mem://").await.unwrap();
+        db.open().await.unwrap();
+
+        let tenant = "test";
+        let record_id = "test_put_get";
+        let cid = "test_put_get_cid";
+
+        let data = repeat_with(rand::random::<u8>)
+            .take(1024 * 1024)
+            .collect::<Vec<u8>>();
+
+        let put = db
+            .put(tenant, record_id, cid, from_iter(data.clone()))
+            .await
+            .unwrap();
+        assert_eq!(put.size, data.len());
+
+        let get = db.get(tenant, record_id, cid).await.unwrap();
+        assert_eq!(get.size, data.len());
+
+        let get_data = get.data.collect::<Vec<u8>>().await;
+        assert_eq!(data, get_data);
+
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_get_not_found() {
+        let mut db = SurrealDB::new();
+        db.connect("mem://").await.unwrap();
+        db.open().await.unwrap();
+
+        let tenant = "test";
+        let record_id = "test_get_not_found";
+        let cid = "test_get_not_found_cid";
+
+        let get = db.get(tenant, record_id, cid).await;
+        assert!(get.is_err());
+
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_delete() {
+        let mut db = SurrealDB::new();
+        db.connect("mem://").await.unwrap();
+        db.open().await.unwrap();
+
+        let tenant = "test";
+        let record_id = "test_delete";
+        let cid = "test_delete_cid";
+
+        let data = repeat_with(rand::random::<u8>)
+            .take(1024 * 1024)
+            .collect::<Vec<u8>>();
+
+        let put = db
+            .put(tenant, record_id, cid, from_iter(data.clone()))
+            .await
+            .unwrap();
+        assert_eq!(put.size, data.len());
+
+        let get = db.get(tenant, record_id, cid).await.unwrap();
+        assert_eq!(get.size, data.len());
+
+        let get_data = get.data.collect::<Vec<u8>>().await;
+        assert_eq!(data, get_data);
+
+        db.delete(tenant, record_id, cid).await.unwrap();
+
+        let get = db.get(tenant, record_id, cid).await;
+        assert!(get.is_err());
+
+        db.close().await;
+    }
+}
