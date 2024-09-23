@@ -31,7 +31,7 @@ derive_more = { version = "1.0", features = ["display", "from", "try_into"] }
 ssi-dids-core = "0.1.0"
 base64 = "0.22.1"
 ssi-jwk = "0.2.1"
-ssi-jws = "0.2.1"
+ssi-jws = "0.3.0"
 ulid = { version = "1.1.2", features = ["serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 thiserror = "1.0.63"
