@@ -71,7 +71,7 @@ impl DataStore for SurrealDB {
                 let mut len = 0;
                 while let Some(chunk) = chunks.next().await {
                     let u = db
-                        .create::<Vec<DataChunk>>(CHUNK_TABLE)
+                        .create::<Option<DataChunk>>(CHUNK_TABLE)
                         .content(DataChunk {
                             id: None,
                             data: chunk.clone(),

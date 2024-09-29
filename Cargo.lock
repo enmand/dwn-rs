@@ -1400,8 +1400,8 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "ssi-dids-core",
- "ssi-jwk",
- "ssi-jws",
+ "ssi-jwk 0.2.1",
+ "ssi-jws 0.3.0",
  "thiserror",
  "tokio",
  "tracing",
@@ -1430,7 +1430,7 @@ dependencies = [
  "serde_ipld_dagcbor",
  "serde_json",
  "serde_with",
- "surrealdb-beta",
+ "surrealdb",
  "thiserror",
  "time",
  "tokio",
@@ -5535,9 +5535,9 @@ dependencies = [
 
 [[package]]
 name = "ssi-claims-core"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca10ead311b434b7ec0055575fe839d7c7c20fb62fafbf05e989b9572795909"
+checksum = "226ed3bf73c05cc884b261171c276c426a3e49bbc8cbb46368fbff24abfbc72f"
 dependencies = [
  "chrono",
  "educe 0.4.23",
@@ -5556,9 +5556,9 @@ checksum = "728dde2f51db62c4667686139f2958b59ab920f8d9d8531b59fc5a01ef0a3896"
 
 [[package]]
 name = "ssi-core"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09a9bcf4043b59fdb6990c9fb34e6e613f457d0c1341f8c017a9feb3082365e8"
+checksum = "82c18e4896fd1404939334e990dbf5ec56ffbb094fa175326d503cad3dc5c709"
 dependencies = [
  "async-trait",
  "pin-project",
@@ -5568,9 +5568,9 @@ dependencies = [
 
 [[package]]
 name = "ssi-crypto"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7bc78e7fc34a598ce6a1f0e4693db6b936512a7e7ff6e9f12231546e95a3408"
+checksum = "53aded7b6dc3dabb004ee658fc46358c09623ad7aa61b99388ff734ae222d5d2"
 dependencies = [
  "async-trait",
  "bs58",
@@ -5581,6 +5581,7 @@ dependencies = [
  "k256",
  "keccak-hash",
  "pin-project",
+ "rand",
  "ripemd160",
  "serde",
  "sha2 0.10.8",
@@ -5606,8 +5607,8 @@ dependencies = [
  "ssi-core",
  "ssi-crypto",
  "ssi-json-ld",
- "ssi-jwk",
- "ssi-jws",
+ "ssi-jwk 0.2.1",
+ "ssi-jws 0.2.1",
  "ssi-verification-methods-core",
  "static-iref",
  "thiserror",
@@ -5689,12 +5690,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "ssi-jwk"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50384f9a0e78093acf59b6dbd53e6221a8a887ee73c3b7b8b131c56a22811b75"
+dependencies = [
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "getrandom",
+ "json-syntax",
+ "k256",
+ "lazy_static",
+ "linked-data",
+ "multibase",
+ "num-bigint",
+ "num-derive",
+ "num-traits",
+ "p256",
+ "rand",
+ "rsa",
+ "serde",
+ "serde_jcs",
+ "serde_json",
+ "simple_asn1 0.5.4",
+ "ssi-claims-core",
+ "ssi-crypto",
+ "ssi-multicodec",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "ssi-jws"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcacab32207ac1ba86912e735cc4c46d7f66a0cbfbe82a10adcfa248927c44c7"
 dependencies = [
  "base64 0.12.3",
+ "clear_on_drop",
+ "hex",
+ "iref",
+ "linked-data",
+ "serde",
+ "serde_json",
+ "ssi-claims-core",
+ "ssi-core",
+ "ssi-crypto",
+ "ssi-jwk 0.2.1",
+ "thiserror",
+]
+
+[[package]]
+name = "ssi-jws"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56d401dfd6920723ed52d3af494d3c5f0a1c6c395c69195726eb3a765a30bf39"
+dependencies = [
+ "base64 0.22.1",
  "blake2",
  "clear_on_drop",
  "ed25519-dalek",
@@ -5712,7 +5764,7 @@ dependencies = [
  "ssi-claims-core",
  "ssi-core",
  "ssi-crypto",
- "ssi-jwk",
+ "ssi-jwk 0.3.0",
  "thiserror",
 ]
 
@@ -5761,8 +5813,8 @@ dependencies = [
  "ssi-core",
  "ssi-crypto",
  "ssi-json-ld",
- "ssi-jwk",
- "ssi-jws",
+ "ssi-jwk 0.2.1",
+ "ssi-jws 0.2.1",
  "static-iref",
  "thiserror",
 ]
@@ -5915,10 +5967,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
-name = "surrealdb-beta"
-version = "2.0.1"
+name = "surrealdb"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2276d69c8a53443469d196a9491801abe1ee30cd44b9802be33cbc6758d21973"
+checksum = "39763f42366823f524ded4e423420fe990352a18665f00151521ea49f590d33e"
 dependencies = [
  "arrayvec",
  "async-channel 1.9.0",
@@ -5928,7 +5980,6 @@ dependencies = [
  "futures",
  "geo",
  "indexmap 2.2.6",
- "once_cell",
  "path-clean",
  "pharos",
  "reblessive",
@@ -5942,7 +5993,7 @@ dependencies = [
  "serde",
  "serde-content",
  "serde_json",
- "surrealdb-core-beta",
+ "surrealdb-core",
  "thiserror",
  "tokio",
  "tokio-tungstenite",
@@ -5957,10 +6008,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "surrealdb-core-beta"
-version = "2.0.1"
+name = "surrealdb-core"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d62a06ba0d009e892540fc7d10a356677b0492b884ec225fcc4e27c2182c7ce8"
+checksum = "12d8339a5d2968dedee86705482becc6a6181a07cc30ed2e674526a81bd7389e"
 dependencies = [
  "addr",
  "ahash 0.8.11",
@@ -6002,7 +6053,6 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "object_store",
- "once_cell",
  "pbkdf2",
  "pharos",
  "phf",
@@ -6056,9 +6106,9 @@ dependencies = [
 
 [[package]]
 name = "surrealkv"
-version = "0.3.4"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5fe193207896e6eeb445b88b810830097a9940058174bbbe8ec5597b1f52e1"
+checksum = "40ac63abeb621f728a556d63004756b70ff6dd9b9805c4d8e2e26c16bbed6097"
 dependencies = [
  "ahash 0.8.11",
  "async-channel 2.3.1",
@@ -6070,7 +6120,6 @@ dependencies = [
  "parking_lot",
  "quick_cache 0.6.6",
  "revision 0.7.1",
- "sha2 0.10.8",
  "tokio",
  "vart",
 ]
