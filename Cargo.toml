@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dwn-rs-core", "crates/dwn-rs-stores", "crates/dwn-rs-wasm"]
+members = ["crates/dwn-rs-core", "crates/dwn-rs-remote", "crates/dwn-rs-stores", "crates/dwn-rs-wasm"]
 
 [profile.release]
 lto = true

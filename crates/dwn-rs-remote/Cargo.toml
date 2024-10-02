@@ -1,0 +1,18 @@
+[package]
+name = "dwn-rs-remote"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Remote SDK components for dwn-rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+reqwest = { version = "0.12.8", features = ["stream", "json", "gzip"] }
+
+dwn-rs-core = { path = "../dwn-rs-core", default-features = false }
+futures-core = { version = "0.3.30", default-features = false, features = ["alloc"] }
+thiserror = "1.0.64"
+serde = "1.0.210"
+serde_json = "1.0.128"
