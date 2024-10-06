@@ -6,11 +6,14 @@ use crate::auth::{
     jws::JWS,
 };
 
+use super::Message;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum Fields {
     EncodedWrite(EncodedWriteField),
     Write(WriteFields),
+    InitialWriteField(InitialWriteField),
     Authorization(Authorization),
     AuthorizationDelegatedGrant(AuthorizationDelegatedGrantFields),
 }
@@ -43,6 +46,16 @@ pub struct EncodedWriteField {
     pub write_fields: WriteFields,
     #[serde(rename = "encodedData", skip_serializing_if = "Option::is_none")]
     pub encoded_data: Option<String>,
+}
+
+// InitialWriteField represents the RecordsWrite interface method response that includes
+// the `initialWrite` data field if the original record was not the initial write.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct InitialWriteField {
+    #[serde(flatten)]
+    pub write_fields: EncodedWriteField,
+    #[serde(rename = "initialWrite", skip_serializing_if = "Option::is_none")]
+    pub initial_write: Option<Box<Message>>,
 }
 
 /// EncryptionAlgorithm represents the encryption algorithm used for encrypting records. Currently
