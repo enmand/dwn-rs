@@ -43,7 +43,7 @@ impl TryFrom<Subscription> for EventSubscription {
 
     fn try_from(value: Subscription) -> Result<EventSubscription, JsValue> {
         let obj: EventSubscription = JsCast::unchecked_into(Object::new());
-        Reflect::set(&obj, &"id".into(), &value.id.into())?;
+        Reflect::set(&obj, &"id".into(), &value.subscription_id.id.into())?;
         Reflect::set(
             &obj,
             &"close".into(),
