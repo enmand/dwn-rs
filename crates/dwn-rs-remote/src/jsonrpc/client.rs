@@ -1,6 +1,13 @@
-use serde::{Deserialize, Serialize};
+use std::{any::Any, fmt::Debug};
 
-use crate::JSONRpcError;
+use bytes::Bytes;
+use dwn_rs_core::Response as DWNResponse;
+use futures_core::{stream::BoxStream, Stream, TryStream};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use tower::Service;
+use ulid::{Generator, Ulid};
+
+use super::JSONRpcError;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 enum Version {
@@ -10,9 +17,15 @@ enum Version {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
-enum ID {
+pub enum ID {
     String(String),
     Number(i64),
+}
+
+impl From<Ulid> for ID {
+    fn from(ulid: Ulid) -> Self {
+        Self::String(ulid.to_string())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -21,45 +34,132 @@ pub struct SubscriptionRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Request {
+pub struct Request {
     jsonrpc: Version,
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<ID>,
     method: String,
-    params: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    params: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     subscription: Option<SubscriptionRequest>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Result<T: Serialize> {
-    result: T,
+pub struct ResultData<T> {
+    pub reply: T,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Error {
+pub struct Error {
     error: JSONRpcError,
+}
+
+impl From<Error> for JSONRpcError {
+    fn from(error: Error) -> Self {
+        error.error
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
-enum ResultError<T: Serialize> {
-    Result(Result<T>),
+pub enum ResultError<T> {
+    Result(ResultData<T>),
     Error(Error),
 }
 
 // Define the JSONRPCResponse struct
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Response<T: Serialize> {
+pub struct Response<T> {
     jsonrpc: Version,
-    id: ID,
-    #[serde(flatten)]
-    result: ResultError<T>,
+    pub id: ID,
+    pub result: ResultError<T>,
+}
+
+impl<T> Response<T> {
+    pub fn new_v2<I>(id: I, reply: T) -> Self
+    where
+        I: Into<ID>,
+    {
+        Self {
+            jsonrpc: Version::V2,
+            id: id.into(),
+            result: ResultError::Result(ResultData { reply }),
+        }
+    }
+}
+
+pub struct Client<T: Service<(Request, Option<S>)>, S> {
+    ulid: Generator,
+    transport: T,
+    _phantom: std::marker::PhantomData<S>,
+}
+
+impl<T, S> std::fmt::Debug for Client<T, S>
+where
+    T: Service<(Request, Option<S>)> + Debug,
+    S: Stream<Item = Bytes>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("ulid", &self.ulid.type_id())
+            .field("transport", &self.transport)
+            .finish()
+    }
+}
+
+impl<T, S> Client<T, S>
+where
+    T: Service<
+        (Request, Option<S>),
+        Response = Response<(DWNResponse, BoxStream<'static, Result<Bytes, JSONRpcError>>)>,
+        Error = JSONRpcError,
+    >,
+    S: TryStream + Send + 'static,
+    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Bytes: From<S::Ok>,
+{
+    pub fn new(transport: T) -> Self {
+        let ulid = Generator::new();
+
+        Self {
+            ulid,
+            transport,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub async fn request<P: Serialize + DeserializeOwned>(
+        &mut self,
+        method: &'static str,
+        params: P,
+        data: Option<S>,
+    ) -> Result<
+        Response<(DWNResponse, impl Stream<Item = Result<Bytes, JSONRpcError>>)>,
+        JSONRpcError,
+    > {
+        let id = Some(self.ulid.generate()?.into());
+
+        let jsonrpc = Version::V2;
+        let method = method.to_string();
+
+        let request = Request {
+            jsonrpc,
+            id,
+            method,
+            params: Some(serde_json::to_value(params)?),
+            subscription: None,
+        };
+
+        self.transport.call((request, data)).await
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::JSONRpcErrorCodes;
+    use serde_json::json;
+
+    use crate::jsonrpc::JSONRpcErrorCodes;
 
     use super::*;
 
@@ -78,7 +178,7 @@ mod test {
                     jsonrpc: Version::V2,
                     id: Some(ID::Number(1)),
                     method: "test".to_string(),
-                    params: Some(vec!["param1".to_string(), "param2".to_string()]),
+                    params: Some(json!(vec!["param1".to_string(), "param2".to_string()])),
                     subscription: None,
                 },
                 expected: r#"{"jsonrpc":"2.0","id":1,"method":"test","params":["param1","param2"]}"#,
@@ -88,7 +188,7 @@ mod test {
                     jsonrpc: Version::V2,
                     id: None,
                     method: "test".to_string(),
-                    params: Some(vec!["param1".to_string(), "param2".to_string()]),
+                    params: Some(json!(vec!["param1".to_string(), "param2".to_string()])),
                     subscription: None,
                 },
                 expected: r#"{"jsonrpc":"2.0","method":"test","params":["param1","param2"]}"#,
@@ -145,8 +245,8 @@ mod test {
                 response: Response {
                     jsonrpc: Version::V2,
                     id: ID::Number(1),
-                    result: ResultError::Result(Result {
-                        result: "test".to_string(),
+                    result: ResultError::Result(ResultData {
+                        reply: "test".to_string(),
                     }),
                 },
                 expected: r#"{"jsonrpc":"2.0","id":1,"result":"test"}"#,
@@ -157,7 +257,8 @@ mod test {
                     id: ID::Number(1),
                     result: ResultError::Error(Error {
                         error: JSONRpcError {
-                            error: JSONRpcErrorCodes::InvalidRequest,
+                            code: JSONRpcErrorCodes::InvalidRequest,
+                            message: "Invalid Request".to_string(),
                             data: None,
                         },
                     }),
