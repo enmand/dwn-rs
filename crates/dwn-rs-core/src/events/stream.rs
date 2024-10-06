@@ -108,7 +108,7 @@ impl Handler<Subscribe> for EventStream {
         let addr = _ctx.mailbox().address().try_upgrade().unwrap();
 
         let sub = Subscription {
-            id: id.clone(),
+            subscription_id: SubscriptionID { id: id.clone() },
             close: Box::new(make_close_task(ns.clone(), id.clone(), addr)),
         };
 
@@ -140,10 +140,14 @@ impl Handler<Shutdown> for EventStream {
         _ctx.stop_all();
     }
 }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SubscriptionID {
+    pub id: String,
+}
 
 #[allow(clippy::type_complexity)]
 pub struct Subscription {
-    pub id: String,
+    pub subscription_id: SubscriptionID,
     pub close: Box<
         dyn Fn() -> Pin<Box<dyn Future<Output = Result<(), EventStreamError>> + Send>>
             + Send
@@ -250,7 +254,7 @@ mod test {
             .instrument(tracing::info_span!("subscribe"))
             .await
             .unwrap();
-        assert_eq!(sub.id, sub_id);
+        assert_eq!(sub.subscription_id.id, sub_id);
 
         let emit = addr
             .send(Emit {
