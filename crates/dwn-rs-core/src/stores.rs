@@ -7,6 +7,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{
+    descriptors::MessageDescriptor,
     errors::{DataStoreError, EventLogError, MessageStoreError, ResumableTaskStoreError},
     filters::filter_key::Filters,
     Cursor, MessageSort, Pagination, QueryReturn,
@@ -18,27 +19,31 @@ pub trait MessageStore: Default {
 
     fn close(&mut self) -> impl Future<Output = ()>;
 
-    fn put(
+    fn put<D: MessageDescriptor + Serialize + Send + 'static>(
         &self,
         tenant: &str,
-        message: Message,
+        message: Message<D>,
         indexes: MapValue,
         tags: MapValue,
     ) -> impl Future<Output = Result<Cid, MessageStoreError>> + Send;
 
-    fn get(
+    fn get<D: MessageDescriptor + DeserializeOwned + Send + 'static>(
         &self,
         tenant: &str,
         cid: &str,
-    ) -> impl Future<Output = Result<Message, MessageStoreError>> + Send;
+    ) -> impl Future<Output = Result<Message<D>, MessageStoreError>> + Send
+    where
+        Message<D>: DeserializeOwned;
 
-    fn query(
+    fn query<D: MessageDescriptor + DeserializeOwned + Send + 'static>(
         &self,
         tenant: &str,
         filter: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> impl Future<Output = Result<QueryReturn<Message>, MessageStoreError>> + Send;
+    ) -> impl Future<Output = Result<QueryReturn<Message<D>>, MessageStoreError>> + Send
+    where
+        Message<D>: DeserializeOwned;
 
     fn delete(
         &self,
