@@ -112,7 +112,7 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
 
     let output = quote_spanned! { ast.span() =>
         #[serde_with::skip_serializing_none]
-        #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone)]
+        #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Clone)]
         #[serde(into = #intofrom, from = #intofrom)]
         #items
 
