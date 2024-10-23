@@ -5,7 +5,11 @@ use serde_with::skip_serializing_none;
 use ssi_dids_core::DIDBuf;
 use ssi_jwk::JWK;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+use crate::descriptors::MessageDescriptor;
+use crate::interfaces::messages::descriptors::{CONFIGURE, PROTOCOLS, QUERY};
+use dwn_rs_message_derive::descriptor;
+
+#[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::fields::AuthorizationDelegatedGrantFields)]
 pub struct ConfigureDescriptor {
     #[serde(rename = "messageTimestamp")]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
@@ -217,8 +221,7 @@ pub struct TagContains {
     pub max_length: Option<usize>,
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[descriptor(interface = PROTOCOLS , method = QUERY, fields = crate::auth::Authorization)]
 pub struct QueryDescriptor {
     #[serde(rename = "message_timestamp")]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
@@ -259,6 +262,8 @@ mod test {
                 "types": {},
                 "structure": {},
             },
+            "interface": PROTOCOLS,
+            "method": CONFIGURE,
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
