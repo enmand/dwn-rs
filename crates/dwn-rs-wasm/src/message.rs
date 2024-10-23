@@ -1,8 +1,9 @@
+use alloc::string::ToString;
 use alloc::vec::Vec;
 use serde::Serialize;
 use wasm_bindgen::{prelude::*, throw_str};
 
-use dwn_rs_core::Message;
+use dwn_rs_core::{Descriptor, Message};
 
 use crate::ser::serializer;
 
@@ -18,18 +19,23 @@ extern "C" {
     pub type GenericMessageArray;
 }
 
-impl From<&GenericMessage> for Message {
+impl From<&GenericMessage> for Message<Descriptor> {
     fn from(value: &GenericMessage) -> Self {
         if value.is_undefined() {
             throw_str("Message is undefined");
         }
 
-        serde_wasm_bindgen::from_value(value.into()).expect_throw("unable to deserialize message")
+        let t = serde_wasm_bindgen::from_value(value.into());
+
+        match t {
+            Ok(m) => m,
+            Err(e) => throw_str(e.to_string().as_str()),
+        }
     }
 }
 
-impl From<Message> for GenericMessage {
-    fn from(value: Message) -> Self {
+impl From<Message<Descriptor>> for GenericMessage {
+    fn from(value: Message<Descriptor>) -> Self {
         value
             .serialize(&serializer())
             .expect_throw("unable to serialize message")
@@ -37,14 +43,14 @@ impl From<Message> for GenericMessage {
     }
 }
 
-impl From<&GenericMessageArray> for Vec<Message> {
+impl From<&GenericMessageArray> for Vec<Message<Descriptor>> {
     fn from(value: &GenericMessageArray) -> Self {
         serde_wasm_bindgen::from_value(value.into()).expect_throw("unable to deserialize messages")
     }
 }
 
-impl From<Vec<Message>> for GenericMessageArray {
-    fn from(value: Vec<Message>) -> Self {
+impl From<Vec<Message<Descriptor>>> for GenericMessageArray {
+    fn from(value: Vec<Message<Descriptor>>) -> Self {
         value
             .serialize(&serializer())
             .expect_throw("unable to serialize messages")

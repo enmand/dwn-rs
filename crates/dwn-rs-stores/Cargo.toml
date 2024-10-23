@@ -57,3 +57,4 @@ bytes = { version = "1.8.0", features = ["serde"] }
 
 [dev-dependencies]
 rand = "0.8.5"
+tokio-util = "0.7.12"

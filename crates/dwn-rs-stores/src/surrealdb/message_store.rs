@@ -1,17 +1,18 @@
 use std::str::FromStr;
 
 use cid::Cid;
-use multihash_codetable::{Code, MultihashDigest};
+use serde::{de::DeserializeOwned, Serialize};
 
 use super::core::SurrealDB;
-use crate::SurrealQuery;
+use crate::{generate_cid, SurrealQuery};
 use dwn_rs_core::{
+    descriptors::MessageDescriptor,
     errors::{MessageStoreError, StoreError},
+    fields::MessageFields,
     filters::{Filters, MessageSort, Pagination, Query, QueryReturn},
     interfaces::Message,
     stores::MessageStore,
-    value::{MapValue, Value},
-    Fields,
+    value::MapValue,
 };
 
 use super::{
@@ -30,23 +31,20 @@ impl MessageStore for SurrealDB {
         self.close().await
     }
 
-    async fn put(
+    async fn put<D>(
         &self,
         tenant: &str,
-        mut message: Message,
+        mut message: Message<D>,
         indexes: MapValue,
         tags: MapValue,
-    ) -> Result<Cid, MessageStoreError> {
-        let mut data: Option<Value> = None;
-
-        if let Fields::EncodedWrite(ref mut ew) = message.fields {
-            data = ew.encoded_data.clone().map(Value::String);
-            ew.encoded_data = None;
-        }
+    ) -> Result<Cid, MessageStoreError>
+    where
+        D: MessageDescriptor + Serialize + Send + 'static,
+    {
+        let data = message.fields.encoded_data();
 
         let i = serde_ipld_dagcbor::to_vec(&message)?;
-        let mh = Code::Sha2_256.digest(i.as_slice());
-        let cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
+        let cid = generate_cid(&i)?;
 
         self.with_database(tenant, |db| async move {
             db.create::<Option<GetEncodedMessage>>((MESSAGES_TABLE, cid.to_string()))
@@ -67,7 +65,11 @@ impl MessageStore for SurrealDB {
         Ok(cid)
     }
 
-    async fn get(&self, tenant: &str, cid: &str) -> Result<Message, MessageStoreError> {
+    async fn get<D>(&self, tenant: &str, cid: &str) -> Result<Message<D>, MessageStoreError>
+    where
+        Message<D>: DeserializeOwned,
+        D: MessageDescriptor + DeserializeOwned + Send + 'static,
+    {
         // fetch and decode the message from the db
         let encoded_message: GetEncodedMessage = self
             .with_database(tenant, |db| async move {
@@ -84,24 +86,27 @@ impl MessageStore for SurrealDB {
             return Err(MessageStoreError::StoreError(StoreError::NotFound));
         }
 
-        let mut from: Message = serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
+        let mut from: Message<D> =
+            serde_ipld_dagcbor::from_slice(&encoded_message.encoded_message)?;
 
         if let Some(data) = encoded_message.encoded_data {
-            if let Fields::EncodedWrite(ref mut ew) = from.fields {
-                ew.encoded_data = Some(data.to_string());
-            };
-        }
+            from.fields.encode_data(data);
+        };
 
         Ok(from)
     }
 
-    async fn query(
+    async fn query<D>(
         &self,
         tenant: &str,
         filters: Filters,
         sort: Option<MessageSort>,
         pagination: Option<Pagination>,
-    ) -> Result<QueryReturn<Message>, MessageStoreError> {
+    ) -> Result<QueryReturn<Message<D>>, MessageStoreError>
+    where
+        Message<D>: DeserializeOwned,
+        D: MessageDescriptor + DeserializeOwned + Send + 'static,
+    {
         let mut qb = self
             .with_database(tenant, |db| async move {
                 Ok(SurrealQuery::<GetEncodedMessage, MessageSort>::new(db))
@@ -125,24 +130,21 @@ impl MessageStore for SurrealDB {
             .filter(|m| m.tenant == tenant)
             .map(|m: GetEncodedMessage| {
                 let cid = Cid::from_str(m.cid.as_str())?;
-                let mh = Code::Sha2_256.digest(&m.encoded_message);
-                let data_cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
+                let data_cid = generate_cid(&m.encoded_message)?;
 
                 if cid != data_cid {
                     return Err(MessageStoreError::StoreError(StoreError::NotFound));
                 }
 
-                let mut msg: Message = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
+                let mut msg: Message<D> = serde_ipld_dagcbor::from_slice(&m.encoded_message)?;
 
                 if let Some(data) = m.encoded_data {
-                    if let Fields::EncodedWrite(ref mut ew) = msg.fields {
-                        ew.encoded_data = Some(data.to_string());
-                    };
+                    msg.fields.encode_data(data);
                 }
 
                 Ok(msg)
             })
-            .collect::<Result<Vec<Message>, MessageStoreError>>()?;
+            .collect::<Result<Vec<Message<D>>, MessageStoreError>>()?;
 
         Ok(QueryReturn { items: r, cursor })
     }
