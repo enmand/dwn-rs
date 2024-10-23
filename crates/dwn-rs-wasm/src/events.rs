@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 
-use dwn_rs_core::{MessageEvent as CoreMessageEvent, Subscription};
+use dwn_rs_core::{Descriptor, MessageEvent as CoreMessageEvent, Subscription};
 use futures_util::FutureExt;
 use js_sys::{Object, Promise, Reflect};
 use serde::Serialize;
@@ -19,7 +19,7 @@ extern "C" {
     pub type EventSubscription;
 }
 
-impl From<&MessageEvent> for CoreMessageEvent {
+impl From<&MessageEvent> for CoreMessageEvent<Descriptor> {
     fn from(value: &MessageEvent) -> Self {
         if value.is_undefined() {
             throw_str("MessageEvent is undefined");
@@ -29,8 +29,8 @@ impl From<&MessageEvent> for CoreMessageEvent {
     }
 }
 
-impl From<CoreMessageEvent> for MessageEvent {
-    fn from(value: CoreMessageEvent) -> Self {
+impl From<CoreMessageEvent<Descriptor>> for MessageEvent {
+    fn from(value: CoreMessageEvent<Descriptor>) -> Self {
         value
             .serialize(&crate::ser::serializer())
             .expect_throw("unable to serialize event")

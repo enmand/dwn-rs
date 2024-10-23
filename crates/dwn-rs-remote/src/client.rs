@@ -41,12 +41,15 @@ where
         Ok(RemoteDWNInstance { rpc })
     }
 
-    pub async fn process_message(
+    pub async fn process_message<D>(
         &mut self,
         tenant: &str,
-        message: Message,
+        message: Message<D>,
         data: Option<S>,
-    ) -> ClientResult<(DWNResponse, Option<impl Stream<Item = ClientResult<Bytes>>>)> {
+    ) -> ClientResult<(DWNResponse, Option<impl Stream<Item = ClientResult<Bytes>>>)>
+    where
+        D: MessageDescriptor + DeserializeOwned + Serialize + Send + 'static,
+    {
         let res = self
             .rpc
             .request(
