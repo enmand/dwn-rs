@@ -1,24 +1,26 @@
+use crate::descriptors::MessageDescriptor;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
+use crate::interfaces::messages::descriptors::{DELETE, QUERY, READ, RECORDS, SUBSCRIBE, WRITE};
 use crate::{MapValue, Pagination};
+use dwn_rs_message_derive::descriptor;
 
 /// ReadDescriptor represents the RecordsRead interface method for reading a given
 /// record by ID.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[descriptor(interface = RECORDS, method = READ, fields = crate::fields::AuthorizationDelegatedGrantFields)]
 pub struct ReadDescriptor {
     #[serde(
         rename = "messageTimestamp",
         serialize_with = "crate::ser::serialize_datetime"
     )]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
-    #[serde(rename = "recordId")]
-    pub record_id: String,
+    pub filter: crate::Filters,
 }
 
 // QueryDescriptor represents the RecordsQuery interface method for querying records.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[descriptor(interface = RECORDS, method = QUERY, fields = crate::auth::Authorization)]
 pub struct QueryDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -49,7 +51,7 @@ pub enum DateSort {
 /// It can be represented with either no additional fields (`()`), or additional descriptor fields,
 /// as in the case for `encodedData`.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[descriptor(interface = RECORDS, method = WRITE, fields = crate::fields::WriteFields)]
 pub struct WriteDescriptor {
     pub protocol: Option<String>,
     #[serde(rename = "protocolPath")]
@@ -83,7 +85,7 @@ pub struct WriteDescriptor {
     pub data_format: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::fields::AuthorizationDelegatedGrantFields)]
 pub struct SubscribeDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -93,7 +95,7 @@ pub struct SubscribeDescriptor {
     pub filter: crate::Filters,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[descriptor(interface = RECORDS, method = DELETE, fields = crate::auth::Authorization)]
 pub struct DeleteDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -124,7 +126,7 @@ mod test {
 
         let rd = ReadDescriptor {
             message_timestamp,
-            record_id: "test".to_string(),
+            filter: crate::Filters::default(),
         };
 
         let ser = serde_json::to_string(&rd).unwrap();

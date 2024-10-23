@@ -1,6 +1,11 @@
+pub mod general;
 pub mod messages;
 pub mod protocols;
 pub mod records;
+
+use std::fmt::Debug;
+
+pub use general::*;
 
 pub use messages::{
     QueryDescriptor as MessagesQueryDescriptor, ReadDescriptor as MessagesReadDescriptor,
@@ -11,39 +16,35 @@ pub use records::{
     DeleteDescriptor, QueryDescriptor as RecordsQueryDescriptor, ReadDescriptor,
     SubscribeDescriptor, WriteDescriptor as RecordsWriteDescriptor,
 };
+use serde::{de::DeserializeOwned, Serialize};
 
-use serde::{Deserialize, Serialize};
+use super::fields::MessageFields;
 
-/// Interfaces represent the different Decentralized Web Node message interface types.
-/// See <https://identity.foundation/decentralized-web-node/spec/#interfaces> for more information.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(tag = "interface")]
-pub enum Descriptor {
-    Records(Records),
-    Protocols(Protocols),
-    Messages(Messages),
-}
+pub const RECORDS: &str = "Records";
+pub const PROTOCOLS: &str = "Protocols";
+pub const MESSAGES: &str = "Messages";
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(tag = "method")]
-pub enum Records {
-    Read(ReadDescriptor),
-    Query(RecordsQueryDescriptor),
-    Write(RecordsWriteDescriptor),
-    Delete(DeleteDescriptor),
-    Subscribe(SubscribeDescriptor),
-}
+pub const READ: &str = "Read";
+pub const QUERY: &str = "Query";
+pub const WRITE: &str = "Write";
+pub const DELETE: &str = "Delete";
+pub const SUBSCRIBE: &str = "Subscribe";
+pub const CONFIGURE: &str = "Configure";
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(tag = "method")]
-pub enum Protocols {
-    Configure(ConfigureDescriptor),
-    Query(ProtocolQueryDescriptor),
-}
+/// MessageDescriptor is a trait that all message descriptors must implement.
+/// It provides the interface and method for the message descriptor. The generic `Descriptor`
+/// implements this trait for use when the concrete type is not known. Concrete Descriptor types
+/// implement this trait directly (or use the derive macro).
+pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
+    type Fields: MessageFields
+        + Serialize
+        + DeserializeOwned
+        + Debug
+        + PartialEq
+        + Send
+        + Sync
+        + Clone;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Messages {
-    Read(MessagesReadDescriptor),
-    Query(MessagesQueryDescriptor),
-    Subscribe(MessagesSubscribeDescriptor),
+    fn interface(&self) -> &'static str;
+    fn method(&self) -> &'static str;
 }

@@ -1,8 +1,9 @@
+use crate::descriptors::MessageDescriptor;
+use crate::interfaces::messages::descriptors::{MESSAGES, QUERY, READ, SUBSCRIBE};
 use cid::Cid;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use dwn_rs_message_derive::descriptor;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[descriptor(interface = MESSAGES, method = READ, fields = crate::auth::Authorization)]
 pub struct ReadDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -13,8 +14,7 @@ pub struct ReadDescriptor {
     pub message_cid: Option<Cid>,
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[descriptor(interface = MESSAGES, method = QUERY, fields = crate::auth::Authorization)]
 pub struct QueryDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -27,8 +27,7 @@ pub struct QueryDescriptor {
     pub cursor: Option<crate::Cursor>,
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[descriptor(interface = MESSAGES, method = SUBSCRIBE, fields = crate::auth::Authorization)]
 pub struct SubscribeDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -65,6 +64,8 @@ mod test {
         let json = json!({
             "messageTimestamp": message_timestamp,
             "messageCid": message_cid,
+            "interface": MESSAGES,
+            "method": READ,
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
@@ -93,6 +94,8 @@ mod test {
             "messageTimestamp": message_timestamp,
             "filters": [crate::Filters::default()],
             "cursor": cursor,
+            "interface": MESSAGES,
+            "method": QUERY,
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
@@ -118,6 +121,8 @@ mod test {
         let json = json!({
             "messageTimestamp": message_timestamp,
             "filters": [crate::Filters::default()],
+            "interface": MESSAGES,
+            "method": SUBSCRIBE
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
