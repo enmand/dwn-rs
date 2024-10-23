@@ -2,7 +2,7 @@ use alloc::{boxed::Box, string::String};
 
 use async_std::channel::unbounded;
 use dwn_rs_core::{
-    emitter::EventStreamer, subscription::SubscriptionFn, MapValue,
+    emitter::EventStreamer, subscription::SubscriptionFn, Descriptor, MapValue,
     MessageEvent as CoreMessageEvent,
 };
 use js_sys::Promise;
@@ -16,9 +16,15 @@ use crate::{
 };
 
 #[wasm_bindgen]
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct EventStream {
-    events: EventStreamer,
+    events: EventStreamer<Descriptor>,
+}
+
+impl Default for EventStream {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[wasm_bindgen]
@@ -27,7 +33,9 @@ impl EventStream {
     pub fn new() -> Self {
         console_error_panic_hook::set_once();
 
-        Self::default()
+        Self {
+            events: EventStreamer::new(),
+        }
     }
 
     #[wasm_bindgen]
@@ -71,9 +79,9 @@ impl EventStream {
 async fn subscription_for_func(
     id: &str,
     listener: js_sys::Function,
-) -> Result<SubscriptionFn, JsError> {
+) -> Result<SubscriptionFn<Descriptor>, JsError> {
     trace!("creating subscription for js function");
-    let (tx, rx) = unbounded::<(String, CoreMessageEvent, MapValue)>();
+    let (tx, rx) = unbounded::<(String, CoreMessageEvent<Descriptor>, MapValue)>();
 
     spawn_local(async move {
         while let Ok((tenant, evt, indexes)) = rx.recv().await {
