@@ -16,7 +16,7 @@ pub struct ConfigureDescriptor {
     pub definition: ProtocolDefinition,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct ProtocolDefinition {
     pub protocol: String,
     pub published: bool,
