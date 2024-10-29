@@ -38,6 +38,7 @@ thiserror = "1.0.63"
 serde_json = "1.0.113"
 tracing = "0.1.40"
 tracing-test = { version = "0.2.5", features = ["no-env-filter"] }
+bytes = "1.8.0"
 
 [dev-dependencies]
 serde_json = "1.0.113"

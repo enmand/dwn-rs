@@ -1,5 +1,6 @@
 use std::{fmt::Debug, future::Future, pin::Pin};
 
+use bytes::Bytes;
 use futures_util::Stream;
 use ipld_core::cid::Cid;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -53,7 +54,7 @@ pub trait DataStore: Default {
 
     fn close(&mut self) -> impl Future<Output = ()> + Send;
 
-    fn put<T: Stream<Item = u8> + Send + Unpin>(
+    fn put<T: Stream<Item = Bytes> + Send + Unpin>(
         &self,
         tenant: &str,
         record_id: &str,

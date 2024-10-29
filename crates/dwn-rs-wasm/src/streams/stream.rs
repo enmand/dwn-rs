@@ -5,6 +5,7 @@ use core::{
 
 use alloc::boxed::Box;
 use async_std::channel::{unbounded, Receiver};
+use bytes::Bytes;
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use wasm_bindgen::prelude::*;
@@ -40,7 +41,7 @@ impl StreamReadable {
     /// JavaScript stream, as JsValues.
     pub async fn from_stream<St>(stream: St) -> Result<Self, JsValue>
     where
-        St: Stream<Item = Option<serde_bytes::ByteBuf>> + 'static,
+        St: Stream<Item = Option<Bytes>> + 'static,
     {
         let (data_tx, data_rx) = unbounded::<JsValue>();
         let controller = AbortController::new()?;
@@ -100,7 +101,7 @@ impl StreamReadable {
 /// can be used in Rust to read data from the JavaScript stream, and return items as a JsValue.
 #[derive(Debug)]
 pub struct IntoStream {
-    data_rx: Receiver<serde_bytes::ByteBuf>,
+    data_rx: Receiver<Bytes>,
     done_rx: Receiver<()>,
     done: bool,
 }
@@ -108,7 +109,7 @@ pub struct IntoStream {
 impl IntoStream {
     pub fn new(r: StreamReadable) -> Self {
         let readable = r.as_raw();
-        let (data_tx, data_rx) = unbounded::<serde_bytes::ByteBuf>();
+        let (data_tx, data_rx) = unbounded::<Bytes>();
         let (done_tx, done_rx) = unbounded::<()>();
 
         let data_cb = Closure::wrap(Box::new(move |d: JsValue| {
@@ -138,7 +139,7 @@ impl IntoStream {
 }
 
 impl Stream for IntoStream {
-    type Item = serde_bytes::ByteBuf;
+    type Item = Bytes;
 
     // poll_next is the main function that drives the stream. It is called by the runtime to
     // read the data in the Readable, and return it as a JsValue.

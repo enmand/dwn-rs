@@ -60,10 +60,7 @@ impl SurrealDataStore {
         cid: &str,
         value: Readable,
     ) -> Result<DataStorePutResult, JsValue> {
-        let readable = StreamReadable::new(value).into_stream().flat_map(|r| {
-            let val = serde_wasm_bindgen::to_value(&r).unwrap();
-            async_std::stream::from_iter(js_sys::Uint8Array::new(&val).to_vec())
-        });
+        let readable = StreamReadable::new(value).into_stream();
 
         match self
             .store
@@ -92,7 +89,7 @@ impl SurrealDataStore {
         let reader = v
             .data
             .chunks(READ_CHUNK_SIZE)
-            .map(|r| Some(serde_bytes::ByteBuf::from(r)));
+            .map(|r| Some(r.to_vec().into()));
 
         let obj: DataStoreGetResult = JsCast::unchecked_into(Object::new());
         Reflect::set(&obj, &"dataSize".into(), &size.into())?;
