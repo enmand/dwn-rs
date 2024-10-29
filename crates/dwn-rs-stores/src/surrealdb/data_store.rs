@@ -1,4 +1,5 @@
 use async_std::stream::from_iter;
+use bytes::Bytes;
 use futures_util::{pin_mut, Stream, StreamExt};
 use surrealdb::{
     sql::{
@@ -43,12 +44,14 @@ impl DataStore for SurrealDB {
         value: T,
     ) -> Result<PutDataResults, DataStoreError>
     where
-        T: Stream<Item = u8> + Unpin + Send,
+        T: Stream<Item = Bytes> + Unpin + Send,
     {
-        let chunks = value.chunks(CHUNK_CAPACITY);
-        pin_mut!(chunks);
-
         let id: RecordId = (DATA_TABLE, record_id.to_string()).into();
+
+        pin_mut!(value);
+        let mut chunks = value
+            .flat_map(|b| from_iter(b.into_iter()))
+            .chunks(CHUNK_CAPACITY);
 
         let len = self
             .with_database(tenant, |db| async move {
@@ -282,7 +285,7 @@ fn chunks_graph_query() -> Query {
 
 #[cfg(test)]
 mod test {
-    use async_std::stream::from_iter;
+    use async_std::stream;
     use futures_util::StreamExt;
     use std::iter::repeat_with;
 
@@ -307,12 +310,14 @@ mod test {
         let record_id = "test_put_get";
         let cid = "test_put_get_cid";
 
-        let data = repeat_with(rand::random::<u8>)
-            .take(1024 * 1024)
-            .collect::<Vec<u8>>();
+        let data = Bytes::from_iter(
+            repeat_with(rand::random::<u8>)
+                .take(1024 * 1024)
+                .collect::<Vec<u8>>(),
+        );
 
         let put = db
-            .put(tenant, record_id, cid, from_iter(data.clone()))
+            .put(tenant, record_id, cid, stream::once(data.clone()))
             .await
             .unwrap();
         assert_eq!(put.size, data.len());
@@ -352,12 +357,14 @@ mod test {
         let record_id = "test_delete";
         let cid = "test_delete_cid";
 
-        let data = repeat_with(rand::random::<u8>)
-            .take(1024 * 1024)
-            .collect::<Vec<u8>>();
+        let data = Bytes::from_iter(
+            repeat_with(rand::random::<u8>)
+                .take(1024 * 1024)
+                .collect::<Vec<u8>>(),
+        );
 
         let put = db
-            .put(tenant, record_id, cid, from_iter(data.clone()))
+            .put(tenant, record_id, cid, stream::once(data.clone()))
             .await
             .unwrap();
         assert_eq!(put.size, data.len());

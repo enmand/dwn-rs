@@ -43,9 +43,6 @@ web-sys = { version = "0.3.64", features = [
     "ReadableStream",
 ] }
 
-serde_bytes = { version = "0.11.14", default-features = false, features = [
-    "alloc",
-] }
 tracing = { version = "0.1.40", default-features = false, features = [
     "attributes",
 ] }
@@ -75,3 +72,4 @@ async-std = { version = "1.12.0", default-features = false, features = [
     "kv-log-macro",
     "pin-project-lite",
 ] }
+bytes = { version = "1.8.0", features = ["serde"] }
