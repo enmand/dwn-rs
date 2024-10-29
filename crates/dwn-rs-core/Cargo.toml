@@ -42,3 +42,4 @@ bytes = "1.8.0"
 
 [dev-dependencies]
 serde_json = "1.0.113"
+dwn-rs-message-derive = { path = "../dwn-rs-message-derive" }
