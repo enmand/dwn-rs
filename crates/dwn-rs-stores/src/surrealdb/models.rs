@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
+use cid::Cid;
 use dwn_rs_core::{
     filters::{MessageSort, MessageWatermark, NoSort},
     value::{MapValue, Value},
 };
-use ipld_core::cid::Cid;
 use serde::{Deserialize, Serialize};
 use surrealdb::{
     sql::{Datetime, Value as SurrealValue},

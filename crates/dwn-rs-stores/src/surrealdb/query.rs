@@ -4,6 +4,7 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
+use cid::Cid;
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -64,7 +65,7 @@ where
 }
 
 pub trait CursorValue<T> {
-    fn cid(&self) -> ipld_core::cid::Cid;
+    fn cid(&self) -> Cid;
     fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }
 
@@ -242,7 +243,6 @@ where
             }
             None => stmt.cond,
         };
-
 
         let mut q = self
             .db
