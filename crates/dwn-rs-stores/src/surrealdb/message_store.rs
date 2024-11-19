@@ -4,7 +4,8 @@ use cid::Cid;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::core::SurrealDB;
-use crate::{generate_cid, SurrealQuery};
+use crate::SurrealQuery;
+use dwn_rs_core::utils::cid::generate_cid;
 use dwn_rs_core::{
     descriptors::MessageDescriptor,
     errors::{MessageStoreError, StoreError},

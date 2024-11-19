@@ -1,6 +1,9 @@
+use bytes::Bytes;
+use futures_util::TryStreamExt;
 use std::collections::TryReserveError;
 
 use cid::Cid;
+use futures_util::TryStream;
 use multihash_codetable::Code;
 use multihash_codetable::MultihashDigest;
 use serde_ipld_dagcbor::EncodeError;
@@ -11,6 +14,33 @@ where
     B: AsRef<[u8]>,
 {
     let mh = Code::Sha2_256.digest(data.as_ref());
+    let cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
+
+    Ok(cid)
+}
+
+pub async fn generate_cid_from_serialized<T: serde::Serialize>(
+    data: T,
+) -> Result<Cid, EncodeError<TryReserveError>> {
+    let serialized = serde_ipld_dagcbor::to_vec(&data)?;
+    generate_cid(serialized)
+}
+
+pub async fn generate_cid_from_stream<S: TryStream<Ok = Bytes> + Unpin>(
+    stream: S,
+) -> Result<Cid, EncodeError<TryReserveError>>
+where
+    S::Error: Into<EncodeError<TryReserveError>>,
+{
+    let mut buf = Vec::new();
+    let _ = stream
+        .try_for_each(|chunk| {
+            buf.extend_from_slice(&chunk);
+            async { Ok(()) }
+        })
+        .await;
+
+    let mh = Code::Sha2_256.digest(&buf);
     let cid = Cid::new_v1(multicodec::Codec::DagCbor.code(), mh);
 
     Ok(cid)
