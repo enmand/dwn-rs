@@ -267,6 +267,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use chrono::TimeZone;
     use tracing_test::traced_test;
     use xtra::{spawn_tokio, Mailbox};
 
@@ -278,10 +279,14 @@ mod test {
         use super::*;
 
         fn test_evt() -> MessageEvent<Descriptor> {
+            let now = chrono::DateTime::<chrono::Utc>::MIN_UTC.naive_utc();
             MessageEvent {
                 message: Message {
                     descriptor: Descriptor::Records(Records::Read(records::ReadDescriptor {
-                        message_timestamp: chrono::Utc::now(),
+                        message_timestamp: chrono::DateTime::from_naive_utc_and_offset(
+                            now,
+                            chrono::Utc,
+                        ),
                         filter: Default::default(),
                     })),
                     fields: Fields::Authorization(Default::default()),
