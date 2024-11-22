@@ -23,6 +23,7 @@
 //! - [`messages::records::RecordsDelete`]: A descriptor for reading records.
 #![doc(issue_tracker_base_url = "https://github.com/enmand/dwn-rsissues/")]
 pub mod auth;
+pub mod encryption;
 pub mod errors;
 pub mod events;
 pub mod filters;
