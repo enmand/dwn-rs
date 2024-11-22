@@ -193,7 +193,6 @@ mod tests {
                         signature: JWS {
                             payload: Some("payload".to_string()),
                             signatures: Some(vec![SignatureEntry {
-                                payload: Some("payload".to_string()),
                                 protected: Some("protected".to_string()),
                                 signature: Some("signature".to_string()),
                                 ..Default::default()
@@ -219,7 +218,6 @@ mod tests {
                     attestation: Some(JWS {
                         payload: Some("payload".to_string()),
                         signatures: Some(vec![SignatureEntry {
-                            payload: Some("payload".to_string()),
                             protected: Some("protected".to_string()),
                             signature: Some("signature".to_string()),
                             ..Default::default()
@@ -253,7 +251,6 @@ mod tests {
                             "payload": "payload",
                             "signatures": [
                                 {{
-                                    "payload": "payload",
                                     "protected": "protected",
                                     "signature": "signature"
                                 }}
@@ -264,7 +261,6 @@ mod tests {
                         "payload": "payload",
                         "signatures": [
                             {{
-                                "payload": "payload",
                                 "protected": "protected",
                                 "signature": "signature"
                             }}
@@ -368,7 +364,6 @@ mod tests {
                         "payload": "payload",
                         "signatures": [
                             {{
-                                "payload": "payload",
                                 "protected": "protected",
                                 "signature": "signature"
                             }}
@@ -379,7 +374,6 @@ mod tests {
                     "payload": "payload",
                     "signatures": [
                         {{
-                            "payload": "payload",
                             "protected": "protected",
                             "signature": "signature"
                         }}
