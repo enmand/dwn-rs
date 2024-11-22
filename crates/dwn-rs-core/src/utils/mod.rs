@@ -1,8 +1,8 @@
 pub mod cid;
 
+use k256::{PublicKey, SecretKey};
 use partially::Partial;
 use rand::{distributions::Alphanumeric, Rng};
-use secp256k1::{Keypair, Secp256k1};
 use ssi_dids_core::DIDBuf;
 use std::str::FromStr;
 use thiserror::Error;
@@ -18,7 +18,7 @@ pub enum PersonaError {
 pub struct Persona {
     pub did: DIDBuf,
     pub key_id: String,
-    keypair: secp256k1::Keypair,
+    keypair: (SecretKey, PublicKey),
 }
 
 impl Persona {
@@ -35,9 +35,10 @@ impl Persona {
         });
 
         let keypair = keypair.unwrap_or_else(|| {
-            let secp = Secp256k1::new();
+            let rng = &mut rand::thread_rng();
+            let secp = SecretKey::random(rng);
 
-            Keypair::new(&secp, &mut rand::thread_rng())
+            (secp.clone(), secp.public_key())
         });
 
         let key_id = key_id.unwrap_or_else(|| {
@@ -52,8 +53,8 @@ impl Persona {
         })
     }
 
-    pub fn public_key(&self) -> secp256k1::PublicKey {
-        self.keypair.public_key()
+    pub fn public_key(&self) -> k256::PublicKey {
+        self.keypair.1
     }
 }
 
