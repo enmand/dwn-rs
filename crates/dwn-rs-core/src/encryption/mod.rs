@@ -1,6 +1,10 @@
+pub mod asymmetric;
+pub mod errors;
 pub mod hd_keys;
 
-pub use hd_keys::*;
+pub use asymmetric::SecretKey;
+pub use errors::Error;
+pub use hd_keys::{DerivedPrivateJWK, HashAlgorithm};
 
 use serde::{Deserialize, Serialize};
 use ssi_jwk::JWK;
