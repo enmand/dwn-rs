@@ -124,7 +124,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_jws_create() {
-        let jwk = JWK::generate_ed25519().expect("could not generate key");
+        let jwk = JWK::generate_secp256k1();
         let jws = JWS::create(b"hello world".to_vec(), Some(vec![jwk]))
             .await
             .expect("could not create JWS");
@@ -136,7 +136,7 @@ mod tests {
                 .protected
                 .as_ref()
                 .unwrap(),
-            "eyJhbGciOiJFZERTQSJ9"
+            "eyJhbGciOiJFUzI1NksifQ"
         );
 
         assert!(!jws.signatures.as_ref().unwrap()[0]
