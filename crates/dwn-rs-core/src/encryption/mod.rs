@@ -1,6 +1,7 @@
 pub mod asymmetric;
 pub mod errors;
 pub mod hd_keys;
+pub mod symmetric;
 
 pub use asymmetric::SecretKey;
 pub use errors::Error;
