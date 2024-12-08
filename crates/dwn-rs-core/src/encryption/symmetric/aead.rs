@@ -1,16 +1,22 @@
-use aes::cipher::generic_array::GenericArray;
+use aes::cipher::{generic_array::GenericArray, ArrayLength};
 use aes_gcm::{
     aead::{AeadMutInPlace, Buffer},
     Aes256Gcm, KeyInit,
 };
 use bytes::{Bytes, BytesMut};
+use crypto_secretbox::XSalsa20Poly1305 as XSalsa20Poly1305Cipher;
 use thiserror::Error;
 
 use super::{Encryption, IVEncryption};
 
-pub(super) struct AESBuffer<'a>(pub(crate) &'a mut BytesMut);
+pub struct AEAD<C: AeadMutInPlace> {
+    cipher: C,
+    iv: Option<GenericArray<u8, C::NonceSize>>,
+}
 
-impl<'a> Buffer for AESBuffer<'a> {
+pub(super) struct AEADBufferBytesMut<'a>(&'a mut BytesMut);
+
+impl<'a> Buffer for AEADBufferBytesMut<'a> {
     fn extend_from_slice(&mut self, other: &[u8]) -> aes_gcm::aead::Result<()> {
         self.0.extend_from_slice(other);
 
@@ -22,21 +28,16 @@ impl<'a> Buffer for AESBuffer<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for AESBuffer<'a> {
+impl<'a> AsRef<[u8]> for AEADBufferBytesMut<'a> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl<'a> AsMut<[u8]> for AESBuffer<'a> {
+impl<'a> AsMut<[u8]> for AEADBufferBytesMut<'a> {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
     }
-}
-
-pub struct AES256GCM {
-    cipher: Aes256Gcm,
-    iv: Option<GenericArray<u8, typenum::consts::U12>>,
 }
 
 #[derive(Debug, Error)]
@@ -47,14 +48,19 @@ pub enum Error {
     NoIVError,
 }
 
-impl Encryption for AES256GCM {
-    fn new(key: &[u8; 32]) -> Result<Self, super::Error> {
-        let cipher = Aes256Gcm::new(key.into());
+impl<C: AeadMutInPlace + KeyInit> Encryption for AEAD<C>
+where
+    C::NonceSize: ArrayLength<u8>,
+{
+    type KeySize = C::KeySize;
+
+    fn new(key: GenericArray<u8, Self::KeySize>) -> Result<Self, super::Error> {
+        let cipher = C::new(&key);
         Ok(Self { cipher, iv: None })
     }
 
     fn encrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, super::Error> {
-        let mut data = AESBuffer(data);
+        let mut data = AEADBufferBytesMut(data);
         if let Some(iv) = &self.iv {
             self.cipher
                 .encrypt_in_place(iv, b"", &mut data)
@@ -66,7 +72,7 @@ impl Encryption for AES256GCM {
     }
 
     fn decrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, super::Error> {
-        let mut data = AESBuffer(data);
+        let mut data = AEADBufferBytesMut(data);
         if let Some(iv) = &self.iv {
             self.cipher
                 .decrypt_in_place(iv, b"", &mut data)
@@ -78,8 +84,8 @@ impl Encryption for AES256GCM {
     }
 }
 
-impl IVEncryption for AES256GCM {
-    type NonceSize = typenum::consts::U12;
+impl<C: AeadMutInPlace + KeyInit + Clone> IVEncryption for AEAD<C> {
+    type NonceSize = C::NonceSize;
 
     fn with_iv(&mut self, iv: GenericArray<u8, Self::NonceSize>) -> Result<Self, super::Error> {
         Ok(Self {
@@ -89,8 +95,13 @@ impl IVEncryption for AES256GCM {
     }
 }
 
+pub type AES256GCM = AEAD<Aes256Gcm>;
+pub type XSalsa20Poly1305 = AEAD<XSalsa20Poly1305Cipher>;
+
 #[cfg(test)]
 mod test {
+    use aes_gcm::Aes256Gcm;
+
     use super::*;
 
     const KEY: [u8; 32] = [
@@ -101,10 +112,14 @@ mod test {
     const IV: [u8; 12] = [
         0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb,
     ];
+    const SALSA_IV: [u8; 24] = [
+        0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe,
+        0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    ];
 
     #[test]
     fn test_aes256gcm() {
-        let mut enc = AES256GCM::new(&KEY)
+        let mut enc = AEAD::<Aes256Gcm>::new(KEY.into())
             .unwrap()
             .with_iv(IV.into())
             .expect("IV error");
@@ -120,7 +135,36 @@ mod test {
 
     #[test]
     fn test_aes256gcm_no_iv() {
-        let mut enc = AES256GCM::new(&KEY).unwrap();
+        let mut enc = AEAD::<Aes256Gcm>::new(KEY.into()).unwrap();
+
+        let data = BytesMut::from("Hello, world!");
+
+        let enc_data = enc.encrypt(&mut data.clone());
+        let dec_data = enc.decrypt(&mut data.clone());
+
+        assert!(enc_data.is_err());
+        assert!(dec_data.is_err());
+    }
+
+    #[test]
+    fn test_xsalsa20poly1305() {
+        let mut enc = XSalsa20Poly1305::new(KEY.into())
+            .unwrap()
+            .with_iv(SALSA_IV.into())
+            .expect("IV error");
+
+        let data = BytesMut::from("Hello, world!");
+
+        let enc_data = enc.encrypt(&mut data.clone()).unwrap();
+        let dec_data = enc.decrypt(&mut enc_data.clone().into()).unwrap();
+
+        assert_ne!(data, enc_data);
+        assert_eq!(data, dec_data);
+    }
+
+    #[test]
+    fn test_xsalsa20poly1305_no_iv() {
+        let mut enc = XSalsa20Poly1305::new(KEY.into()).unwrap();
 
         let data = BytesMut::from("Hello, world!");
 

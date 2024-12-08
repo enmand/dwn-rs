@@ -6,34 +6,33 @@ use futures_util::{ready, Stream};
 use pin_project_lite::pin_project;
 use thiserror::Error;
 
+pub mod aead;
 pub mod aes_ctr;
-pub mod aes_gcm;
-pub mod xsalsa20_poly1305;
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("AES-256-CTR encryption error: {0}")]
     AES256CTR(#[from] aes_ctr::Error),
-    #[error("AES-256-GCM encryption error: {0}")]
-    AES256GCM(#[from] aes_gcm::Error),
-    #[error("XSalsa20Poly1305 encryption error: {0}")]
-    XSalsa20Poly1305(#[from] xsalsa20_poly1305::Error),
+    #[error("AEAD encryption error: {0}")]
+    AEAD(#[from] aead::Error),
 }
 
 impl<T: ?Sized> StreamEncryptionExt for T where T: Stream {}
 
 pub trait StreamEncryptionExt: Stream {
-    fn encrypt<E>(self, key: &[u8; 32]) -> Result<Encrypt<Self, E>, Error>
+    fn encrypt<E>(self, key: GenericArray<u8, E::KeySize>) -> Result<Encrypt<Self, E>, Error>
     where
         E: Encryption,
+        E::KeySize: ArrayLength<u8>,
         Self: Sized,
     {
         Encrypt::new(self, key)
     }
 
-    fn decrypt<E>(self, key: &[u8; 32]) -> Result<Decrypt<Self, E>, Error>
+    fn decrypt<E>(self, key: GenericArray<u8, E::KeySize>) -> Result<Decrypt<Self, E>, Error>
     where
         E: Encryption,
+        E::KeySize: ArrayLength<u8>,
         Self: Sized,
     {
         Decrypt::new(self, key)
@@ -41,7 +40,9 @@ pub trait StreamEncryptionExt: Stream {
 }
 
 pub trait Encryption {
-    fn new(key: &[u8; 32]) -> Result<Self, Error>
+    type KeySize: ArrayLength<u8>;
+
+    fn new(key: GenericArray<u8, Self::KeySize>) -> Result<Self, Error>
     where
         Self: Sized;
     fn encrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, Error>;
@@ -68,8 +69,9 @@ pin_project! {
 impl<D, E> Encrypt<D, E>
 where
     E: Encryption,
+    E::KeySize: ArrayLength<u8>,
 {
-    pub fn new(stream: D, key: &[u8; 32]) -> Result<Self, Error> {
+    pub fn new(stream: D, key: GenericArray<u8, E::KeySize>) -> Result<Self, Error> {
         Ok(Self {
             stream,
             encryption: E::new(key)?,
@@ -122,7 +124,7 @@ impl<D, E> Decrypt<D, E>
 where
     E: Encryption,
 {
-    pub fn new(stream: D, key: &[u8; 32]) -> Result<Self, Error> {
+    pub fn new(stream: D, key: GenericArray<u8, E::KeySize>) -> Result<Self, Error> {
         Ok(Self {
             stream,
             encryption: E::new(key)?,
@@ -190,13 +192,13 @@ mod test {
             Ok::<Bytes, Error>(msg_part_1.clone()),
             Ok(msg_part_2.clone()),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY)
+        .encrypt::<aes_ctr::AES256CTR>(KEY.into())
         .expect("unable to generate encryption")
         .with_iv(IV.into())
         .expect("unable to set IV");
 
         // Static encryption
-        let mut enc = aes_ctr::AES256CTR::new(&KEY)
+        let mut enc = aes_ctr::AES256CTR::new(KEY.into())
             .expect("Failed to create AES256CTR")
             .with_iv(IV.into())
             .expect("Failed to set IV");
@@ -228,17 +230,17 @@ mod test {
             Ok::<Bytes, Error>(msg_part_1.clone()),
             Ok(msg_part_2.clone()),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY)
+        .encrypt::<aes_ctr::AES256CTR>(KEY.into())
         .expect("unable to generate encryption")
         .with_iv(IV.into())
         .expect("Unable to set IV")
-        .decrypt::<aes_ctr::AES256CTR>(&KEY)
+        .decrypt::<aes_ctr::AES256CTR>(KEY.into())
         .expect("unable to generate decryption")
         .with_iv(IV.into())
         .expect("Unable to set IV");
 
         // Static encryption
-        let mut enc = aes_ctr::AES256CTR::new(&KEY)
+        let mut enc = aes_ctr::AES256CTR::new(KEY.into())
             .expect("Failed to create AES256CTR")
             .with_iv(IV.into())
             .expect("Unable to set IV");
@@ -273,7 +275,7 @@ mod test {
                 aes::cipher::InvalidLength,
             ))),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY)
+        .encrypt::<aes_ctr::AES256CTR>(KEY.into())
         .expect("unable to generate encryption")
         .with_iv(IV.into())
         .expect("Unable to set IV");
@@ -285,7 +287,7 @@ mod test {
                 Err(e) => {
                     assert_eq!(
                         e.to_string(),
-                        "AES-256-CBC encryption error: Invalid key length: Invalid Length"
+                        "AES-256-CTR encryption error: Invalid key length: Invalid Length"
                     );
                 }
             }
