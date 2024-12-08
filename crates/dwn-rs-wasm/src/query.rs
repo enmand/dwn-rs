@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use dwn_rs_core::{
     filters::{Cursor, MessageSort, Pagination, QueryReturn},
     interfaces::Message,
+    Descriptor,
 };
 
 use crate::ser::serializer;
@@ -37,11 +38,11 @@ extern "C" {
     pub type JSPaginationCursor;
 }
 
-impl From<QueryReturn<Message>> for JSQueryReturn {
-    fn from(value: QueryReturn<Message>) -> Self {
+impl From<QueryReturn<Message<Descriptor>>> for JSQueryReturn {
+    fn from(value: QueryReturn<Message<Descriptor>>) -> Self {
         #[derive(Serialize)]
         struct Wrapper<'a> {
-            messages: &'a [Message],
+            messages: &'a [Message<Descriptor>],
             cursor: Option<Cursor>,
         }
 

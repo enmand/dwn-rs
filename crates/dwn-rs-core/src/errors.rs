@@ -6,6 +6,27 @@ use ulid::MonotonicError;
 use crate::{FilterError, QueryError};
 
 #[derive(Error, Debug)]
+pub enum Error {
+    #[error("error operating store: {0}")]
+    StoreError(#[from] StoreError),
+
+    #[error("error processing message: {0}")]
+    MessageError(#[from] MessageStoreError),
+
+    #[error("error processing data: {0}")]
+    DataError(#[from] DataStoreError),
+
+    #[error("error processing event log: {0}")]
+    EventLogError(#[from] EventLogError),
+
+    #[error("error processing resumable task: {0}")]
+    ResumableTaskError(#[from] ResumableTaskStoreError),
+
+    #[error("error processing event stream: {0}")]
+    EventStreamError(#[from] EventStreamError),
+}
+
+#[derive(Error, Debug)]
 pub enum StoreError {
     #[error("error opening database: {0}")]
     OpenError(String),
