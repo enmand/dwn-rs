@@ -27,9 +27,11 @@ pub enum Error {
 }
 
 impl Encryption for AES256CTR {
-    fn new(key: &[u8; 32]) -> Result<Self, super::Error> {
+    type KeySize = typenum::consts::U32;
+
+    fn new(key: GenericArray<u8, Self::KeySize>) -> Result<Self, super::Error> {
         Ok(Self {
-            key: *key,
+            key: key.into(),
             enc: None,
             dec: None,
         })
@@ -88,7 +90,7 @@ mod test {
 
     #[test]
     fn test_aes256ctr() {
-        let mut enc = AES256CTR::new(&KEY)
+        let mut enc = AES256CTR::new(KEY.into())
             .expect("Failed to create AES256CTR")
             .with_iv(IV.into())
             .expect("Failed to set IV");
@@ -105,19 +107,19 @@ mod test {
 
     #[test]
     fn test_aes256ctr_no_iv() {
-        let mut enc = AES256CTR::new(&KEY).expect("Failed to create AES256CTR");
+        let mut enc = AES256CTR::new(KEY.into()).expect("Failed to create AES256CTR");
 
         let data = Bytes::from_static(b"hello world! this is my plaintext.");
         let enc_data = enc.encrypt(&mut data.clone().into());
         assert_eq!(
             enc_data.unwrap_err().to_string(),
-            "AES-256-CBC encryption error: AES-256-CTR IV error"
+            "AES-256-CTR encryption error: AES-256-CTR IV error"
         );
 
         let dec_data = enc.decrypt(&mut data.clone().into());
         assert_eq!(
             dec_data.unwrap_err().to_string(),
-            "AES-256-CBC encryption error: AES-256-CTR IV error"
+            "AES-256-CTR encryption error: AES-256-CTR IV error"
         );
     }
 }
