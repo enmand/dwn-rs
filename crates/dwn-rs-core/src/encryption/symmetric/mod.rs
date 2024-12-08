@@ -1,5 +1,6 @@
 use std::{pin::Pin, task::Poll};
 
+use aes::cipher::{generic_array::GenericArray, ArrayLength};
 use bytes::{Bytes, BytesMut};
 use futures_util::{ready, Stream};
 use pin_project_lite::pin_project;
@@ -11,36 +12,48 @@ pub mod xsalsa20_poly1305;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("AES-256-CBC encryption error: {0}")]
+    #[error("AES-256-CTR encryption error: {0}")]
     AES256CTR(#[from] aes_ctr::Error),
+    #[error("AES-256-GCM encryption error: {0}")]
+    AES256GCM(#[from] aes_gcm::Error),
+    #[error("XSalsa20Poly1305 encryption error: {0}")]
+    XSalsa20Poly1305(#[from] xsalsa20_poly1305::Error),
 }
 
 impl<T: ?Sized> StreamEncryptionExt for T where T: Stream {}
 
 pub trait StreamEncryptionExt: Stream {
-    fn encrypt<E>(self, key: &[u8; 32], iv: &[u8; 16]) -> Result<Encrypt<Self, E>, Error>
+    fn encrypt<E>(self, key: &[u8; 32]) -> Result<Encrypt<Self, E>, Error>
     where
         E: Encryption,
         Self: Sized,
     {
-        Encrypt::new(self, key, iv)
+        Encrypt::new(self, key)
     }
 
-    fn decrypt<E>(self, key: &[u8; 32], iv: &[u8; 16]) -> Result<Decrypt<Self, E>, Error>
+    fn decrypt<E>(self, key: &[u8; 32]) -> Result<Decrypt<Self, E>, Error>
     where
         E: Encryption,
         Self: Sized,
     {
-        Decrypt::new(self, key, iv)
+        Decrypt::new(self, key)
     }
 }
 
 pub trait Encryption {
-    fn new(key: &[u8; 32], iv: &[u8; 16]) -> Result<Self, Error>
+    fn new(key: &[u8; 32]) -> Result<Self, Error>
     where
         Self: Sized;
     fn encrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, Error>;
     fn decrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, Error>;
+}
+
+pub trait IVEncryption: Encryption {
+    type NonceSize: ArrayLength<u8>;
+
+    fn with_iv(&mut self, iv: GenericArray<u8, Self::NonceSize>) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
 pin_project! {
@@ -56,11 +69,21 @@ impl<D, E> Encrypt<D, E>
 where
     E: Encryption,
 {
-    pub fn new(stream: D, key: &[u8; 32], iv: &[u8; 16]) -> Result<Self, Error> {
+    pub fn new(stream: D, key: &[u8; 32]) -> Result<Self, Error> {
         Ok(Self {
             stream,
-            encryption: E::new(key, iv)?,
+            encryption: E::new(key)?,
         })
+    }
+}
+
+impl<D, E> Encrypt<D, E>
+where
+    E: IVEncryption,
+{
+    pub fn with_iv(mut self, iv: GenericArray<u8, E::NonceSize>) -> Result<Self, Error> {
+        self.encryption = self.encryption.with_iv(iv)?;
+        Ok(self)
     }
 }
 
@@ -99,11 +122,21 @@ impl<D, E> Decrypt<D, E>
 where
     E: Encryption,
 {
-    pub fn new(stream: D, key: &[u8; 32], iv: &[u8; 16]) -> Result<Self, Error> {
+    pub fn new(stream: D, key: &[u8; 32]) -> Result<Self, Error> {
         Ok(Self {
             stream,
-            encryption: E::new(key, iv)?,
+            encryption: E::new(key)?,
         })
+    }
+}
+
+impl<D, E> Decrypt<D, E>
+where
+    E: IVEncryption,
+{
+    pub fn with_iv(mut self, iv: GenericArray<u8, E::NonceSize>) -> Result<Self, Error> {
+        self.encryption = self.encryption.with_iv(iv)?;
+        Ok(self)
     }
 }
 
@@ -132,7 +165,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{aes_ctr, Encryption, Error, StreamEncryptionExt};
+    use super::{aes_ctr, Encryption, Error, IVEncryption, StreamEncryptionExt};
     use bytes::Bytes;
     use futures_util::{pin_mut, stream, StreamExt};
 
@@ -157,11 +190,16 @@ mod test {
             Ok::<Bytes, Error>(msg_part_1.clone()),
             Ok(msg_part_2.clone()),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY, &IV)
-        .expect("unable to generate encryption");
+        .encrypt::<aes_ctr::AES256CTR>(&KEY)
+        .expect("unable to generate encryption")
+        .with_iv(IV.into())
+        .expect("unable to set IV");
 
         // Static encryption
-        let mut enc = aes_ctr::AES256CTR::new(&KEY, &IV).expect("Failed to create AES256CTR");
+        let mut enc = aes_ctr::AES256CTR::new(&KEY)
+            .expect("Failed to create AES256CTR")
+            .with_iv(IV.into())
+            .expect("Failed to set IV");
         let enc_data = enc
             .encrypt(&mut msg.clone().into())
             .unwrap_or_else(|e| panic!("{}", e.to_string()));
@@ -190,13 +228,20 @@ mod test {
             Ok::<Bytes, Error>(msg_part_1.clone()),
             Ok(msg_part_2.clone()),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY, &IV)
+        .encrypt::<aes_ctr::AES256CTR>(&KEY)
         .expect("unable to generate encryption")
-        .decrypt::<aes_ctr::AES256CTR>(&KEY, &IV)
-        .expect("unable to generate decryption");
+        .with_iv(IV.into())
+        .expect("Unable to set IV")
+        .decrypt::<aes_ctr::AES256CTR>(&KEY)
+        .expect("unable to generate decryption")
+        .with_iv(IV.into())
+        .expect("Unable to set IV");
 
         // Static encryption
-        let mut enc = aes_ctr::AES256CTR::new(&KEY, &IV).expect("Failed to create AES256CTR");
+        let mut enc = aes_ctr::AES256CTR::new(&KEY)
+            .expect("Failed to create AES256CTR")
+            .with_iv(IV.into())
+            .expect("Unable to set IV");
         let enc_data = enc
             .encrypt(&mut msg.clone().into())
             .unwrap_or_else(|e| panic!("{}", e.to_string()));
@@ -228,8 +273,10 @@ mod test {
                 aes::cipher::InvalidLength,
             ))),
         ])
-        .encrypt::<aes_ctr::AES256CTR>(&KEY, &IV)
-        .expect("unable to generate encryption");
+        .encrypt::<aes_ctr::AES256CTR>(&KEY)
+        .expect("unable to generate encryption")
+        .with_iv(IV.into())
+        .expect("Unable to set IV");
 
         pin_mut!(data_stream);
         while let Some(c) = data_stream.next().await {
