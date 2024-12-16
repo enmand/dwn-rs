@@ -3,7 +3,7 @@ pub mod errors;
 pub mod hd_keys;
 pub mod symmetric;
 
-pub use asymmetric::SecretKey;
+pub use asymmetric::secretkey::SecretKey;
 pub use errors::Error;
 pub use hd_keys::{DerivedPrivateJWK, HashAlgorithm};
 
