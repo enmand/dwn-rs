@@ -1,27 +1,23 @@
-use k256::sha2;
 use ssi_jwk::JWK;
 
-use super::{asymmetric, DerivationScheme, SecretKey};
+use super::{
+    asymmetric::{self, secretkey::SecretKey},
+    DerivationScheme,
+};
 use thiserror::Error as ThisError;
-
-const HKDF_KEY_LENGTH: usize = 32; // * 8; // 32 bytes = 256 bits
 
 #[derive(Debug, ThisError)]
 pub enum Error {
     #[error("Error getting JWK secret key: {0}")]
     JWKSecretKeyError(#[from] ssi_jwk::Error),
     #[error("Error getting SecretKey from bytes: {0}")]
-    SecretKeyError(#[from] asymmetric::secretkey::Error),
-    #[error("Error deriving key, bad key length: {0}")]
-    DeriveKeyLengthError(hkdf::InvalidLength),
+    SecretKeyError(#[from] asymmetric::Error),
     #[error("Error deriving key: {0}")]
     DeriveKeyError(#[from] k256::elliptic_curve::Error),
     #[error("Error encoding key: {0}")]
     EncodeError(#[from] k256::pkcs8::der::Error),
     #[error("Invalid path segment: {0}")]
     InvalidPathSegment(String),
-    #[error("Unsupported hash algorithm: {0}")]
-    UnsupportedHashAlgorithm(String),
     #[error("Unsupported key type")]
     UnsupportedKeyType,
 }
@@ -90,32 +86,12 @@ impl DerivedPrivateJWK {
             ancestor_key.to_owned(),
             |key, segment| -> Result<SecretKey, Error> {
                 let seg = segment.as_bytes();
-                Self::derive_hkdf_key(HashAlgorithm::SHA256, &key, seg)
+                key.derive_hkdf(HashAlgorithm::SHA256, &[], seg)
+                    .map_err(Error::SecretKeyError)
             },
         )?;
 
         Ok(sk)
-    }
-
-    pub fn derive_hkdf_key(
-        hash_algo: HashAlgorithm,
-        initial_key_material: &SecretKey,
-        info: &[u8],
-    ) -> Result<SecretKey, Error> {
-        if hash_algo != HashAlgorithm::SHA256 {
-            // TODO support more algorithms
-            return Err(Error::UnsupportedHashAlgorithm(
-                "Unsupported hash algorithm".to_string(),
-            ));
-        }
-
-        let mut okm = [0u8; HKDF_KEY_LENGTH];
-
-        hkdf::Hkdf::<sha2::Sha256>::new(None, initial_key_material.to_bytes().as_slice())
-            .expand(info, &mut okm)
-            .map_err(Error::DeriveKeyLengthError)?;
-
-        Ok(SecretKey::try_from((initial_key_material, &okm))?)
     }
 
     fn validate_path(path: &[&str]) -> Result<(), Error> {
@@ -132,6 +108,7 @@ impl DerivedPrivateJWK {
 mod tests {
     use super::*;
     use ssi_jwk::JWK;
+    use tracing_test::traced_test;
 
     struct JWKTestTable {
         private_jwk: JWK,
@@ -141,6 +118,7 @@ mod tests {
         secret_key: SecretKey,
     }
 
+    #[traced_test]
     #[test]
     fn test_derive() {
         let tcs = vec![
@@ -149,9 +127,9 @@ mod tests {
             },
             JWKTestTable {
                 private_jwk: {
-                    let sk = SecretKey::X25519(x25519_dalek::StaticSecret::random_from_rng(
-                        rand::thread_rng(),
-                    ));
+                    let sk = SecretKey::X25519(
+                        x25519_dalek::StaticSecret::random_from_rng(rand::thread_rng()).into(),
+                    );
                     sk.try_into().unwrap()
                 },
             },
@@ -191,9 +169,9 @@ mod tests {
             },
             JWKTestTable {
                 private_jwk: {
-                    let sk = SecretKey::X25519(x25519_dalek::StaticSecret::random_from_rng(
-                        rand::thread_rng(),
-                    ));
+                    let sk = SecretKey::X25519(
+                        x25519_dalek::StaticSecret::random_from_rng(rand::thread_rng()).into(),
+                    );
                     sk.try_into().unwrap()
                 },
             },
@@ -224,20 +202,24 @@ mod tests {
     fn test_derive_ancestor_chain_path() {
         let tcs = vec![
             SecretKeyTestTable {
-                secret_key: SecretKey::Secp256k1(k256::SecretKey::random(&mut rand::thread_rng())),
+                secret_key: SecretKey::Secp256k1(
+                    k256::SecretKey::random(&mut rand::thread_rng()).into(),
+                ),
             },
             SecretKeyTestTable {
-                secret_key: SecretKey::X25519(x25519_dalek::StaticSecret::random_from_rng(
-                    rand::thread_rng(),
-                )),
+                secret_key: SecretKey::X25519(
+                    x25519_dalek::StaticSecret::random_from_rng(rand::thread_rng()).into(),
+                ),
             },
             SecretKeyTestTable {
-                secret_key: ed25519_dalek::SigningKey::generate(&mut rand::thread_rng()).into(),
+                secret_key: SecretKey::X25519(
+                    ed25519_dalek::SigningKey::generate(&mut rand::thread_rng()).into(),
+                ),
             },
         ];
 
         for tc in tcs {
-            let root_key = tc.secret_key.clone();
+            let root_key = tc.secret_key;
 
             let path_to_g = ["a", "b", "c", "d", "e", "f", "g"].as_slice();
             let path_to_d = ["a", "b", "c", "d"].as_slice();
@@ -255,7 +237,7 @@ mod tests {
     #[test]
     fn test_invalid_path() {
         let root_key: SecretKey =
-            SecretKey::Secp256k1(k256::SecretKey::random(&mut rand::thread_rng()));
+            SecretKey::Secp256k1(k256::SecretKey::random(&mut rand::thread_rng()).into());
         let path = ["a", "", "c"].as_slice();
 
         let result = DerivedPrivateJWK::derive_secret(&root_key, path);
