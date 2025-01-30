@@ -16,7 +16,7 @@ pub struct AEAD<C: AeadMutInPlace> {
 
 pub(super) struct AEADBufferBytesMut<'a>(&'a mut BytesMut);
 
-impl<'a> Buffer for AEADBufferBytesMut<'a> {
+impl Buffer for AEADBufferBytesMut<'_> {
     fn extend_from_slice(&mut self, other: &[u8]) -> aes_gcm::aead::Result<()> {
         self.0.extend_from_slice(other);
 
@@ -28,13 +28,13 @@ impl<'a> Buffer for AEADBufferBytesMut<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for AEADBufferBytesMut<'a> {
+impl AsRef<[u8]> for AEADBufferBytesMut<'_> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl<'a> AsMut<[u8]> for AEADBufferBytesMut<'a> {
+impl AsMut<[u8]> for AEADBufferBytesMut<'_> {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
     }
