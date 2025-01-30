@@ -37,10 +37,10 @@ impl SecretKey {
     pub fn encapsulate(self, pk: PublicKey) -> Result<Vec<u8>, Error> {
         match (self, pk) {
             (SecretKey::Secp256k1(sk), PublicKey::Secp256k1(pk)) => {
-                sk.encapsulate(pk).map(|ga| ga.to_vec())
+                sk.encapsulate(&pk).map(|ga| ga.to_vec())
             }
             (SecretKey::X25519(sk), PublicKey::X25519(pk)) => {
-                sk.encapsulate(pk).map(|ga| ga.to_vec())
+                sk.encapsulate(&pk).map(|ga| ga.to_vec())
             }
             _ => Err(Error::SecretKeyError("Invalid key pair".to_string())),
         }
@@ -61,7 +61,10 @@ impl SecretKey {
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        todo!()
+        match self {
+            SecretKey::Secp256k1(sk) => sk.decrypt(data),
+            SecretKey::X25519(sk) => sk.decrypt(data),
+        }
     }
 }
 

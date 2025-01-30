@@ -1,4 +1,3 @@
-use aes::cipher::generic_array::GenericArray;
 use ssi_jwk::{Params, JWK};
 
 use super::{secp256k1, secretkey, x25519, Error, PublicKeyError, PublicKeyTrait};
@@ -21,19 +20,18 @@ pub enum PublicKey {
 }
 
 // Maximum potential size utilized here based on known key sizes.
-static MAX_PUBLIC_KEY_SIZE: usize = 33;
 
 impl PublicKey {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        let ga = GenericArray::from_slice(bytes);
         match bytes.len() {
-            33 => Ok(PublicKey::Secp256k1(secp256k1::PublicKey::from_bytes(*ga)?)),
+            33 => Ok(PublicKey::Secp256k1(secp256k1::PublicKey::from_bytes(
+                bytes,
+            )?)),
             32 => {
                 let mut x = [0u8; 32];
                 x.copy_from_slice(bytes);
-                let ga = GenericArray::from_slice(&x);
 
-                Ok(PublicKey::X25519(x25519::PublicKey::from_bytes(*ga)?))
+                Ok(PublicKey::X25519(x25519::PublicKey::from_bytes(bytes)?))
             }
             _ => Err(PublicKeyError::InvalidKey.into()),
         }
@@ -58,6 +56,13 @@ impl PublicKey {
         match self {
             PublicKey::Secp256k1(pk) => pk.decapsulate(sk.into()).map(|ga| ga.to_vec()),
             PublicKey::X25519(pk) => pk.decapsulate(sk.into()).map(|ga| ga.to_vec()),
+        }
+    }
+
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
+        match self {
+            PublicKey::Secp256k1(pk) => pk.encrypt(data),
+            PublicKey::X25519(pk) => pk.encrypt(data),
         }
     }
 }
@@ -85,11 +90,14 @@ impl TryFrom<JWK> for PublicKey {
                         pk: x25519_dalek::PublicKey::from(pk.to_montgomery().to_bytes()),
                     }))
                 }
-                _ => Err(
-                    PublicKeyError::InvalidCurve(format!("Unsupported curve: {}", op.curve)).into(),
-                ),
+                _ => Err(PublicKeyError::InvalidCurve(format!(
+                    "Unsupported curve: {}",
+                    op.curve
+                ))),
             },
-            _ => Err(PublicKeyError::InvalidCurve("Unsupported key type".to_string()).into()),
+            _ => Err(PublicKeyError::InvalidCurve(
+                "Unsupported key type".to_string(),
+            )),
         }
     }
 }
