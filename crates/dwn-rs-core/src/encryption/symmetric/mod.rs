@@ -55,6 +55,12 @@ pub trait IVEncryption: Encryption {
     fn with_iv(&mut self, iv: GenericArray<u8, Self::NonceSize>) -> Result<Self, Error>
     where
         Self: Sized;
+
+    fn nonce(&self) -> GenericArray<u8, Self::NonceSize> {
+        let mut nonce = GenericArray::default();
+        nonce.iter_mut().for_each(|b| *b = rand::random());
+        nonce
+    }
 }
 
 pin_project! {

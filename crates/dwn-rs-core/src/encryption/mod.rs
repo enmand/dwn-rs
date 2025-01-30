@@ -42,6 +42,8 @@ pub enum KeyEncryptionAlgorithm {
 pub enum KeyEncryptionAlgorithmAsymmetric {
     #[serde(rename = "ECIES-ES256K")]
     EciesSecp256k1,
+    #[serde(rename = "X25519")]
+    X25519,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

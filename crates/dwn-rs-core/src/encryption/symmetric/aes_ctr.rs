@@ -10,6 +10,9 @@ use super::{Encryption, IVEncryption};
 
 pub type CipherAES256CTR = Ctr64BE<Aes256>;
 
+#[deprecated(
+    note = "Use `AEAD` for AES-GCM or Xsalsa20Poly1305Cipher. No message authentication is provided by AES-CTR."
+)]
 pub struct AES256CTR {
     key: [u8; 32],
     enc: Option<CipherAES256CTR>,
@@ -26,6 +29,7 @@ pub enum Error {
     NoIVError,
 }
 
+#[allow(deprecated)]
 impl Encryption for AES256CTR {
     type KeySize = typenum::consts::U32;
 
@@ -56,6 +60,7 @@ impl Encryption for AES256CTR {
     }
 }
 
+#[allow(deprecated)]
 impl IVEncryption for AES256CTR {
     type NonceSize = typenum::consts::U16;
 
@@ -89,6 +94,7 @@ mod test {
     ];
 
     #[test]
+    #[allow(deprecated)]
     fn test_aes256ctr() {
         let mut enc = AES256CTR::new(KEY.into())
             .expect("Failed to create AES256CTR")
