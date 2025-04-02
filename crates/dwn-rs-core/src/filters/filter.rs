@@ -4,14 +4,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::value::Value;
 
-pub type RangeFilter<T> = (Bound<T>, Bound<T>);
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum RangeFilter<T> {
+    Numeric(Bound<T>, Bound<T>),
+    Criterion(Bound<T>, Bound<T>),
+}
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Filter<T> {
     Equal(T),
     #[serde(with = "range_filter_serializer")]
-    Range((Bound<T>, Bound<T>)),
+    Range(RangeFilter<T>),
     OneOf(Vec<T>),
     #[serde(with = "prefix_filter_serializer")]
     Prefix(T),
@@ -67,33 +71,43 @@ pub mod range_filter_serializer {
     use super::*;
     use serde::ser::{Serialize, SerializeMap, Serializer};
 
-    pub fn serialize<S, T>(
-        range_filter: &(Bound<T>, Bound<T>),
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, T>(range_filter: &RangeFilter<T>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
         T: Serialize,
     {
         let mut map = serializer.serialize_map(Some(2))?;
 
-        if let Bound::Included(ref v) = range_filter.0 {
-            map.serialize_entry("gte", v)?;
-        } else if let Bound::Excluded(ref v) = range_filter.0 {
-            map.serialize_entry("gt", v)?;
-        }
+        match range_filter {
+            RangeFilter::Numeric(beg, end) => {
+                if let Bound::Included(ref v) = beg {
+                    map.serialize_entry("gte", v)?;
+                } else if let Bound::Excluded(ref v) = beg {
+                    map.serialize_entry("gt", v)?;
+                }
 
-        if let Bound::Included(ref v) = range_filter.1 {
-            map.serialize_entry("lte", v)?;
-        } else if let Bound::Excluded(ref v) = range_filter.1 {
-            map.serialize_entry("lt", v)?;
+                if let Bound::Included(ref v) = end {
+                    map.serialize_entry("lte", v)?;
+                } else if let Bound::Excluded(ref v) = end {
+                    map.serialize_entry("lt", v)?;
+                }
+            }
+            RangeFilter::Criterion(beg, end) => {
+                if let Bound::Included(ref v) = beg {
+                    map.serialize_entry("from", v)?;
+                }
+
+                if let Bound::Included(ref v) = end {
+                    map.serialize_entry("to", v)?;
+                }
+            }
         }
 
         map.end()
     }
 
     pub fn serialize_optional<S, T>(
-        range_filter: &Option<(Bound<T>, Bound<T>)>,
+        range_filter: &Option<RangeFilter<T>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -120,22 +134,59 @@ pub mod range_filter_serializer {
 
             let tests = vec![
                 Test {
-                    range_filter: Filter::Range((Bound::Included(1), Bound::Excluded(2))),
+                    range_filter: Filter::Range(RangeFilter::Numeric(
+                        Bound::Included(1),
+                        Bound::Excluded(2),
+                    )),
                     json: json!({
                         "gte": 1,
                         "lt": 2,
                     }),
                 },
                 Test {
-                    range_filter: Filter::Range((Bound::<i32>::Unbounded, Bound::Excluded(2))),
+                    range_filter: Filter::Range(RangeFilter::Numeric(
+                        Bound::<i32>::Unbounded,
+                        Bound::Excluded(2),
+                    )),
                     json: json!({
                         "lt": 2,
                     }),
                 },
                 Test {
-                    range_filter: Filter::Range((Bound::Included(1), Bound::<i32>::Unbounded)),
+                    range_filter: Filter::Range(RangeFilter::Numeric(
+                        Bound::Included(1),
+                        Bound::<i32>::Unbounded,
+                    )),
                     json: json!({
                         "gte": 1,
+                    }),
+                },
+                Test {
+                    range_filter: Filter::Range(RangeFilter::Criterion(
+                        Bound::Included(1),
+                        Bound::Included(2),
+                    )),
+                    json: json!({
+                        "from": 1,
+                        "to": 2,
+                    }),
+                },
+                Test {
+                    range_filter: Filter::Range(RangeFilter::Criterion(
+                        Bound::<i32>::Unbounded,
+                        Bound::Included(2),
+                    )),
+                    json: json!({
+                        "to": 2,
+                    }),
+                },
+                Test {
+                    range_filter: Filter::Range(RangeFilter::Criterion(
+                        Bound::Included(1),
+                        Bound::<i32>::Unbounded,
+                    )),
+                    json: json!({
+                        "from": 1,
                     }),
                 },
             ];
@@ -161,7 +212,7 @@ pub mod range_filter_serializer {
 
             let tests = vec![
                 Test {
-                    range_filter: SomeFilter::MaybeRange(Some((
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Numeric(
                         Bound::Included(1),
                         Bound::Excluded(2),
                     ))),
@@ -171,7 +222,7 @@ pub mod range_filter_serializer {
                     }),
                 },
                 Test {
-                    range_filter: SomeFilter::MaybeRange(Some((
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Numeric(
                         Bound::<i32>::Unbounded,
                         Bound::Excluded(2),
                     ))),
@@ -180,7 +231,7 @@ pub mod range_filter_serializer {
                     }),
                 },
                 Test {
-                    range_filter: SomeFilter::MaybeRange(Some((
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Numeric(
                         Bound::Included(1),
                         Bound::<i32>::Unbounded,
                     ))),
@@ -191,6 +242,34 @@ pub mod range_filter_serializer {
                 Test {
                     range_filter: SomeFilter::MaybeRange(None),
                     json: json!(null),
+                },
+                Test {
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Criterion(
+                        Bound::Included(1),
+                        Bound::Included(2),
+                    ))),
+                    json: json!({
+                        "from": 1,
+                        "to": 2,
+                    }),
+                },
+                Test {
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Criterion(
+                        Bound::<i32>::Unbounded,
+                        Bound::Included(2),
+                    ))),
+                    json: json!({
+                        "to": 2,
+                    }),
+                },
+                Test {
+                    range_filter: SomeFilter::MaybeRange(Some(RangeFilter::Criterion(
+                        Bound::Included(1),
+                        Bound::<i32>::Unbounded,
+                    ))),
+                    json: json!({
+                        "from": 1,
+                    }),
                 },
             ];
 
@@ -217,6 +296,7 @@ impl<'de> serde::de::Visitor<'de> for FilterVisitor {
         let mut range = (Bound::Unbounded, Bound::Unbounded);
         let mut prefix_value: Option<Value> = None;
         let mut has_range_key = false;
+        let mut has_criterion_key = false;
 
         while let Some((key, value)) = map.next_entry::<String, Value>()? {
             match key.as_str() {
@@ -243,8 +323,23 @@ impl<'de> serde::de::Visitor<'de> for FilterVisitor {
                         _ => {} // Already checked by outer match
                     }
                 }
+                "from" | "to" => {
+                    has_criterion_key = true;
+
+                    match key.as_str() {
+                        "from" => match range.0 {
+                            Bound::Unbounded => range.0 = Bound::Included(value),
+                            _ => return Err(serde::de::Error::custom("multiple lower bounds")),
+                        },
+                        "to" => match range.1 {
+                            Bound::Unbounded => range.1 = Bound::Included(value),
+                            _ => return Err(serde::de::Error::custom("multiple upper bounds")),
+                        },
+                        _ => {} // Already checked by outer match
+                    }
+                }
                 "prefix" => {
-                    if has_range_key {
+                    if has_range_key || has_criterion_key {
                         return Err(serde::de::Error::custom(
                             "cannot provide both 'prefix' and range keys",
                         ));
@@ -259,7 +354,23 @@ impl<'de> serde::de::Visitor<'de> for FilterVisitor {
             return Ok(Filter::Prefix(value));
         }
 
-        Ok(Filter::Range((range.0, range.1)))
+        if has_range_key && has_criterion_key {
+            return Err(serde::de::Error::custom(
+                "cannot provide both range and criterion keys",
+            ));
+        }
+
+        if has_range_key {
+            return Ok(Filter::Range(RangeFilter::Numeric(range.0, range.1)));
+        }
+
+        if has_criterion_key {
+            return Ok(Filter::Range(RangeFilter::Criterion(range.0, range.1)));
+        }
+
+        Err(serde::de::Error::custom(
+            "no valid range or criterion keys found",
+        ))
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Filter<Value>, A::Error>
@@ -342,18 +453,28 @@ impl<T: Default + TryFrom<Value>> From<Filter<Value>> for Filter<T> {
     fn from(f: Filter<Value>) -> Self {
         match f {
             Filter::Equal(v) => Filter::Equal(v.try_into().unwrap_or_default()),
-            Filter::Range((beg, end)) => Filter::Range((
-                match beg {
+            Filter::Range(range) => {
+                let (beg, end) = match range.clone() {
+                    RangeFilter::Numeric(beg, end) => (beg, end),
+                    RangeFilter::Criterion(beg, end) => (beg, end),
+                };
+
+                let beg: Bound<T> = match beg {
                     Bound::Included(v) => Bound::Included(v.try_into().unwrap_or_default()),
                     Bound::Excluded(v) => Bound::Excluded(v.try_into().unwrap_or_default()),
                     _ => Bound::Unbounded,
-                },
-                match end {
+                };
+                let end: Bound<T> = match end {
                     Bound::Included(v) => Bound::Included(v.try_into().unwrap_or_default()),
                     Bound::Excluded(v) => Bound::Excluded(v.try_into().unwrap_or_default()),
                     _ => Bound::Unbounded,
-                },
-            )),
+                };
+
+                match range {
+                    RangeFilter::Numeric(_, _) => Filter::Range(RangeFilter::Numeric(beg, end)),
+                    RangeFilter::Criterion(_, _) => Filter::Range(RangeFilter::Criterion(beg, end)),
+                }
+            }
             Filter::OneOf(v) => Filter::OneOf(
                 v.into_iter()
                     .map(|v| v.try_into().unwrap_or_default())
@@ -408,7 +529,7 @@ mod test {
                 json: json!(true),
             },
             Test {
-                filter: Filter::Range((
+                filter: Filter::Range(RangeFilter::Numeric(
                     Bound::Included(Value::Number(1)),
                     Bound::Excluded(Value::Number(2)),
                 )),
@@ -425,6 +546,34 @@ mod test {
                 filter: Filter::Prefix(Value::String("test".to_string())),
                 json: json!({
                     "prefix": "test",
+                }),
+            },
+            Test {
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::Included(Value::Number(1)),
+                    Bound::Included(Value::Number(2)),
+                )),
+                json: json!({
+                    "from": 1,
+                    "to": 2,
+                }),
+            },
+            Test {
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::<Value>::Unbounded,
+                    Bound::Included(Value::Number(2)),
+                )),
+                json: json!({
+                    "to": 2,
+                }),
+            },
+            Test {
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::Included(Value::Number(1)),
+                    Bound::<Value>::Unbounded,
+                )),
+                json: json!({
+                    "from": 1,
                 }),
             },
         ];
@@ -459,7 +608,7 @@ mod test {
                     "gte": 1,
                     "lt": 2,
                 }),
-                filter: Filter::Range((
+                filter: Filter::Range(RangeFilter::Numeric(
                     Bound::Included(Value::Number(1)),
                     Bound::Excluded(Value::Number(2)),
                 )),
@@ -476,6 +625,34 @@ mod test {
                     "prefix": "test",
                 }),
                 filter: Filter::Prefix(Value::String("test".to_string())),
+            },
+            Test {
+                json: json!({
+                    "from": 1,
+                    "to": 2,
+                }),
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::Included(Value::Number(1)),
+                    Bound::Included(Value::Number(2)),
+                )),
+            },
+            Test {
+                json: json!({
+                    "to": 2,
+                }),
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::<Value>::Unbounded,
+                    Bound::Included(Value::Number(2)),
+                )),
+            },
+            Test {
+                json: json!({
+                    "from": 1,
+                }),
+                filter: Filter::Range(RangeFilter::Criterion(
+                    Bound::Included(Value::Number(1)),
+                    Bound::<Value>::Unbounded,
+                )),
             },
         ];
 
@@ -516,13 +693,13 @@ mod test {
         let filter = Filter::Equal(Value::Bool(true));
         assert_eq!(Filter::<bool>::from(filter), Filter::Equal(true));
 
-        let filter = Filter::Range((
+        let filter = Filter::Range(RangeFilter::Numeric(
             Bound::Included(Value::Number(1)),
             Bound::Excluded(Value::Number(2)),
         ));
         assert_eq!(
             Filter::<i64>::from(filter),
-            Filter::Range((Bound::Included(1), Bound::Excluded(2)))
+            Filter::Range(RangeFilter::Numeric(Bound::Included(1), Bound::Excluded(2)))
         );
 
         let filter = Filter::OneOf(vec![
