@@ -16,6 +16,10 @@ pub struct Message<D: MessageDescriptor + DeserializeOwned> {
 
 impl<D: MessageDescriptor> Message<D> {
     pub fn new(descriptor: D, fields: D::Fields) -> Self {
+        if descriptor.validate().is_err() {
+            panic!("Invalid message descriptor");
+        }
+
         Self { descriptor, fields }
     }
 }
