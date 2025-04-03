@@ -7,6 +7,7 @@ use crate::{
         authorization::{Authorization, AuthorizationDelegatedGrant, AuthorizationOwner},
         jws::JWS,
     },
+    encryption::DerivationScheme,
     Value,
 };
 
@@ -107,19 +108,6 @@ impl MessageFields for WriteFields {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum EncryptionAlgorithm {
     A256CTR,
-}
-
-// DerivationScheme represents the derivation scheme used for deriving keys for encryption.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum DerivationScheme {
-    #[serde(rename = "dataFormats")]
-    DataFormats,
-    #[serde(rename = "protocolContext")]
-    ProtocolContext,
-    #[serde(rename = "protocolPath")]
-    ProtocolPath,
-    #[serde(rename = "schemas")]
-    Schemas,
 }
 
 /// KeyEncryptionAlgorithm represents the key encryption algorithm used for encrypting keys.
