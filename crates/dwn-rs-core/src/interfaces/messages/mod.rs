@@ -3,7 +3,7 @@ pub mod fields;
 pub mod protocols;
 
 pub use descriptors::Descriptor;
-use descriptors::MessageDescriptor;
+use descriptors::{MessageDescriptor, MessageValidator, ValidationError};
 pub use fields::Fields;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -14,13 +14,11 @@ pub struct Message<D: MessageDescriptor + DeserializeOwned> {
     pub fields: D::Fields,
 }
 
-impl<D: MessageDescriptor> Message<D> {
-    pub fn new(descriptor: D, fields: D::Fields) -> Self {
-        if descriptor.validate().is_err() {
-            panic!("Invalid message descriptor");
-        }
+impl<D: MessageDescriptor + MessageValidator> Message<D> {
+    pub fn new(descriptor: D, fields: D::Fields) -> Result<Self, ValidationError> {
+        descriptor.validate()?;
 
-        Self { descriptor, fields }
+        Ok(Self { descriptor, fields })
     }
 }
 
@@ -97,6 +95,17 @@ mod test {
         data: String,
     }
 
+    impl MessageValidator for TestDescriptor {
+        fn validate(&self) -> Result<(), ValidationError> {
+            if self.data.is_empty() {
+                return Err(ValidationError {
+                    message: "data".to_string(),
+                });
+            }
+            Ok(())
+        }
+    }
+
     #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
     struct TestFields {
         field1: String,
@@ -114,7 +123,7 @@ mod test {
             field2: 42,
         };
 
-        let message = Message::new(desc, fields);
+        let message = Message::new(desc, fields).unwrap();
 
         let serialized = serde_json::to_string(&message).unwrap();
         let expected = r#"{"descriptor":{"data":"test","interface":"interface","method":"method"},"field1":"test","field2":42}"#;
@@ -131,7 +140,7 @@ mod test {
             ..Default::default()
         });
 
-        let message = Message::new(desc, fields);
+        let message = Message::new(desc, fields).unwrap();
         let serialized = json!(&message);
         let expected = json!({
                 "descriptor": {
@@ -160,7 +169,7 @@ mod test {
             field2: 42,
         };
 
-        let expected = Message::new(descriptor, fields);
+        let expected = Message::new(descriptor, fields).unwrap();
 
         assert_eq!(message, expected);
     }
