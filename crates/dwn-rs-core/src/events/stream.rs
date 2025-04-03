@@ -267,7 +267,6 @@ where
 
 #[cfg(test)]
 mod test {
-    use chrono::TimeZone;
     use tracing_test::traced_test;
     use xtra::{spawn_tokio, Mailbox};
 

@@ -121,10 +121,10 @@ pub trait EventLog: Default {
         cursor: Option<Cursor>,
     ) -> impl Future<Output = Result<QueryReturn<String>, EventLogError>> + Send;
 
-    fn delete<'a>(
+    fn delete(
         &self,
         tenant: &str,
-        cid: &'a [&str],
+        cid: &[&str],
     ) -> impl Future<Output = Result<(), EventLogError>> + Send;
 
     fn clear(&self) -> impl Future<Output = Result<(), EventLogError>> + Send;
