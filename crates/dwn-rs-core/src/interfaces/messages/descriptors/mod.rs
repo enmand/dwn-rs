@@ -3,8 +3,6 @@ pub mod messages;
 pub mod protocols;
 pub mod records;
 
-use std::fmt::Debug;
-
 pub use general::*;
 
 pub use messages::{
@@ -19,6 +17,7 @@ pub use records::{
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::fields::MessageFields;
+use thiserror::Error;
 
 pub const RECORDS: &str = "Records";
 pub const PROTOCOLS: &str = "Protocols";
@@ -31,6 +30,14 @@ pub const DELETE: &str = "Delete";
 pub const SUBSCRIBE: &str = "Subscribe";
 pub const CONFIGURE: &str = "Configure";
 
+/// ValidationError represents an error that occurs during validation of a message descriptor.
+#[derive(Error, Debug)]
+#[error("Validation error: {message}")]
+pub struct ValidationError {
+    /// The error message.
+    message: String,
+}
+
 /// MessageDescriptor is a trait that all message descriptors must implement.
 /// It provides the interface and method for the message descriptor. The generic `Descriptor`
 /// implements this trait for use when the concrete type is not known. Concrete Descriptor types
@@ -39,7 +46,7 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
     type Fields: MessageFields
         + Serialize
         + DeserializeOwned
-        + Debug
+        + std::fmt::Debug
         + PartialEq
         + Send
         + Sync
@@ -49,4 +56,14 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
 
     fn interface(&self) -> &'static str;
     fn method(&self) -> &'static str;
+
+    fn validate(&self) -> Result<(), ValidationError> {
+        Err(ValidationError {
+            message: format!(
+                "not implemented for {}::{}",
+                self.interface(),
+                self.method()
+            ),
+        })
+    }
 }
