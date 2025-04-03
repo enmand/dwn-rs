@@ -3,229 +3,51 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_dids_core::DIDBuf;
-use ssi_jwk::JWK;
 
 use crate::descriptors::MessageDescriptor;
 use crate::interfaces::messages::descriptors::{CONFIGURE, PROTOCOLS, QUERY};
+use crate::{protocols, Message};
 use dwn_rs_message_derive::descriptor;
 
-#[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::fields::AuthorizationDelegatedGrantFields)]
+use super::RecordsWriteDescriptor;
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ConfigureParameters {
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub definition: protocols::Definition,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<Message<RecordsWriteDescriptor>>,
+}
+
+#[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = ConfigureParameters)]
 pub struct ConfigureDescriptor {
     #[serde(rename = "messageTimestamp")]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
-    pub definition: ProtocolDefinition,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
-pub struct ProtocolDefinition {
-    pub protocol: String,
-    pub published: bool,
-    pub types: BTreeMap<String, Option<ProtocolType>>,
-    pub structure: BTreeMap<String, ProtocolRule>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct ProtocolType {
-    pub schema: Option<String>,
-    #[serde(rename = "dataFormats")]
-    pub data_formats: Option<Vec<String>>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-pub struct ProtocolRule {
-    #[serde(rename = "$encryption")]
-    pub encryption: Option<Encryption>,
-    #[serde(rename = "$actions", default, skip_serializing_if = "Vec::is_empty")]
-    pub actions: Vec<Action>,
-    #[serde(rename = "$role")]
-    pub role: Option<bool>,
-    #[serde(rename = "$size")]
-    pub size: Option<Size>,
-    #[serde(rename = "$tags")]
-    pub tags: Option<Tags>,
-    #[serde(flatten)]
-    pub extra: BTreeMap<String, ProtocolRule>,
+    pub definition: protocols::Definition,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Encryption {
-    #[serde(rename = "rootKeyId")]
-    pub root_key_id: String,
-    #[serde(rename = "publicKeyJwk")]
-    pub public_key_jwk: JWK,
+pub struct QueryParameters {
+    pub filter: Option<QueryFilterParameters>,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Who {
-    #[serde(rename = "anyone")]
-    Anyone,
-    #[serde(rename = "author")]
-    Author,
-    #[serde(rename = "recipient")]
-    Recipient,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Can {
-    #[serde(rename = "co-delete")]
-    CoDelete,
-    #[serde(rename = "co-prune")]
-    CoPrune,
-    #[serde(rename = "co-update")]
-    CoUpdate,
-    #[serde(rename = "create")]
-    Create,
-    #[serde(rename = "delete")]
-    Delete,
-    #[serde(rename = "prune")]
-    Prune,
-    #[serde(rename = "read")]
-    Read,
-    #[serde(rename = "update")]
-    Update,
-    #[serde(rename = "subscribe")]
-    Subscribe,
-    #[serde(rename = "query")]
-    Query,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(untagged)]
-pub enum Action {
-    Who {
-        who: Who,
-        of: Option<String>,
-        can: Vec<Can>,
-    },
-    Role {
-        role: String,
-        can: Vec<Can>,
-    },
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Size {
-    pub min: Option<usize>,
-    pub max: Option<usize>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Tags {
-    #[serde(
-        rename = "$requiredTags",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
-    pub required_tags: Vec<String>,
-    #[serde(rename = "$allowUndefinedTags")]
-    pub allow_undefined_tags: Option<bool>,
-    #[serde(flatten)]
-    pub tags: BTreeMap<String, ProvidedTags>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum TagType {
-    #[serde(rename = "string")]
-    String,
-    #[serde(rename = "number")]
-    Number,
-    #[serde(rename = "integer")]
-    Integer,
-    #[serde(rename = "boolean")]
-    Boolean,
-    #[serde(rename = "array")]
-    Array,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum ItemType {
-    #[serde(rename = "string")]
-    String,
-    #[serde(rename = "number")]
-    Number,
-    #[serde(rename = "integer")]
-    Integer,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct ProvidedTags {
-    #[serde(rename = "type")]
-    pub tag_type: TagType,
-    pub items: Option<TagItems>,
-    pub contains: Option<TagContains>,
-    #[serde(rename = "enum", default, skip_serializing_if = "Vec::is_empty")]
-    pub enum_values: Vec<String>,
-    #[serde(rename = "maxLength")]
-    pub max_length: Option<usize>,
-    #[serde(rename = "minLength")]
-    pub min_length: Option<usize>,
-    pub minimum: Option<usize>,
-    pub maximum: Option<usize>,
-    #[serde(rename = "exclusiveMinimum")]
-    pub exclusive_minimum: Option<usize>,
-    #[serde(rename = "exclusiveMaximum")]
-    pub exclusive_maximum: Option<usize>,
-    #[serde(rename = "minItems")]
-    pub min_items: Option<usize>,
-    #[serde(rename = "maxItems")]
-    pub max_items: Option<usize>,
-    #[serde(rename = "uniqueItems")]
-    pub unique_items: Option<bool>,
-    #[serde(rename = "minContains")]
-    pub min_contains: Option<usize>,
-    #[serde(rename = "maxContains")]
-    pub max_contains: Option<usize>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct TagItems {
-    #[serde(rename = "type")]
-    pub tag_type: ItemType,
-    #[serde(rename = "enum", default, skip_serializing_if = "Vec::is_empty")]
-    pub enum_values: Vec<String>,
-    pub minimum: Option<usize>,
-    pub maximum: Option<usize>,
-    #[serde(rename = "exclusiveMinimum")]
-    pub exclusive_minimum: Option<usize>,
-    #[serde(rename = "exclusiveMaximum")]
-    pub exclusive_maximum: Option<usize>,
-    #[serde(rename = "minLength")]
-    pub min_length: Option<usize>,
-    #[serde(rename = "maxLength")]
-    pub max_length: Option<usize>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct TagContains {
-    #[serde(rename = "type")]
-    pub tag_type: ItemType,
-    #[serde(rename = "enum", default, skip_serializing_if = "Vec::is_empty")]
-    pub enum_values: Vec<String>,
-    pub minimum: Option<usize>,
-    pub maximum: Option<usize>,
-    #[serde(rename = "exclusiveMinimum")]
-    pub exclusive_minimum: Option<usize>,
-    #[serde(rename = "exclusiveMaximum")]
-    pub exclusive_maximum: Option<usize>,
-    #[serde(rename = "minLength")]
-    pub min_length: Option<usize>,
-    #[serde(rename = "maxLength")]
-    pub max_length: Option<usize>,
-}
-
-#[descriptor(interface = PROTOCOLS , method = QUERY, fields = crate::auth::Authorization)]
+#[descriptor(interface = PROTOCOLS , method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
     #[serde(rename = "message_timestamp")]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
     pub filter: Option<QueryFilter>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct QueryFilterParameters {
+    pub protocol: String,
 }
 
 #[skip_serializing_none]
@@ -240,11 +62,12 @@ mod test {
     use super::*;
     use chrono::Utc;
     use serde_json::json;
+    use ssi_jwk::JWK;
 
     #[test]
     fn test_configure_descriptor() {
         let message_timestamp = Utc::now();
-        let definition = ProtocolDefinition {
+        let definition = protocols::Definition {
             protocol: "example".to_string(),
             published: true,
             types: BTreeMap::new(),
@@ -278,7 +101,7 @@ mod test {
         let published = true;
         let types = BTreeMap::new();
         let structure = BTreeMap::new();
-        let definition = ProtocolDefinition {
+        let definition = protocols::Definition {
             protocol: protocol.clone(),
             published,
             types,
@@ -292,7 +115,7 @@ mod test {
         });
         assert_eq!(serde_json::to_value(&definition).unwrap(), json);
         assert_eq!(
-            serde_json::from_value::<ProtocolDefinition>(json).unwrap(),
+            serde_json::from_value::<protocols::Definition>(json).unwrap(),
             definition
         );
     }
@@ -301,7 +124,7 @@ mod test {
     fn test_protocol_type() {
         let schema = Some("schema".to_string());
         let data_formats = Some(vec!["format".to_string()]);
-        let protocol_type = ProtocolType {
+        let protocol_type = protocols::Type {
             schema: schema.clone(),
             data_formats: data_formats.clone(),
         };
@@ -311,42 +134,42 @@ mod test {
         });
         assert_eq!(serde_json::to_value(&protocol_type).unwrap(), json);
         assert_eq!(
-            serde_json::from_value::<ProtocolType>(json).unwrap(),
+            serde_json::from_value::<protocols::Type>(json).unwrap(),
             protocol_type
         );
     }
 
     #[test]
     fn test_protocol_rule() {
-        let encryption = Some(Encryption {
+        let encryption = Some(protocols::PathEncryption {
             root_key_id: "root".to_string(),
             public_key_jwk: JWK::generate_ed25519().unwrap(),
         });
-        let actions = vec![Action::Who {
-            who: Who::Anyone,
+        let actions = vec![protocols::Action::Who {
+            who: protocols::Who::Anyone,
             of: None,
-            can: vec![Can::Read],
+            can: vec![protocols::Can::Read],
         }];
 
         let role = Some(true);
-        let size = Some(Size {
+        let size = Some(protocols::Size {
             min: None,
             max: None,
         });
-        let tags = Some(Tags {
+        let tags = Some(protocols::Tags {
             required_tags: vec!["tag".to_string()],
             allow_undefined_tags: Some(true),
             tags: BTreeMap::new(),
         });
 
-        let extra = BTreeMap::new();
-        let protocol_rule = ProtocolRule {
+        let rules: BTreeMap<String, protocols::RuleSet> = BTreeMap::new();
+        let protocol_rule = protocols::RuleSet {
             encryption: encryption.clone(),
             actions: actions.clone(),
             role,
             size: size.clone(),
             tags: tags.clone(),
-            extra,
+            rules,
         };
 
         let json = json!({
@@ -359,7 +182,7 @@ mod test {
 
         assert_eq!(serde_json::to_value(&protocol_rule).unwrap(), json);
         assert_eq!(
-            serde_json::from_value::<ProtocolRule>(json).unwrap(),
+            serde_json::from_value::<protocols::RuleSet>(json).unwrap(),
             protocol_rule
         );
 
@@ -372,20 +195,20 @@ mod test {
             "key": {},
         });
 
-        let mut extra = BTreeMap::new();
-        extra.insert("key".to_string(), ProtocolRule::default());
-        let protocol_rule = ProtocolRule {
+        let mut rules: BTreeMap<String, protocols::RuleSet> = BTreeMap::new();
+        rules.insert("key".to_string(), protocols::RuleSet::default());
+        let protocol_rule = protocols::RuleSet {
             encryption,
             actions,
             role,
             size,
             tags,
-            extra,
+            rules,
         };
 
         assert_eq!(serde_json::to_value(&protocol_rule).unwrap(), json);
         assert_eq!(
-            serde_json::from_value::<ProtocolRule>(json).unwrap(),
+            serde_json::from_value::<protocols::RuleSet>(json).unwrap(),
             protocol_rule
         );
     }

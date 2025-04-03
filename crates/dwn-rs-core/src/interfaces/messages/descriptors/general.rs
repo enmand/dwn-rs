@@ -24,6 +24,7 @@ pub enum Descriptor {
 
 impl MessageDescriptor for Descriptor {
     type Fields = Fields;
+    type Parameters = ();
 
     fn interface(&self) -> &'static str {
         match self {
@@ -54,6 +55,7 @@ pub enum Records {
 
 impl MessageDescriptor for Records {
     type Fields = Fields;
+    type Parameters = ();
 
     fn interface(&self) -> &'static str {
         RECORDS
@@ -79,6 +81,7 @@ pub enum Protocols {
 
 impl MessageDescriptor for Protocols {
     type Fields = Fields;
+    type Parameters = ();
 
     fn interface(&self) -> &'static str {
         PROTOCOLS
@@ -102,6 +105,8 @@ pub enum Messages {
 
 impl MessageDescriptor for Messages {
     type Fields = Fields;
+    type Parameters = ();
+
     fn interface(&self) -> &'static str {
         MESSAGES
     }

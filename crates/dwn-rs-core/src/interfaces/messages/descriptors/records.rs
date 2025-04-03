@@ -1,14 +1,31 @@
 use crate::descriptors::MessageDescriptor;
+use crate::encryption::{DerivationScheme, KeyEncryptionAlgorithm};
+use crate::fields::WriteFields;
+use crate::filters::messages::Records as RecordsFilter;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use ssi_jwk::JWK;
 
 use crate::interfaces::messages::descriptors::{DELETE, QUERY, READ, RECORDS, SUBSCRIBE, WRITE};
-use crate::{MapValue, Pagination};
+use crate::{MapValue, Message, Pagination};
 use dwn_rs_message_derive::descriptor;
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ReadParameters {
+    pub filters: RecordsFilter,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+    #[serde(rename = "protocolRole")]
+    pub protocol_role: Option<String>,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<Message<WriteDescriptor>>,
+}
 
 /// ReadDescriptor represents the RecordsRead interface method for reading a given
 /// record by ID.
-#[descriptor(interface = RECORDS, method = READ, fields = crate::fields::AuthorizationDelegatedGrantFields)]
+#[descriptor(interface = RECORDS, method = READ, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = RecordsFilter)]
 pub struct ReadDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -18,9 +35,23 @@ pub struct ReadDescriptor {
     pub filter: crate::Filters,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct QueryParameters {
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub filter: Option<RecordsFilter>,
+    #[serde(rename = "dateSort")]
+    pub date_sort: Option<DateSort>,
+    pub pagination: Option<Pagination>,
+    #[serde(rename = "protocolRole")]
+    pub protocol_role: Option<String>,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<Message<WriteDescriptor>>,
+}
+
 // QueryDescriptor represents the RecordsQuery interface method for querying records.
 #[skip_serializing_none]
-#[descriptor(interface = RECORDS, method = QUERY, fields = crate::auth::Authorization)]
+#[descriptor(interface = RECORDS, method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -47,11 +78,67 @@ pub enum DateSort {
     PublishedDescending,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct EncryptionInput {
+    pub algorithm: Option<KeyEncryptionAlgorithm>,
+    #[serde(rename = "initializationVector")]
+    pub initialization_vector: Vec<u8>,
+    key: Vec<u8>,
+    #[serde(rename = "keyEncryptionInput")]
+    pub key_encryption_input: Option<KeyEncryptionInput>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct KeyEncryptionInput {
+    #[serde(rename = "derivationSchema")]
+    pub derivation_schema: Option<DerivationScheme>,
+    #[serde(rename = "publicKeyId")]
+    pub public_key_id: Option<String>,
+    #[serde(rename = "publicKey")]
+    pub public_key: Option<JWK>,
+    pub algorithm: Option<KeyEncryptionAlgorithm>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct WriteParameters {
+    pub recipient: Option<String>,
+    pub protocol: Option<String>,
+    #[serde(rename = "protocolPath")]
+    pub protocol_path: Option<String>,
+    #[serde(rename = "protocolRole")]
+    pub protocol_role: Option<String>,
+    pub schema: Option<String>,
+    pub tags: Option<MapValue>,
+    #[serde(rename = "recordId")]
+    pub record_id: Option<String>,
+    #[serde(rename = "parentContextId")]
+    pub parent_context_id: Option<String>,
+    pub data: Option<Vec<u8>>,
+    #[serde(rename = "dataCid")]
+    pub data_cid: String,
+    #[serde(rename = "dataSize")]
+    pub data_size: u64,
+    #[serde(rename = "dateCreated")]
+    pub date_created: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: chrono::DateTime<chrono::Utc>,
+    pub published: Option<bool>,
+    #[serde(rename = "datePublished")]
+    pub date_published: Option<chrono::DateTime<chrono::Utc>>,
+    pub data_format: String,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<Message<WriteDescriptor>>,
+    #[serde(rename = "encryptionInput")]
+    pub encryption_input: Option<EncryptionInput>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+}
+
 /// WriteDescriptor represents the RecordsWrite interface method for writing a record to the DWN.
 /// It can be represented with either no additional fields (`()`), or additional descriptor fields,
 /// as in the case for `encodedData`.
 #[skip_serializing_none]
-#[descriptor(interface = RECORDS, method = WRITE, fields = crate::fields::WriteFields)]
+#[descriptor(interface = RECORDS, method = WRITE, fields = crate::fields::WriteFields, parameters = WriteParameters)]
 pub struct WriteDescriptor {
     pub protocol: Option<String>,
     #[serde(rename = "protocolPath")]
@@ -85,7 +172,18 @@ pub struct WriteDescriptor {
     pub data_format: String,
 }
 
-#[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::fields::AuthorizationDelegatedGrantFields)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct SubscribeParameters {
+    pub filters: RecordsFilter,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(rename = "protocolRole")]
+    pub protocol_role: Option<String>,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<WriteFields>,
+}
+
+#[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = SubscribeParameters)]
 pub struct SubscribeDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -95,7 +193,21 @@ pub struct SubscribeDescriptor {
     pub filter: crate::Filters,
 }
 
-#[descriptor(interface = RECORDS, method = DELETE, fields = crate::auth::Authorization)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct DeleteParameters {
+    #[serde(rename = "recordId")]
+    pub record_id: String,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(rename = "protocolRole")]
+    pub protocol_role: Option<String>,
+    #[serde(rename = "protocolRole")]
+    pub prune: Option<bool>,
+    #[serde(rename = "delegatedGrant")]
+    pub delegated_grant: Option<WriteFields>,
+}
+
+#[descriptor(interface = RECORDS, method = DELETE, fields = crate::auth::Authorization, parameters = DeleteParameters)]
 pub struct DeleteDescriptor {
     #[serde(
         rename = "messageTimestamp",
