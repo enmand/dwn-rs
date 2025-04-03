@@ -45,6 +45,8 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
         + Sync
         + Clone;
 
+    type Parameters: Serialize + DeserializeOwned + std::fmt::Debug + PartialEq + Send + Sync;
+
     fn interface(&self) -> &'static str;
     fn method(&self) -> &'static str;
 }

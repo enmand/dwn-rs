@@ -1,5 +1,6 @@
 pub mod descriptors;
 pub mod fields;
+pub mod protocols;
 
 pub use descriptors::Descriptor;
 use descriptors::MessageDescriptor;
@@ -82,9 +83,12 @@ mod test {
 
     use super::*;
 
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+    struct TestParameters {}
+
     const INTERFACE: &str = "interface";
     const METHOD: &str = "method";
-    #[descriptor(interface = INTERFACE, method = METHOD, fields = TestFields)]
+    #[descriptor(interface = INTERFACE, method = METHOD, fields = TestFields, parameters = TestParameters)]
     struct TestDescriptor {
         data: String,
     }

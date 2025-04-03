@@ -15,6 +15,7 @@ pub struct DescriptorAttr {
     interface: Ident,
     method: Ident,
     fields: Path,
+    parameters: Option<Path>,
 }
 
 impl Parse for DescriptorAttr {
@@ -22,6 +23,7 @@ impl Parse for DescriptorAttr {
         let mut interface = None;
         let mut method = None;
         let mut fields = None;
+        let mut parameters = None;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
@@ -36,6 +38,9 @@ impl Parse for DescriptorAttr {
                 "fields" => {
                     fields = Some(input.parse()?);
                 }
+                "parameters" => {
+                    parameters = Some(input.parse()?);
+                }
                 _ => return Err(syn::Error::new(ident.span(), "unknown attribute")),
             }
             if input.peek(Token![,]) {
@@ -48,6 +53,7 @@ impl Parse for DescriptorAttr {
                 .ok_or_else(|| syn::Error::new(input.span(), "missing interface"))?,
             method: method.ok_or_else(|| syn::Error::new(input.span(), "missing method"))?,
             fields: fields.ok_or_else(|| syn::Error::new(input.span(), "missing fields"))?,
+            parameters,
         })
     }
 }
@@ -66,6 +72,7 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
     let interface = attrs.interface;
     let method = attrs.method;
     let fields = attrs.fields;
+    let parameters = attrs.parameters;
 
     let deserialize_message_ident = format_ident!("{}MessageInternal", ident);
 
@@ -139,6 +146,7 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
 
        impl #generics MessageDescriptor for #ident #generics #where_clause {
             type Fields = #fields;
+            type Parameters = #parameters;
 
             fn interface(&self) -> &'static str {
                 #interface
@@ -215,6 +223,7 @@ mod tests {
             interface = RECORDS,
             method = READ,
             fields = alloc::vec::Vec<u32>,
+            parameters = alloc::vec::Vec<u32>,
         };
 
         let attr: DescriptorAttr = parse2(input).unwrap();
@@ -223,6 +232,10 @@ mod tests {
         assert_eq!(attr.method.to_token_stream().to_string(), READ);
         assert_eq!(
             attr.fields.to_token_stream().to_string(),
+            "alloc :: vec :: Vec < u32 >"
+        );
+        assert_eq!(
+            attr.parameters.unwrap().to_token_stream().to_string(),
             "alloc :: vec :: Vec < u32 >"
         );
     }
@@ -242,6 +255,7 @@ mod tests {
             interface: format_ident!("ExampleInterface"),
             method: format_ident!("ExampleMethod"),
             fields: parse_quote! { FieldsNamed },
+            parameters: Some(parse_quote! { FieldsNamed }),
         };
 
         // Apply the macro
