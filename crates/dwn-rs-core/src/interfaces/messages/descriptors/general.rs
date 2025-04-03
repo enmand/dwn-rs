@@ -8,8 +8,8 @@ use super::{
         MessagesSubscribeDescriptor, ProtocolQueryDescriptor, ReadDescriptor,
         RecordsQueryDescriptor, RecordsWriteDescriptor, SubscribeDescriptor,
     },
-    MessageDescriptor, CONFIGURE, DELETE, MESSAGES, PROTOCOLS, QUERY, READ, RECORDS, SUBSCRIBE,
-    WRITE,
+    MessageDescriptor, MessageValidator, ValidationError, CONFIGURE, DELETE, MESSAGES, PROTOCOLS,
+    QUERY, READ, RECORDS, SUBSCRIBE, WRITE,
 };
 
 /// Interfaces represent the different Decentralized Web Node message interface types.
@@ -20,6 +20,16 @@ pub enum Descriptor {
     Records(Records),
     Protocols(Protocols),
     Messages(Messages),
+}
+
+impl MessageValidator for Descriptor {
+    fn validate(&self) -> Result<(), ValidationError> {
+        match self {
+            Descriptor::Records(_) => Ok(()),
+            Descriptor::Protocols(_) => Ok(()),
+            Descriptor::Messages(_) => Ok(()),
+        }
+    }
 }
 
 impl MessageDescriptor for Descriptor {
@@ -53,6 +63,18 @@ pub enum Records {
     Subscribe(SubscribeDescriptor),
 }
 
+impl MessageValidator for Records {
+    fn validate(&self) -> Result<(), ValidationError> {
+        match self {
+            Records::Read(_) => Ok(()),
+            Records::Query(_) => Ok(()),
+            Records::Write(_) => Ok(()),
+            Records::Delete(_) => Ok(()),
+            Records::Subscribe(_) => Ok(()),
+        }
+    }
+}
+
 impl MessageDescriptor for Records {
     type Fields = Fields;
     type Parameters = ();
@@ -79,6 +101,15 @@ pub enum Protocols {
     Query(ProtocolQueryDescriptor),
 }
 
+impl MessageValidator for Protocols {
+    fn validate(&self) -> Result<(), ValidationError> {
+        match self {
+            Protocols::Configure(_) => Ok(()),
+            Protocols::Query(_) => Ok(()),
+        }
+    }
+}
+
 impl MessageDescriptor for Protocols {
     type Fields = Fields;
     type Parameters = ();
@@ -101,6 +132,16 @@ pub enum Messages {
     Read(MessagesReadDescriptor),
     Query(MessagesQueryDescriptor),
     Subscribe(MessagesSubscribeDescriptor),
+}
+
+impl MessageValidator for Messages {
+    fn validate(&self) -> Result<(), ValidationError> {
+        match self {
+            Messages::Read(_) => Ok(()),
+            Messages::Query(_) => Ok(()),
+            Messages::Subscribe(_) => Ok(()),
+        }
+    }
 }
 
 impl MessageDescriptor for Messages {

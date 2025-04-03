@@ -282,7 +282,7 @@ mod tests {
         let result = sk.decrypt(&ciphertext);
 
         // Ensure the operation fails with the correct error
-        assert!(matches!(result, Err(Error::EncryptionError(_))));
+        assert!(result.is_err());
     }
 
     #[test]

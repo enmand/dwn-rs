@@ -14,7 +14,7 @@ pub use records::{
     DeleteDescriptor, QueryDescriptor as RecordsQueryDescriptor, ReadDescriptor,
     SubscribeDescriptor, WriteDescriptor as RecordsWriteDescriptor,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use super::fields::MessageFields;
 use thiserror::Error;
@@ -31,11 +31,11 @@ pub const SUBSCRIBE: &str = "Subscribe";
 pub const CONFIGURE: &str = "Configure";
 
 /// ValidationError represents an error that occurs during validation of a message descriptor.
-#[derive(Error, Debug)]
+#[derive(Serialize, Deserialize, Error, Debug)]
 #[error("Validation error: {message}")]
 pub struct ValidationError {
     /// The error message.
-    message: String,
+    pub message: String,
 }
 
 /// MessageDescriptor is a trait that all message descriptors must implement.
@@ -56,14 +56,12 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
 
     fn interface(&self) -> &'static str;
     fn method(&self) -> &'static str;
+}
 
+pub trait MessageValidator {
     fn validate(&self) -> Result<(), ValidationError> {
         Err(ValidationError {
-            message: format!(
-                "not implemented for {}::{}",
-                self.interface(),
-                self.method()
-            ),
+            message: String::from("not implemented"),
         })
     }
 }
