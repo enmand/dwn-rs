@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_dids_core::DIDBuf;
