@@ -84,7 +84,7 @@ where
     D: MessageDescriptor + DeserializeOwned + Clone + Debug + PartialEq + Send + 'static,
 {
     pub message: Message<D>,
-    #[serde(rename = "initialWrite")]
+    #[serde(rename = "initialWrite", skip_serializing_if = "Option::is_none")]
     pub initial_write: Option<Message<records::WriteDescriptor>>,
 }
 
