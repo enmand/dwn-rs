@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_dids_core::DIDBuf;
@@ -59,6 +57,10 @@ pub struct QueryFilter {
 
 #[cfg(test)]
 mod test {
+    use std::collections::BTreeMap;
+
+    use crate::protocols::ActionWho;
+
     use super::*;
     use chrono::Utc;
     use serde_json::json;
@@ -145,11 +147,11 @@ mod test {
             root_key_id: "root".to_string(),
             public_key_jwk: JWK::generate_ed25519().unwrap(),
         });
-        let actions = vec![protocols::Action::Who {
+        let actions = vec![protocols::Action::Who(ActionWho {
             who: protocols::Who::Anyone,
             of: None,
             can: vec![protocols::Can::Read],
-        }];
+        })];
 
         let role = Some(true);
         let size = Some(protocols::Size {

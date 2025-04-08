@@ -58,17 +58,17 @@ pub enum Can {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[skip_serializing_none]
 pub struct ActionWho {
-    who: Who,
+    pub who: Who,
     #[serde(skip_serializing_if = "Option::is_none")]
-    of: Option<String>,
-    can: Vec<Can>,
+    pub of: Option<String>,
+    pub can: Vec<Can>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ActionRole {
-    role: String,
+    pub role: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    can: Vec<Can>,
+    pub can: Vec<Can>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
