@@ -7,9 +7,10 @@ use crate::{
 use bytes::Bytes;
 use futures_core::{stream::BoxStream, Stream, TryStream};
 use futures_util::StreamExt;
+use serde::Serialize;
 use tower::Service;
 
-use dwn_rs_core::{Message, Response as DWNResponse};
+use dwn_rs_core::{descriptors::MessageDescriptor, Message, Response as DWNResponse};
 
 pub struct RemoteDWNInstance<T, S>
 where
@@ -48,7 +49,7 @@ where
         data: Option<S>,
     ) -> ClientResult<(DWNResponse, Option<impl Stream<Item = ClientResult<Bytes>>>)>
     where
-        D: MessageDescriptor + DeserializeOwned + Serialize + Send + 'static,
+        D: MessageDescriptor + Serialize + Send + 'static,
     {
         let res = self
             .rpc
@@ -64,9 +65,10 @@ where
             .await?;
 
         let (m, d) = match res.result {
-            jsonrpc::ResultError::Result(m) => Ok(m.reply),
+            jsonrpc::ResultError::Result(m) => Ok(m.result),
             jsonrpc::ResultError::Error(e) => Err(JSONRpcError::from(e)),
-        }?;
+        }?
+        .reply;
 
         let d = d.map(|d| match d {
             Ok(d) => Ok(d),

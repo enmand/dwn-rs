@@ -3,7 +3,7 @@ use std::{any::Any, fmt::Debug};
 use bytes::Bytes;
 use dwn_rs_core::Response as DWNResponse;
 use futures_core::{stream::BoxStream, Stream, TryStream};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tower::Service;
 use ulid::{Generator, Ulid};
 
@@ -46,6 +46,11 @@ pub struct Request {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct RPCResult<T> {
+    pub result: ResultData<T>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct ResultData<T> {
     pub reply: T,
 }
@@ -64,7 +69,7 @@ impl From<Error> for JSONRpcError {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ResultError<T> {
-    Result(ResultData<T>),
+    Result(RPCResult<T>),
     Error(Error),
 }
 
@@ -73,6 +78,7 @@ pub enum ResultError<T> {
 pub struct Response<T> {
     jsonrpc: Version,
     pub id: ID,
+    #[serde(flatten)]
     pub result: ResultError<T>,
 }
 
@@ -84,7 +90,9 @@ impl<T> Response<T> {
         Self {
             jsonrpc: Version::V2,
             id: id.into(),
-            result: ResultError::Result(ResultData { reply }),
+            result: ResultError::Result(RPCResult {
+                result: ResultData { reply },
+            }),
         }
     }
 }
@@ -129,7 +137,7 @@ where
         }
     }
 
-    pub async fn request<P: Serialize + DeserializeOwned>(
+    pub async fn request<P: Serialize>(
         &mut self,
         method: &'static str,
         params: P,
@@ -245,11 +253,13 @@ mod test {
                 response: Response {
                     jsonrpc: Version::V2,
                     id: ID::Number(1),
-                    result: ResultError::Result(ResultData {
-                        reply: "test".to_string(),
+                    result: ResultError::Result(RPCResult {
+                        result: ResultData {
+                            reply: "test".to_string(),
+                        },
                     }),
                 },
-                expected: r#"{"jsonrpc":"2.0","id":1,"result":"test"}"#,
+                expected: r#"{"jsonrpc":"2.0","id":1,"result":{"reply":"test"}}"#,
             },
             TestCase {
                 response: Response {

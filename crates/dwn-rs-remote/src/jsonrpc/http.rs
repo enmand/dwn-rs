@@ -93,9 +93,10 @@ where
             };
 
             let msg = match resp.0.result {
-                ResultError::Result(m) => Ok(m.reply),
+                ResultError::Result(m) => Ok(m.result),
                 ResultError::Error(e) => Err(JSONRpcError::from(e)),
-            }?;
+            }?
+            .reply;
             let body = resp.1;
 
             Ok(Response::new_v2(resp.0.id, (msg, body)))
