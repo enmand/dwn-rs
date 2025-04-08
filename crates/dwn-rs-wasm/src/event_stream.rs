@@ -96,7 +96,7 @@ async fn subscription_for_func(
             let indexes: IndexMap = indexes.into();
 
             let prom: JsValue = listener
-                .call3(&JsValue::NULL, &tenant, &evt.into(), &indexes)
+                .call3(&JsValue::NULL, &tenant, &evt, &indexes)
                 .expect_throw("unable to call listener function");
 
             if prom.is_instance_of::<Promise>() {
