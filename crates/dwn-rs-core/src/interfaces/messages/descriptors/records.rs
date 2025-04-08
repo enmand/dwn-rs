@@ -1,7 +1,7 @@
 use crate::descriptors::MessageDescriptor;
 use crate::encryption::{DerivationScheme, KeyEncryptionAlgorithm};
 use crate::fields::WriteFields;
-use crate::filters::messages::Records as RecordsFilter;
+use crate::filters::message_filters::Records as RecordsFilter;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_jwk::JWK;
