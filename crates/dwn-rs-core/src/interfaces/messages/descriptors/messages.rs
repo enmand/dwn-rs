@@ -1,5 +1,5 @@
 use crate::descriptors::MessageDescriptor;
-use crate::filters::messages::Messages as MessagesFilter;
+use crate::filters::message_filters::Messages as MessagesFilter;
 use crate::interfaces::messages::descriptors::{MESSAGES, QUERY, READ, SUBSCRIBE};
 use cid::Cid;
 use dwn_rs_message_derive::descriptor;
