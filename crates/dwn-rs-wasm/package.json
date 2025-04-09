@@ -5,7 +5,7 @@
     "dependencies": {
         "@tbd54566975/dwn-sdk-js": "0.5.1",
         "@types/readable-stream": "4.0.15",
-        "readable-stream": "4.5.2"
+        "readable-stream": "4.6.0"
     },
     "devDependencies": {
         "@rollup/plugin-alias": "^5.1.0",
