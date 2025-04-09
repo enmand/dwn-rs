@@ -1,8 +1,25 @@
+use crate::descriptors::MessageDescriptor;
+use crate::filters::message_filters::Messages as MessagesFilter;
+use crate::interfaces::messages::descriptors::{MESSAGES, QUERY, READ, SUBSCRIBE};
 use cid::Cid;
+use dwn_rs_message_derive::descriptor;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+
+use super::MessageParameters;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ReadParameters {
+    #[serde(rename = "messageCid")]
+    pub message_cid: Cid,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+}
+
+impl MessageParameters for ReadParameters {}
+
+#[descriptor(interface = MESSAGES, method = READ, fields = crate::auth::Authorization, parameters = ReadParameters)]
 pub struct ReadDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -13,8 +30,19 @@ pub struct ReadDescriptor {
     pub message_cid: Option<Cid>,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct QueryParameters {
+    pub filters: Option<MessagesFilter>,
+    pub cursor: Option<crate::Cursor>,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+}
+
+impl MessageParameters for QueryParameters {}
+
+#[descriptor(interface = MESSAGES, method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -27,8 +55,18 @@ pub struct QueryDescriptor {
     pub cursor: Option<crate::Cursor>,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct SubscribeParameters {
+    pub filters: Option<MessagesFilter>,
+    #[serde(rename = "messageTimestamp")]
+    pub message_timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "permissionGrantId")]
+    pub permission_grant_id: Option<String>,
+}
+
+impl MessageParameters for SubscribeParameters {}
+
+#[descriptor(interface = MESSAGES, method = SUBSCRIBE, fields = crate::auth::Authorization, parameters = SubscribeParameters)]
 pub struct SubscribeDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -65,6 +103,8 @@ mod test {
         let json = json!({
             "messageTimestamp": message_timestamp,
             "messageCid": message_cid,
+            "interface": MESSAGES,
+            "method": READ,
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
@@ -93,6 +133,8 @@ mod test {
             "messageTimestamp": message_timestamp,
             "filters": [crate::Filters::default()],
             "cursor": cursor,
+            "interface": MESSAGES,
+            "method": QUERY,
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
@@ -118,6 +160,8 @@ mod test {
         let json = json!({
             "messageTimestamp": message_timestamp,
             "filters": [crate::Filters::default()],
+            "interface": MESSAGES,
+            "method": SUBSCRIBE
         });
         assert_eq!(serde_json::to_value(&descriptor).unwrap(), json);
         assert_eq!(
