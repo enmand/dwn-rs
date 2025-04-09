@@ -5,6 +5,8 @@ use cid::Cid;
 use dwn_rs_message_derive::descriptor;
 use serde::{Deserialize, Serialize};
 
+use super::MessageParameters;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ReadParameters {
     #[serde(rename = "messageCid")]
@@ -14,6 +16,8 @@ pub struct ReadParameters {
     #[serde(rename = "permissionGrantId")]
     pub permission_grant_id: Option<String>,
 }
+
+impl MessageParameters for ReadParameters {}
 
 #[descriptor(interface = MESSAGES, method = READ, fields = crate::auth::Authorization, parameters = ReadParameters)]
 pub struct ReadDescriptor {
@@ -36,6 +40,8 @@ pub struct QueryParameters {
     pub permission_grant_id: Option<String>,
 }
 
+impl MessageParameters for QueryParameters {}
+
 #[descriptor(interface = MESSAGES, method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
     #[serde(
@@ -57,6 +63,8 @@ pub struct SubscribeParameters {
     #[serde(rename = "permissionGrantId")]
     pub permission_grant_id: Option<String>,
 }
+
+impl MessageParameters for SubscribeParameters {}
 
 #[descriptor(interface = MESSAGES, method = SUBSCRIBE, fields = crate::auth::Authorization, parameters = SubscribeParameters)]
 pub struct SubscribeDescriptor {

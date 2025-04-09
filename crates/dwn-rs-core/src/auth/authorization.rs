@@ -7,25 +7,6 @@ use super::jws::JWS;
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct Authorization {
     pub signature: JWS,
-    #[serde(rename = "ownerSignature", skip_serializing_if = "Option::is_none")]
-    pub owner_signature: Option<JWS>,
-}
-
-impl MessageFields for Authorization {}
-
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct AuthorizationDelegatedGrant {
-    pub signature: JWS,
-    #[serde(
-        rename = "authorDelegatedGrant",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub author_delegated_grant: Option<Box<Message<WriteDescriptor>>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct AuthorizationOwner {
-    pub signature: JWS,
     #[serde(
         rename = "authorDelegatedGrant",
         skip_serializing_if = "Option::is_none"
@@ -39,3 +20,5 @@ pub struct AuthorizationOwner {
     )]
     pub owner_delegated_grant: Option<Box<Message<WriteDescriptor>>>,
 }
+
+impl MessageFields for Authorization {}

@@ -19,7 +19,7 @@ where
     Ok(cid)
 }
 
-pub async fn generate_cid_from_serialized<T: serde::Serialize>(
+pub fn generate_cid_from_serialized<T: serde::Serialize>(
     data: T,
 ) -> Result<Cid, EncodeError<TryReserveError>> {
     let serialized = serde_ipld_dagcbor::to_vec(&data)?;
