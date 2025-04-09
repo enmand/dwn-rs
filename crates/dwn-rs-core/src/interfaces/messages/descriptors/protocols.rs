@@ -7,7 +7,7 @@ use crate::interfaces::messages::descriptors::{CONFIGURE, PROTOCOLS, QUERY};
 use crate::{protocols, Message};
 use dwn_rs_message_derive::descriptor;
 
-use super::RecordsWriteDescriptor;
+use super::{MessageParameters, RecordsWriteDescriptor};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ConfigureParameters {
@@ -20,7 +20,9 @@ pub struct ConfigureParameters {
     pub delegated_grant: Option<Message<RecordsWriteDescriptor>>,
 }
 
-#[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = ConfigureParameters)]
+impl MessageParameters for ConfigureParameters {}
+
+#[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::auth::Authorization, parameters = ConfigureParameters)]
 pub struct ConfigureDescriptor {
     #[serde(rename = "messageTimestamp")]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
@@ -35,6 +37,8 @@ pub struct QueryParameters {
     #[serde(rename = "permissionGrantId")]
     pub permission_grant_id: Option<String>,
 }
+
+impl MessageParameters for QueryParameters {}
 
 #[descriptor(interface = PROTOCOLS , method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {

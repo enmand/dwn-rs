@@ -3,10 +3,7 @@ use serde_with::skip_serializing_none;
 use ssi_jwk::JWK;
 
 use crate::{
-    auth::{
-        authorization::{Authorization, AuthorizationDelegatedGrant, AuthorizationOwner},
-        jws::JWS,
-    },
+    auth::{authorization::Authorization, jws::JWS},
     encryption::DerivationScheme,
     Value,
 };
@@ -35,7 +32,6 @@ pub enum Fields {
     Write(WriteFields),
     InitialWriteField(InitialWriteField),
     Authorization(Authorization),
-    AuthorizationDelegatedGrant(AuthorizationDelegatedGrantFields),
 }
 
 impl MessageFields for Fields {
@@ -53,15 +49,6 @@ impl MessageFields for Fields {
     }
 }
 
-/// ReadFields are the message fields for the RecordsRead interface method.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-pub struct AuthorizationDelegatedGrantFields {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authorization: Option<AuthorizationDelegatedGrant>,
-}
-
-impl MessageFields for AuthorizationDelegatedGrantFields {}
-
 // InitialWriteField represents the RecordsWrite interface method response that includes
 // the `initialWrite` data field if the original record was not the initial write.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -77,7 +64,7 @@ impl MessageFields for InitialWriteField {}
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct WriteFields {
-    pub authorization: AuthorizationOwner,
+    pub authorization: Authorization,
     #[serde(rename = "recordId")]
     pub record_id: Option<String>,
     #[serde(rename = "contextId")]
@@ -150,8 +137,7 @@ pub struct Encryption {
 
 #[cfg(test)]
 mod tests {
-    use crate::descriptors::{RecordsWriteDescriptor, RECORDS, WRITE};
-    use crate::{auth::jws::SignatureEntry, Message};
+    use crate::auth::jws::SignatureEntry;
 
     use super::*;
     use serde_json::{self, json};
@@ -160,10 +146,7 @@ mod tests {
 
     #[test]
     fn test_fields_serialization() {
-        use serde_json::json;
-
         let jwk = JWK::generate_ed25519().unwrap();
-        let now = chrono::Utc::now();
 
         // Define your test cases as structs or tuples.
         struct TestCase {
@@ -172,38 +155,12 @@ mod tests {
         }
 
         // Populate the vector with the test cases.
-        let tests = vec![
-            TestCase {
-                fields: Fields::Write(WriteFields {
-                    record_id: Some("record_id".to_string()),
-                    context_id: Some("context_id".to_string()),
-                    authorization: AuthorizationOwner {
-                        signature: JWS {
-                            payload: Some("payload".to_string()),
-                            signatures: Some(vec![SignatureEntry {
-                                protected: Some("protected".to_string()),
-                                signature: Some("signature".to_string()),
-                                ..Default::default()
-                            }]),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    },
-                    encryption: Some(Encryption {
-                        algorithm: EncryptionAlgorithm::A256CTR,
-                        initialization_vector: "initialization_vector".to_string(),
-                        key_encryption: vec![KeyEncryption {
-                            algorithm: KeyEncryptionAlgorithm::EciesEs256k,
-                            root_key_id: "root_key_id".to_string(),
-                            derivation_scheme: DerivationScheme::DataFormats,
-                            derived_public_key: None,
-                            encrypted_key: "encrypted_key".to_string(),
-                            initialization_vector: "initialization_vector".to_string(),
-                            ephemeral_public_key: jwk.clone(),
-                            message_authentication_code: "message_authentication_code".to_string(),
-                        }],
-                    }),
-                    attestation: Some(JWS {
+        let tests = vec![TestCase {
+            fields: Fields::Write(WriteFields {
+                record_id: Some("record_id".to_string()),
+                context_id: Some("context_id".to_string()),
+                authorization: Authorization {
+                    signature: JWS {
                         payload: Some("payload".to_string()),
                         signatures: Some(vec![SignatureEntry {
                             protected: Some("protected".to_string()),
@@ -211,11 +168,36 @@ mod tests {
                             ..Default::default()
                         }]),
                         ..Default::default()
-                    }),
-                    encoded_data: Some("encoded_data".to_string()),
+                    },
+                    ..Default::default()
+                },
+                encryption: Some(Encryption {
+                    algorithm: EncryptionAlgorithm::A256CTR,
+                    initialization_vector: "initialization_vector".to_string(),
+                    key_encryption: vec![KeyEncryption {
+                        algorithm: KeyEncryptionAlgorithm::EciesEs256k,
+                        root_key_id: "root_key_id".to_string(),
+                        derivation_scheme: DerivationScheme::DataFormats,
+                        derived_public_key: None,
+                        encrypted_key: "encrypted_key".to_string(),
+                        initialization_vector: "initialization_vector".to_string(),
+                        ephemeral_public_key: jwk.clone(),
+                        message_authentication_code: "message_authentication_code".to_string(),
+                    }],
                 }),
-                expected_json: format!(
-                    r#"{{
+                attestation: Some(JWS {
+                    payload: Some("payload".to_string()),
+                    signatures: Some(vec![SignatureEntry {
+                        protected: Some("protected".to_string()),
+                        signature: Some("signature".to_string()),
+                        ..Default::default()
+                    }]),
+                    ..Default::default()
+                }),
+                encoded_data: Some("encoded_data".to_string()),
+            }),
+            expected_json: format!(
+                r#"{{
                     "recordId": "record_id",
                     "contextId": "context_id",
                     "encryption": {{
@@ -256,64 +238,8 @@ mod tests {
                     }},
                     "encodedData": "encoded_data"
                 }}"#
-                ),
-            },
-            TestCase {
-                fields: Fields::AuthorizationDelegatedGrant(AuthorizationDelegatedGrantFields {
-                    authorization: Some(AuthorizationDelegatedGrant {
-                        // fill in all the fields with fake details
-                        signature: JWS::default(),
-                        author_delegated_grant: Some(Box::new(Message::<RecordsWriteDescriptor> {
-                            descriptor: crate::descriptors::RecordsWriteDescriptor {
-                                data_cid: "data_cid".to_string(),
-                                data_size: 0,
-                                date_created: now,
-                                message_timestamp: now,
-                                data_format: "data_format".to_string(),
-                                protocol: None,
-                                recipient: None,
-                                schema: None,
-                                tags: None,
-                                protocol_path: None,
-                                parent_id: None,
-                                published: None,
-                                date_published: None,
-                            },
-                            fields: WriteFields {
-                                record_id: Some("record".to_string()),
-                                context_id: Some("context".to_string()),
-                                authorization: AuthorizationOwner::default(),
-                                encryption: None,
-                                attestation: None,
-                                encoded_data: None,
-                            },
-                        })),
-                    }),
-                }),
-                expected_json: json!({
-                    "authorization": {
-                        "signature": JWS::default(),
-                        "authorDelegatedGrant": {
-                            "descriptor": json!({
-                                "interface": RECORDS,
-                                "method": WRITE,
-                                "dataCid": "data_cid",
-                                "dataSize": 0,
-                                "dateCreated": now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true),
-                                "messageTimestamp": now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true),
-                                "dataFormat": "data_format",
-                            }),
-                            "authorization": {
-                                "signature": JWS::default(),
-                            },
-                            "recordId": "record",
-                            "contextId": "context",
-                        },
-                    },
-                })
-                .to_string(),
-            },
-        ];
+            ),
+        }];
 
         for test in tests.iter() {
             let json = serde_json::to_value(&test.fields).unwrap();
@@ -398,7 +324,7 @@ mod tests {
         let fields = Fields::Write(WriteFields {
             record_id: Some("record_id".to_string()),
             context_id: None,
-            authorization: AuthorizationOwner::default(),
+            authorization: Authorization::default(),
             encryption: None,
             attestation: None,
             encoded_data: None,

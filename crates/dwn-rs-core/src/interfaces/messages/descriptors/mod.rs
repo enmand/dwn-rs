@@ -16,6 +16,8 @@ pub use records::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+use crate::cid::generate_cid_from_serialized;
+
 use super::fields::MessageFields;
 use thiserror::Error;
 
@@ -38,6 +40,16 @@ pub struct ValidationError {
     pub message: String,
 }
 
+pub(crate) trait MessageParameters {
+    fn build<D: MessageDescriptor, F: MessageFields>(&self) -> Result<(D, F), ValidationError> {
+        return Err(ValidationError {
+            message: String::from("not implemented"),
+        });
+    }
+}
+
+impl MessageParameters for () {}
+
 /// MessageDescriptor is a trait that all message descriptors must implement.
 /// It provides the interface and method for the message descriptor. The generic `Descriptor`
 /// implements this trait for use when the concrete type is not known. Concrete Descriptor types
@@ -52,10 +64,14 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
         + Sync
         + Clone;
 
-    type Parameters: Serialize + DeserializeOwned + std::fmt::Debug + PartialEq + Send + Sync;
+    type Parameters: MessageParameters + Send + Sync;
 
     fn interface(&self) -> &'static str;
     fn method(&self) -> &'static str;
+    fn cid(&self) -> cid::Cid {
+        generate_cid_from_serialized(self)
+            .expect("Failed to generate CID from serialized message descriptor")
+    }
 }
 
 pub trait MessageValidator {
