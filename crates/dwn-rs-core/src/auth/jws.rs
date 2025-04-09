@@ -1,7 +1,9 @@
 use base64::prelude::{BASE64_URL_SAFE_NO_PAD as base64url, *};
+use cid::Cid;
 use futures_util::{stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use ssi_jws::{Header, JwsSigner};
+use ssi_claims_core::SignatureError;
+use ssi_jws::{JwsPayload, JwsSigner};
 use thiserror::Error;
 
 use crate::MapValue;
@@ -26,75 +28,64 @@ pub struct JWS {
     pub extra: MapValue,
 }
 
-pub struct NoSigner {}
-impl JwsSigner for NoSigner {
-    async fn fetch_info(&self) -> Result<ssi_jws::JwsSignerInfo, ssi_claims_core::SignatureError> {
-        Ok(ssi_jws::JwsSignerInfo {
-            key_id: None,
-            algorithm: ssi_jwk::Algorithm::None,
-        })
-    }
+#[derive(Serialize)]
+pub struct Payload {
+    #[serde(rename = "descriptorCid")]
+    pub descriptor_cid: Cid,
+    #[serde(rename = "delegatedGrantId", skip_serializing_if = "Option::is_none")]
+    pub delegated_grant_id: Option<Cid>,
+    #[serde(rename = "permissionGrantId", skip_serializing_if = "Option::is_none")]
+    pub permission_grant_id: Option<String>,
+    #[serde(rename = "protocolRule", skip_serializing_if = "Option::is_none")]
+    pub protocol_rule: Option<String>,
+}
 
-    async fn sign_bytes(
-        &self,
-        _signing_bytes: &[u8],
-    ) -> Result<Vec<u8>, ssi_claims_core::SignatureError> {
-        Ok(Vec::new())
+impl JwsPayload for Payload {
+    fn payload_bytes(&self) -> std::borrow::Cow<[u8]> {
+        let payload = serde_json::to_vec(self).expect("could not serialize payload");
+        std::borrow::Cow::Owned(payload)
     }
 }
 
 impl JWS {
-    pub async fn create<S>(payload: Vec<u8>, signers: Option<Vec<S>>) -> Result<Self, JwsError>
+    pub async fn create<S, P>(payload: P, signers: Option<Vec<S>>) -> Result<Self, JwsError>
     where
         S: JwsSigner,
+        P: JwsPayload,
     {
-        let payload = base64url.encode(payload);
+        let encoded_payload = base64url.encode(payload.payload_bytes());
 
         if let Some(signers) = signers {
             let signatures = Self::generate_signatures(signers, &payload).await?;
             Ok(Self {
-                payload: Some(payload),
+                payload: Some(encoded_payload),
                 signatures: Some(signatures),
                 header: None,
                 extra: MapValue::default(),
             })
         } else {
-            Ok(Self {
-                payload: Some(payload),
-                signatures: None,
-                header: None,
-                extra: MapValue::default(),
-            })
+            Err(JwsError::SignError(SignatureError::MissingSigner))
         }
     }
 
-    async fn generate_signatures<S>(
+    async fn generate_signatures<S, P>(
         signers: Vec<S>,
-        payload_encoded: &str,
+        payload: P,
     ) -> Result<Vec<SignatureEntry>, JwsError>
     where
         S: JwsSigner,
+        P: JwsPayload + Clone + Copy,
     {
         stream::iter(signers)
             .then(|signer| async move {
+                let payload = payload.clone();
                 let result: Result<SignatureEntry, JwsError> = async {
-                    let info = signer.fetch_info().await?;
-                    let header = Header {
-                        algorithm: info.algorithm,
-                        key_id: info.key_id,
-                        ..Default::default()
-                    };
-                    let header = serde_json::to_vec(&header)?;
-                    let protected_header = base64url.encode(header);
-
-                    let sign_input = format!("{}.{}", protected_header, payload_encoded);
-
-                    let signature = signer.sign(&sign_input).await?;
-                    let signature = base64url.encode(signature.as_bytes());
+                    let payload = payload.clone();
+                    let signature = signer.sign_into_decoded(payload).await?;
 
                     Ok(SignatureEntry {
-                        protected: Some(protected_header),
-                        signature: Some(signature),
+                        protected: Some(signature.header().encode()),
+                        signature: Some(signature.signature.encode()),
                         extra: MapValue::default(),
                     })
                 }
@@ -144,15 +135,5 @@ mod tests {
             .as_ref()
             .unwrap()
             .is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_jws_create_no_signers() {
-        let jws = JWS::create::<NoSigner>(b"hello world".to_vec(), None)
-            .await
-            .expect("could not create JWS");
-
-        assert_eq!(jws.payload, Some("aGVsbG8gd29ybGQ".to_string()));
-        assert!(jws.signatures.is_none());
     }
 }

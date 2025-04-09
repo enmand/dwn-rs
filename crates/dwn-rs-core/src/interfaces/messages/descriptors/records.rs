@@ -10,6 +10,8 @@ use crate::interfaces::messages::descriptors::{DELETE, QUERY, READ, RECORDS, SUB
 use crate::{MapValue, Message, Pagination};
 use dwn_rs_message_derive::descriptor;
 
+use super::MessageParameters;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ReadParameters {
     pub filters: RecordsFilter,
@@ -23,9 +25,11 @@ pub struct ReadParameters {
     pub delegated_grant: Option<Message<WriteDescriptor>>,
 }
 
+impl MessageParameters for ReadParameters {}
+
 /// ReadDescriptor represents the RecordsRead interface method for reading a given
 /// record by ID.
-#[descriptor(interface = RECORDS, method = READ, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = RecordsFilter)]
+#[descriptor(interface = RECORDS, method = READ, fields = crate::auth::Authorization, parameters = ReadParameters)]
 pub struct ReadDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -48,6 +52,8 @@ pub struct QueryParameters {
     #[serde(rename = "delegatedGrant")]
     pub delegated_grant: Option<Message<WriteDescriptor>>,
 }
+
+impl MessageParameters for QueryParameters {}
 
 // QueryDescriptor represents the RecordsQuery interface method for querying records.
 #[skip_serializing_none]
@@ -134,6 +140,8 @@ pub struct WriteParameters {
     pub permission_grant_id: Option<String>,
 }
 
+impl MessageParameters for WriteParameters {}
+
 /// WriteDescriptor represents the RecordsWrite interface method for writing a record to the DWN.
 /// It can be represented with either no additional fields (`()`), or additional descriptor fields,
 /// as in the case for `encodedData`.
@@ -183,7 +191,9 @@ pub struct SubscribeParameters {
     pub delegated_grant: Option<WriteFields>,
 }
 
-#[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::fields::AuthorizationDelegatedGrantFields, parameters = SubscribeParameters)]
+impl MessageParameters for SubscribeParameters {}
+
+#[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::auth::Authorization, parameters = SubscribeParameters)]
 pub struct SubscribeDescriptor {
     #[serde(
         rename = "messageTimestamp",
@@ -206,6 +216,8 @@ pub struct DeleteParameters {
     #[serde(rename = "delegatedGrant")]
     pub delegated_grant: Option<WriteFields>,
 }
+
+impl MessageParameters for DeleteParameters {}
 
 #[descriptor(interface = RECORDS, method = DELETE, fields = crate::auth::Authorization, parameters = DeleteParameters)]
 pub struct DeleteDescriptor {

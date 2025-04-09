@@ -2,11 +2,19 @@ pub mod descriptors;
 pub mod fields;
 pub mod protocols;
 
+use std::collections::TryReserveError;
+
+use crate::auth::{jws, JWS};
+use crate::cid::generate_cid_from_serialized;
+use crate::{auth::Authorization, interfaces::messages::descriptors::MessageParameters};
+use cid::Cid;
 pub use descriptors::Descriptor;
-use descriptors::{MessageDescriptor, MessageValidator, ValidationError};
+use descriptors::{MessageDescriptor, MessageValidator, RecordsWriteDescriptor, ValidationError};
 pub use fields::Fields;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_ipld_dagcbor::EncodeError;
+use ssi_jws::JwsSigner;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Message<D: MessageDescriptor + DeserializeOwned> {
@@ -19,6 +27,98 @@ impl<D: MessageDescriptor + MessageValidator> Message<D> {
         descriptor.validate()?;
 
         Ok(Self { descriptor, fields })
+    }
+}
+
+impl<D: MessageDescriptor> Message<D> {
+    pub fn cid(&self) -> Result<Cid, EncodeError<TryReserveError>> {
+        generate_cid_from_serialized(self)
+    }
+
+    pub async fn create<S: JwsSigner>(
+        parameters: D::Parameters,
+        signer: Option<S>,
+    ) -> Result<Self, ValidationError> {
+        let (descriptor, fields) = parameters.build()?;
+
+        let delegated_grant = None;
+        let permission_grant_id = None;
+        let protocol_rule = None;
+
+        if let Some(signer) = signer {
+            let authorization = Self::create_authorization(
+                &descriptor,
+                signer,
+                delegated_grant,
+                permission_grant_id,
+                protocol_rule,
+            )
+            .await?;
+        }
+
+        Ok(Self { descriptor, fields })
+    }
+
+    async fn create_authorization<S: JwsSigner>(
+        descriptor: &D,
+        signer: S,
+        delegated_grant: Option<Message<RecordsWriteDescriptor>>,
+        permission_grant_id: Option<String>,
+        protocol_rule: Option<String>,
+    ) -> Result<Authorization, ValidationError> {
+        let delegated_grant_id: Option<Cid> = if let Some(delegated_grant) = delegated_grant.clone()
+        {
+            Some(delegated_grant.cid().map_err(|err| ValidationError {
+                message: err.to_string(),
+            })?)
+        } else {
+            None
+        };
+
+        let signature = Self::create_signature(
+            descriptor,
+            signer,
+            delegated_grant_id,
+            permission_grant_id,
+            protocol_rule,
+        )
+        .await?;
+
+        let mut authorization = Authorization {
+            signature,
+            ..Default::default()
+        };
+
+        if let Some(grant) = delegated_grant {
+            authorization.author_delegated_grant = Some(Box::new(grant));
+        }
+
+        Ok(authorization)
+    }
+
+    async fn create_signature<S: JwsSigner>(
+        descriptor: &D,
+        signer: S,
+        delegated_grant_id: Option<Cid>,
+        permission_grant_id: Option<String>,
+        protocol_rule: Option<String>,
+    ) -> Result<JWS, ValidationError> {
+        let descriptor_cid = descriptor.cid();
+
+        let payload = jws::Payload {
+            descriptor_cid,
+            delegated_grant_id,
+            permission_grant_id,
+            protocol_rule,
+        };
+
+        let signature = jws::JWS::create(payload, Some(vec![signer]))
+            .await
+            .map_err(|e| ValidationError {
+                message: e.to_string(),
+            })?;
+
+        Ok(signature)
     }
 }
 
@@ -87,6 +187,8 @@ mod test {
 
     #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
     struct TestParameters {}
+
+    impl MessageParameters for TestParameters {}
 
     const INTERFACE: &str = "interface";
     const METHOD: &str = "method";
