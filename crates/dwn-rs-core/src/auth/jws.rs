@@ -47,6 +47,19 @@ impl JwsPayload for Payload {
     }
 }
 
+#[derive(Serialize)]
+pub struct AttestationPayload {
+    #[serde(rename = "descriptorCid")]
+    pub descriptor_cid: Cid,
+}
+
+impl JwsPayload for AttestationPayload {
+    fn payload_bytes(&self) -> std::borrow::Cow<[u8]> {
+        let payload = serde_json::to_vec(self).expect("could not serialize attestation payload");
+        std::borrow::Cow::Owned(payload)
+    }
+}
+
 impl JWS {
     pub async fn create<S, P>(payload: P, signers: Option<Vec<S>>) -> Result<Self, JwsError>
     where

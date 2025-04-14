@@ -15,10 +15,11 @@ pub use records::{
     SubscribeDescriptor, WriteDescriptor as RecordsWriteDescriptor,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use ssi_jws::JwsSigner;
 
 use crate::cid::generate_cid_from_serialized;
 
-use super::fields::MessageFields;
+use super::{fields::MessageFields, Fields};
 use thiserror::Error;
 
 pub const RECORDS: &str = "Records";
@@ -40,15 +41,25 @@ pub struct ValidationError {
     pub message: String,
 }
 
-pub(crate) trait MessageParameters {
-    fn build<D: MessageDescriptor, F: MessageFields>(&self) -> Result<(D, F), ValidationError> {
-        return Err(ValidationError {
+pub trait MessageParameters {
+    type Descriptor: MessageDescriptor;
+    type Fields: MessageFields;
+
+    #[allow(async_fn_in_trait)]
+    async fn build<S: JwsSigner>(
+        &self,
+        _signer: Option<S>,
+    ) -> Result<(Self::Descriptor, Self::Fields), ValidationError> {
+        Err(ValidationError {
             message: String::from("not implemented"),
-        });
+        })
     }
 }
 
-impl MessageParameters for () {}
+impl MessageParameters for () {
+    type Descriptor = Descriptor;
+    type Fields = Fields;
+}
 
 /// MessageDescriptor is a trait that all message descriptors must implement.
 /// It provides the interface and method for the message descriptor. The generic `Descriptor`
@@ -68,6 +79,7 @@ pub trait MessageDescriptor: Serialize + DeserializeOwned + PartialEq {
 
     fn interface(&self) -> &'static str;
     fn method(&self) -> &'static str;
+
     fn cid(&self) -> cid::Cid {
         generate_cid_from_serialized(self)
             .expect("Failed to generate CID from serialized message descriptor")
