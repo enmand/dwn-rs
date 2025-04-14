@@ -1,6 +1,6 @@
 use ssi_jwk::{Params, JWK};
 
-use super::{secp256k1, secretkey, x25519, Error, PublicKeyError, PublicKeyTrait};
+use super::{secp256k1, secretkey, x25519, EncryptOut, Error, PublicKeyError, PublicKeyTrait};
 
 impl From<secp256k1::PublicKey> for PublicKey {
     fn from(pk: secp256k1::PublicKey) -> Self {
@@ -18,8 +18,6 @@ pub enum PublicKey {
     Secp256k1(secp256k1::PublicKey),
     X25519(x25519::PublicKey),
 }
-
-// Maximum potential size utilized here based on known key sizes.
 
 impl PublicKey {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
@@ -59,7 +57,7 @@ impl PublicKey {
         }
     }
 
-    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn encrypt(&self, data: &[u8]) -> Result<EncryptOut, Error> {
         match self {
             PublicKey::Secp256k1(pk) => pk.encrypt(data),
             PublicKey::X25519(pk) => pk.encrypt(data),
