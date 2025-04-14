@@ -53,12 +53,14 @@ where
     C::NonceSize: ArrayLength<u8>,
 {
     type KeySize = C::KeySize;
+    type TagSize = C::TagSize;
 
     fn new(key: GenericArray<u8, Self::KeySize>) -> Result<Self, super::Error> {
         let cipher = C::new(&key);
         Ok(Self { cipher, iv: None })
     }
 
+    // encrypt the data in place and return (ciphertext, tag)
     fn encrypt(&mut self, data: &mut BytesMut) -> Result<Bytes, super::Error> {
         let mut data = AEADBufferBytesMut(data);
         if let Some(iv) = &self.iv {

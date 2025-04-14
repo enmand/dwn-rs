@@ -7,12 +7,9 @@ use pin_project_lite::pin_project;
 use thiserror::Error;
 
 pub mod aead;
-pub mod aes_ctr;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("AES-256-CTR encryption error: {0}")]
-    AES256CTR(#[from] aes_ctr::Error),
     #[error("AEAD encryption error: {0}")]
     AEAD(#[from] aead::Error),
 }
@@ -41,6 +38,7 @@ pub trait StreamEncryptionExt: Stream {
 
 pub trait Encryption {
     type KeySize: ArrayLength<u8>;
+    type TagSize: ArrayLength<u8>;
 
     fn new(key: GenericArray<u8, Self::KeySize>) -> Result<Self, Error>
     where
@@ -113,6 +111,7 @@ where
             Some(Err(e)) => return Poll::Ready(Some(Err(e))),
             None => return Poll::Ready(None),
         };
+
         Poll::Ready(Some(this.encryption.encrypt(&mut bytes)))
     }
 }
