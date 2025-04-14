@@ -2,48 +2,51 @@ use std::collections::BTreeMap;
 
 use cid::Cid;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 use crate::Value;
 
 use super::{Filter, RangeFilter};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[skip_serializing_none]
 pub struct Records {
-    author: Option<Vec<String>>,
-    attester: Option<String>,
-    recipient: Option<Vec<String>>,
-    protocol: Option<String>,
+    pub author: Option<Vec<String>>,
+    pub attester: Option<String>,
+    pub recipient: Option<Vec<String>>,
+    pub protocol: Option<String>,
     #[serde(rename = "protocolPath")]
-    protocol_path: Option<String>,
-    published: Option<bool>,
+    pub protocol_path: Option<String>,
+    pub published: Option<bool>,
 
     #[serde(rename = "contextId")]
-    context_id: Option<String>,
-    schema: Option<String>,
-    tags: Option<BTreeMap<String, Filter<Value>>>,
+    pub context_id: Option<String>,
+    pub schema: Option<String>,
+    pub tags: Option<BTreeMap<String, Filter<Value>>>,
     #[serde(rename = "recordId")]
-    record_id: Option<String>,
+    pub record_id: Option<String>,
     #[serde(rename = "parentId")]
-    parent_id: Option<String>,
+    pub parent_id: Option<String>,
     #[serde(rename = "dataFormat")]
-    data_format: Option<String>,
+    pub data_format: Option<String>,
     #[serde(rename = "dataSize")]
-    data_size: Option<RangeFilter<u64>>,
+    pub data_size: Option<RangeFilter<u64>>,
     #[serde(rename = "dataCid")]
-    data_cid: Option<Cid>,
+    pub data_cid: Option<Cid>,
     #[serde(rename = "dateCreated")]
-    date_created: Option<RangeFilter<String>>,
+    pub date_created: Option<RangeFilter<String>>,
     #[serde(rename = "datePublished")]
-    date_published: Option<RangeFilter<String>>,
+    pub date_published: Option<RangeFilter<String>>,
     #[serde(rename = "dateUpdated")]
-    date_updated: Option<RangeFilter<String>>,
+    pub date_updated: Option<RangeFilter<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[skip_serializing_none()]
 pub struct Messages {
-    interface: Option<String>,
-    method: Option<String>,
-    protocol: Option<String>,
+    pub interface: Option<String>,
+    pub method: Option<String>,
+    pub protocol: Option<String>,
     #[serde(rename = "messageTimestamp")]
-    message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
 }

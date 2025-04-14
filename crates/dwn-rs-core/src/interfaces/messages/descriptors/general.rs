@@ -165,7 +165,7 @@ impl MessageDescriptor for Messages {
 mod test {
     use serde_json::json;
 
-    use crate::Filters;
+    use crate::filters::Records as RecordsFilter;
 
     #[test]
     fn test_descriptor_serialize() {
@@ -174,10 +174,10 @@ mod test {
         let now = chrono::Utc::now();
         let desc = Descriptor::Records(Records::Read(ReadDescriptor {
             message_timestamp: now,
-            filter: Filters::default(),
+            filter: RecordsFilter::default(),
         }));
         let serialized = json!(&desc);
-        let expected = json!({"interface": RECORDS,"method": READ, "messageTimestamp": now, "filter": Filters::default()});
+        let expected = json!({"interface": RECORDS,"method": READ, "messageTimestamp": now, "filter": RecordsFilter::default()});
 
         assert_eq!(serialized, expected);
     }
