@@ -2,14 +2,15 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_dids_core::DIDBuf;
 
+use crate::auth::Authorization;
 use crate::descriptors::MessageDescriptor;
 use crate::interfaces::messages::descriptors::{CONFIGURE, PROTOCOLS, QUERY};
 use crate::{protocols, Message};
 use dwn_rs_message_derive::descriptor;
 
-use super::{MessageParameters, RecordsWriteDescriptor};
+use super::{MessageParameters, MessageValidator, RecordsWriteDescriptor};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct ConfigureParameters {
     #[serde(rename = "messageTimestamp")]
     pub message_timestamp: Option<chrono::DateTime<chrono::Utc>>,
@@ -20,7 +21,12 @@ pub struct ConfigureParameters {
     pub delegated_grant: Option<Message<RecordsWriteDescriptor>>,
 }
 
-impl MessageParameters for ConfigureParameters {}
+impl MessageValidator for ConfigureDescriptor {}
+
+impl MessageParameters for ConfigureParameters {
+    type Descriptor = ConfigureDescriptor;
+    type Fields = Authorization;
+}
 
 #[descriptor(interface = PROTOCOLS, method = CONFIGURE, fields = crate::auth::Authorization, parameters = ConfigureParameters)]
 pub struct ConfigureDescriptor {
@@ -29,7 +35,7 @@ pub struct ConfigureDescriptor {
     pub definition: protocols::Definition,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct QueryParameters {
     pub filter: Option<QueryFilterParameters>,
     #[serde(rename = "messageTimestamp")]
@@ -38,7 +44,12 @@ pub struct QueryParameters {
     pub permission_grant_id: Option<String>,
 }
 
-impl MessageParameters for QueryParameters {}
+impl MessageValidator for QueryParameters {}
+
+impl MessageParameters for QueryParameters {
+    type Descriptor = QueryDescriptor;
+    type Fields = Authorization;
+}
 
 #[descriptor(interface = PROTOCOLS , method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
@@ -47,7 +58,7 @@ pub struct QueryDescriptor {
     pub filter: Option<QueryFilter>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct QueryFilterParameters {
     pub protocol: String,
 }

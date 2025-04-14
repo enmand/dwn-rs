@@ -30,7 +30,37 @@ impl<D: MessageDescriptor + MessageValidator> Message<D> {
     }
 }
 
-impl<D: MessageDescriptor> Message<D> {
+impl Message<RecordsWriteDescriptor> {
+    // attest is used to add an attestation to a message. It can be called multiple
+    // times to add multiple attestations. The message must be a RecordsWriteDescriptor.
+    pub async fn attest<S: JwsSigner>(&mut self, signers: Vec<S>) -> Result<(), ValidationError> {
+        let descriptor_cid = self.descriptor.cid();
+
+        let payload = jws::AttestationPayload { descriptor_cid };
+
+        let signature = jws::JWS::create(payload, Some(signers))
+            .await
+            .map_err(|e| ValidationError {
+                message: e.to_string(),
+            })?;
+
+        self.fields.attestation = Some(signature);
+
+        Ok(())
+    }
+
+    pub fn unattest<S: JwsSigner>(&mut self) -> Result<(), ValidationError> {
+        self.fields.attestation = None;
+
+        Ok(())
+    }
+}
+
+impl<D> Message<D>
+where
+    D: MessageDescriptor + DeserializeOwned,
+    D::Parameters: MessageParameters<Descriptor = D, Fields = D::Fields>,
+{
     pub fn cid(&self) -> Result<Cid, EncodeError<TryReserveError>> {
         generate_cid_from_serialized(self)
     }
@@ -39,22 +69,7 @@ impl<D: MessageDescriptor> Message<D> {
         parameters: D::Parameters,
         signer: Option<S>,
     ) -> Result<Self, ValidationError> {
-        let (descriptor, fields) = parameters.build()?;
-
-        let delegated_grant = None;
-        let permission_grant_id = None;
-        let protocol_rule = None;
-
-        if let Some(signer) = signer {
-            let authorization = Self::create_authorization(
-                &descriptor,
-                signer,
-                delegated_grant,
-                permission_grant_id,
-                protocol_rule,
-            )
-            .await?;
-        }
+        let (descriptor, fields) = parameters.build::<S>(signer).await?;
 
         Ok(Self { descriptor, fields })
     }
@@ -181,14 +196,17 @@ mod test {
     use fields::MessageFields;
     use serde_json::json;
 
-    use crate::{auth::Authorization, Filters};
+    use crate::auth::Authorization;
 
     use super::*;
 
     #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
     struct TestParameters {}
 
-    impl MessageParameters for TestParameters {}
+    impl MessageParameters for TestParameters {
+        type Descriptor = TestDescriptor;
+        type Fields = TestFields;
+    }
 
     const INTERFACE: &str = "interface";
     const METHOD: &str = "method";
@@ -236,7 +254,7 @@ mod test {
 
         let desc = Descriptor::Records(Records::Read(ReadDescriptor {
             message_timestamp: now,
-            filter: Filters::default(),
+            filter: crate::filters::Records::default(),
         }));
         let fields = Fields::Authorization(Authorization {
             ..Default::default()
@@ -247,7 +265,7 @@ mod test {
         let expected = json!({
                 "descriptor": {
                     "messageTimestamp": now,
-                    "filter": Filters::default(),
+                    "filter": crate::filters::Records::default(),
                     "interface":"Records","method":"Read"
                 },
                 "signature":{}
