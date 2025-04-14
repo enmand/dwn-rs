@@ -74,7 +74,7 @@ pub enum ParseError {
 
 const HKDF_KEY_LENGTH: usize = 32; // * 8 (without sign); // 32 bytes = 256 bits
 
-trait SecretKeyTrait: Sized {
+pub trait SecretKeyTrait: Sized {
     type KeySize: ArrayLength<u8>;
     type PublicKey: PublicKeyTrait<SecretKey = Self>;
 
@@ -119,7 +119,14 @@ trait SecretKeyTrait: Sized {
     }
 }
 
-trait PublicKeyTrait: Sized {
+pub struct EncryptOut {
+    pub ciphertext: Vec<u8>,
+    pub ephemeral_pk: Vec<u8>,
+    pub nonce: Vec<u8>,
+    pub tag: Vec<u8>,
+}
+
+pub trait PublicKeyTrait: Sized {
     type KeySize: ArrayLength<u8>;
     type SecretKey: SecretKeyTrait<PublicKey = Self>;
     type SymmetricEncryption: Encryption + IVEncryption;
@@ -136,7 +143,7 @@ trait PublicKeyTrait: Sized {
     >;
 
     // (EC)IES encryption for PublicKey
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
+    fn encrypt(&self, data: &[u8]) -> Result<EncryptOut, Error> {
         let (empheral_sk, ephemeral_pk) = Self::SecretKey::generate_keypair();
         let key = empheral_sk.encapsulate(self)?;
 
@@ -149,9 +156,22 @@ trait PublicKeyTrait: Sized {
         let mut res = Vec::new();
         res.extend_from_slice(&ephemeral_pk.to_bytes());
         res.extend_from_slice(&nonce);
-        res.extend_from_slice(&ciphertext); // ciphertext includes tag
 
-        Ok(res)
+        let tag_len = <<Self::SymmetricEncryption as Encryption>::TagSize as Unsigned>::USIZE;
+        let ciphertext_len = ciphertext.len();
+        let tag_start = ciphertext_len - tag_len;
+        let tag_end = ciphertext_len;
+        let tag = &ciphertext[tag_start..tag_end];
+
+        res.extend_from_slice(&ciphertext[..tag_start]);
+        res.extend_from_slice(tag);
+
+        Ok(EncryptOut {
+            ciphertext: res,
+            ephemeral_pk: ephemeral_pk.to_bytes(),
+            nonce: nonce.to_vec(),
+            tag: tag.to_vec(),
+        })
     }
 }
 
@@ -193,7 +213,7 @@ mod tests {
         let ciphertext = pk.encrypt(plaintext).unwrap();
 
         // Decrypt using the secret key
-        let decrypted = sk.decrypt(&ciphertext).unwrap();
+        let decrypted = sk.decrypt(&ciphertext.ciphertext).unwrap();
 
         // Ensure the decrypted data matches the original plaintext
         assert_eq!(decrypted, plaintext);
@@ -211,7 +231,7 @@ mod tests {
         let ciphertext = pk.encrypt(&plaintext).unwrap();
 
         // Decrypt using the secret key
-        let decrypted = sk.decrypt(&ciphertext).unwrap();
+        let decrypted = sk.decrypt(&ciphertext.ciphertext).unwrap();
 
         // Ensure the decrypted data matches the original plaintext
         assert_eq!(decrypted, plaintext);
@@ -229,7 +249,7 @@ mod tests {
         let ciphertext = pk.encrypt(plaintext).unwrap();
 
         // Decrypt using the secret key
-        let decrypted = sk.decrypt(&ciphertext).unwrap();
+        let decrypted = sk.decrypt(&ciphertext.ciphertext).unwrap();
 
         // Ensure the decrypted data matches the original plaintext
         assert_eq!(decrypted, plaintext);
@@ -276,10 +296,10 @@ mod tests {
         let mut ciphertext = pk.encrypt(plaintext).unwrap();
 
         // Corrupt the nonce in the ciphertext
-        ciphertext[32..48].copy_from_slice(&[0u8; 16]); // Overwrite nonce with zeros
+        ciphertext.ciphertext[32..48].copy_from_slice(&[0u8; 16]); // Overwrite nonce with zeros
 
         // Attempt to decrypt
-        let result = sk.decrypt(&ciphertext);
+        let result = sk.decrypt(&ciphertext.ciphertext);
 
         // Ensure the operation fails with the correct error
         assert!(result.is_err());
@@ -295,11 +315,11 @@ mod tests {
         let mut ciphertext = pk.encrypt(plaintext).unwrap();
 
         // Corrupt the tag in the ciphertext
-        let len = ciphertext.len();
-        ciphertext[len - 1] ^= 0xFF; // Flip the last byte of the tag
+        let len = ciphertext.ciphertext.len();
+        ciphertext.ciphertext[len - 1] ^= 0xFF; // Flip the last byte of the tag
 
         // Attempt to decrypt
-        let result = sk.decrypt(&ciphertext);
+        let result = sk.decrypt(&ciphertext.ciphertext);
 
         // Ensure the operation fails with the correct error
         assert!(matches!(result, Err(Error::EncryptionError(_))));
@@ -316,7 +336,7 @@ mod tests {
         let ciphertext = pk1.encrypt(plaintext).unwrap();
 
         // Attempt to decrypt using the second secret key
-        let result = sk2.decrypt(&ciphertext);
+        let result = sk2.decrypt(&ciphertext.ciphertext);
 
         // Ensure the operation fails with the correct error
         assert!(matches!(result, Err(Error::EncryptionError(_))));
