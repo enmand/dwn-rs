@@ -4,6 +4,8 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
+use cid::Cid;
+use dwn_rs_core::RangeFilter;
 use serde::de::DeserializeOwned;
 use surrealdb::sql::{value as surreal_value, Cond, Function, Idiom, Subquery};
 use surrealdb::{
@@ -64,7 +66,7 @@ where
 }
 
 pub trait CursorValue<T> {
-    fn cid(&self) -> ipld_core::cid::Cid;
+    fn cid(&self) -> Cid;
     fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
 }
 
@@ -127,16 +129,19 @@ where
 
                                 Ok((k, Operator::Equal, format!("${}", alias)).try_into()?)
                             }
-                            Filter::Range((lower, upper)) => {
-                                let (cond, binds) =
-                                    handle_range_filter((k.clone(), alias), (lower, upper))?;
+                            Filter::Range(range) => match range {
+                                RangeFilter::Criterion(lower, upper)
+                                | RangeFilter::Numeric(lower, upper) => {
+                                    let (cond, binds) =
+                                        handle_range_filter((k.clone(), alias), (lower, upper))?;
 
-                                let not_none: SCond =
-                                    (k, Operator::NotEqual, Value::None).try_into()?;
+                                    let not_none: SCond =
+                                        (k, Operator::NotEqual, Value::None).try_into()?;
 
-                                self.binds.extend(binds);
-                                Ok(cond.and(not_none))
-                            }
+                                    self.binds.extend(binds);
+                                    Ok(cond.and(not_none))
+                                }
+                            },
                             Filter::OneOf(v) => {
                                 self.binds.insert(alias.clone(), v.into());
 
@@ -242,7 +247,6 @@ where
             }
             None => stmt.cond,
         };
-
 
         let mut q = self
             .db
