@@ -1,3 +1,4 @@
+use crate::auth::Authorization;
 use crate::descriptors::MessageDescriptor;
 use crate::filters::message_filters::Messages as MessagesFilter;
 use crate::interfaces::messages::descriptors::{MESSAGES, QUERY, READ, SUBSCRIBE};
@@ -5,9 +6,9 @@ use cid::Cid;
 use dwn_rs_message_derive::descriptor;
 use serde::{Deserialize, Serialize};
 
-use super::MessageParameters;
+use super::{MessageParameters, MessageValidator};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct ReadParameters {
     #[serde(rename = "messageCid")]
     pub message_cid: Cid,
@@ -17,7 +18,12 @@ pub struct ReadParameters {
     pub permission_grant_id: Option<String>,
 }
 
-impl MessageParameters for ReadParameters {}
+impl MessageValidator for ReadParameters {}
+
+impl MessageParameters for ReadParameters {
+    type Descriptor = ReadDescriptor;
+    type Fields = Authorization;
+}
 
 #[descriptor(interface = MESSAGES, method = READ, fields = crate::auth::Authorization, parameters = ReadParameters)]
 pub struct ReadDescriptor {
@@ -30,7 +36,7 @@ pub struct ReadDescriptor {
     pub message_cid: Option<Cid>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct QueryParameters {
     pub filters: Option<MessagesFilter>,
     pub cursor: Option<crate::Cursor>,
@@ -40,7 +46,12 @@ pub struct QueryParameters {
     pub permission_grant_id: Option<String>,
 }
 
-impl MessageParameters for QueryParameters {}
+impl MessageValidator for QueryParameters {}
+
+impl MessageParameters for QueryParameters {
+    type Descriptor = QueryDescriptor;
+    type Fields = Authorization;
+}
 
 #[descriptor(interface = MESSAGES, method = QUERY, fields = crate::auth::Authorization, parameters = QueryParameters)]
 pub struct QueryDescriptor {
@@ -55,7 +66,7 @@ pub struct QueryDescriptor {
     pub cursor: Option<crate::Cursor>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct SubscribeParameters {
     pub filters: Option<MessagesFilter>,
     #[serde(rename = "messageTimestamp")]
@@ -64,7 +75,12 @@ pub struct SubscribeParameters {
     pub permission_grant_id: Option<String>,
 }
 
-impl MessageParameters for SubscribeParameters {}
+impl MessageValidator for SubscribeParameters {}
+
+impl MessageParameters for SubscribeParameters {
+    type Descriptor = SubscribeDescriptor;
+    type Fields = Authorization;
+}
 
 #[descriptor(interface = MESSAGES, method = SUBSCRIBE, fields = crate::auth::Authorization, parameters = SubscribeParameters)]
 pub struct SubscribeDescriptor {

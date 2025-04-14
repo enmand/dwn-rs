@@ -6,6 +6,32 @@ use rand::{distributions::Alphanumeric, Rng};
 use ssi_dids_core::DIDBuf;
 use std::str::FromStr;
 use thiserror::Error;
+use url::Url;
+
+#[derive(Error, Debug)]
+pub enum URLError {
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(#[from] url::ParseError),
+    #[error("Invalid URL scheme: {0}")]
+    InvalidScheme(String),
+}
+
+pub fn normalize_url(url: &str) -> Result<String, URLError> {
+    let mut url = Url::parse(url)?;
+
+    url.set_fragment(None);
+    url.set_query(None);
+
+    if url.path().is_empty() {
+        url.set_path("/");
+    }
+
+    if url.scheme().is_empty() {
+        let _ = url.set_scheme("http");
+    }
+
+    Ok(url.to_string())
+}
 
 #[derive(Error, Debug)]
 pub enum PersonaError {
