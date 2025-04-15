@@ -1,4 +1,4 @@
-use base64::prelude::{BASE64_URL_SAFE_NO_PAD as base64url, *};
+use base64::prelude::{Engine, BASE64_URL_SAFE_NO_PAD as base64url};
 use cid::Cid;
 use futures_util::{stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,26 @@ pub struct SignatureEntry {
     pub signature: Option<String>,
     #[serde(flatten)] // TODO: remove?
     pub extra: MapValue,
+}
+
+#[cfg(test)]
+pub struct NoSigner {}
+
+#[cfg(test)]
+impl JwsSigner for NoSigner {
+    async fn fetch_info(&self) -> Result<ssi_jws::JwsSignerInfo, ssi_claims_core::SignatureError> {
+        Ok(ssi_jws::JwsSignerInfo {
+            key_id: None,
+            algorithm: ssi_jwk::Algorithm::None,
+        })
+    }
+
+    async fn sign_bytes(
+        &self,
+        _signing_bytes: &[u8],
+    ) -> Result<Vec<u8>, ssi_claims_core::SignatureError> {
+        Ok(Vec::new())
+    }
 }
 
 #[cfg(test)]

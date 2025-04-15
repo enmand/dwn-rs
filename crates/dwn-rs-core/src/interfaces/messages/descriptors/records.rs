@@ -1,3 +1,4 @@
+use super::{MessageParameters, MessageValidator};
 use crate::auth::Authorization;
 use crate::descriptors::{MessageDescriptor, ValidationError};
 use crate::encryption::asymmetric::publickey::PublicKey;
@@ -10,8 +11,7 @@ use crate::{normalize_url, MapValue, Message, Pagination};
 
 use dwn_rs_message_derive::descriptor;
 
-use super::{MessageParameters, MessageValidator};
-
+use base64::prelude::{Engine, BASE64_URL_SAFE_NO_PAD as base64url};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_jwk::JWK;
@@ -452,6 +452,8 @@ mod test {
 
     use chrono::{DateTime, SecondsFormat, Utc};
 
+    use crate::auth::jws::NoSigner;
+
     use super::*;
 
     #[tokio::test]
@@ -468,6 +470,8 @@ mod test {
             filters: RecordsFilter::default(),
             ..Default::default()
         };
+
+        let (build_rd, _) = rp.build::<NoSigner>(None).await.unwrap();
 
         let rd = ReadDescriptor {
             message_timestamp,
