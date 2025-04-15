@@ -10,13 +10,6 @@ pub use hd_keys::{DerivedPrivateJWK, HashAlgorithm};
 use serde::{Deserialize, Serialize};
 use ssi_jwk::JWK;
 
-/// EncryptionAlgorithm represents the encryption algorithm used for encrypting records. Currently
-/// A256CTR is the only supported algorithm.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum EncryptionAlgorithm {
-    A256CTR,
-}
-
 // DerivationScheme represents the derivation scheme used for deriving keys for encryption.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum DerivationScheme {
@@ -48,7 +41,7 @@ pub enum KeyEncryptionAlgorithmAsymmetric {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum KeyEncryptionAlgorithmSymmetric {
-    #[serde(rename = "A256CTR")]
+    #[serde(rename = "A256GCM")] // dwn-sdk-js does aes-gcm but calls the property aes-ctr
     AES256CTR,
     #[serde(rename = "A256GCM")]
     AES256GCM,
@@ -79,7 +72,7 @@ pub struct KeyEncryption {
 /// Encryption represents the encryption used for encrypting records.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Encryption {
-    pub algorithm: EncryptionAlgorithm,
+    pub algorithm: KeyEncryptionAlgorithm,
     #[serde(rename = "initializationVector")]
     pub initialization_vector: String,
     #[serde(rename = "keyEncryption")]

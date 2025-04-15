@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use ssi_jwk::JWK;
 
 use crate::{
     auth::{authorization::Authorization, jws::JWS},
-    encryption::DerivationScheme,
+    encryption::Encryption,
     Value,
 };
 
@@ -90,54 +89,15 @@ impl MessageFields for WriteFields {
     }
 }
 
-/// EncryptionAlgorithm represents the encryption algorithm used for encrypting records. Currently
-/// A256CTR is the only supported algorithm.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum EncryptionAlgorithm {
-    A256CTR,
-}
-
-/// KeyEncryptionAlgorithm represents the key encryption algorithm used for encrypting keys.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum KeyEncryptionAlgorithm {
-    #[serde(rename = "ECIES-ES256K")]
-    #[allow(non_camel_case_types)]
-    EciesEs256k,
-}
-
-/// KeyEncryption represents the key encryption used for encrypting keys.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct KeyEncryption {
-    pub algorithm: KeyEncryptionAlgorithm,
-    #[serde(rename = "rootKeyId")]
-    pub root_key_id: String,
-    #[serde(rename = "derivationScheme")]
-    pub derivation_scheme: DerivationScheme,
-    #[serde(rename = "derivedPublicKey")]
-    pub derived_public_key: Option<JWK>,
-    #[serde(rename = "encryptedKey")]
-    pub encrypted_key: String,
-    #[serde(rename = "initializationVector")]
-    pub initialization_vector: String,
-    #[serde(rename = "ephemeralPublicKey")]
-    pub ephemeral_public_key: JWK,
-    #[serde(rename = "messageAuthenticationCode")]
-    pub message_authentication_code: String,
-}
-
-/// Encryption represents the encryption used for encrypting records.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Encryption {
-    pub algorithm: EncryptionAlgorithm,
-    #[serde(rename = "initializationVector")]
-    pub initialization_vector: String,
-    #[serde(rename = "keyEncryption")]
-    pub key_encryption: Vec<KeyEncryption>,
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::auth::jws::SignatureEntry;
+    use crate::{
+        auth::jws::SignatureEntry,
+        encryption::{
+            DerivationScheme, KeyEncryption, KeyEncryptionAlgorithm,
+            KeyEncryptionAlgorithmAsymmetric, KeyEncryptionAlgorithmSymmetric,
+        },
+    };
 
     use super::*;
     use serde_json::{self, json};
@@ -172,10 +132,14 @@ mod tests {
                     ..Default::default()
                 },
                 encryption: Some(Encryption {
-                    algorithm: EncryptionAlgorithm::A256CTR,
+                    algorithm: KeyEncryptionAlgorithm::Symmetric(
+                        KeyEncryptionAlgorithmSymmetric::AES256GCM,
+                    ),
                     initialization_vector: "initialization_vector".to_string(),
                     key_encryption: vec![KeyEncryption {
-                        algorithm: KeyEncryptionAlgorithm::EciesEs256k,
+                        algorithm: KeyEncryptionAlgorithm::Asymmetric(
+                            KeyEncryptionAlgorithmAsymmetric::EciesSecp256k1,
+                        ),
                         root_key_id: "root_key_id".to_string(),
                         derivation_scheme: DerivationScheme::DataFormats,
                         derived_public_key: None,
@@ -201,7 +165,7 @@ mod tests {
                     "recordId": "record_id",
                     "contextId": "context_id",
                     "encryption": {{
-                        "algorithm": "A256CTR",
+                        "algorithm": "A256GCM",
                         "initializationVector": "initialization_vector",
                         "keyEncryption": [
                             {{
@@ -258,7 +222,7 @@ mod tests {
                 "recordId": "record_id",
                 "contextId": "context_id",
                 "encryption": {{
-                    "algorithm": "A256CTR",
+                    "algorithm": "A256GCM",
                     "initializationVector": "initialization_vector",
                     "keyEncryption": [
                         {{
