@@ -482,10 +482,11 @@ mod test {
         let de: ReadDescriptor = serde_json::from_str(&ser).unwrap();
 
         assert_eq!(rd, de);
+        assert_eq!(build_rd, de);
     }
 
-    #[test]
-    fn test_query_descriptor() {
+    #[tokio::test]
+    async fn test_query_descriptor() {
         let message_timestamp = DateTime::from_str(
             Utc::now()
                 .to_rfc3339_opts(SecondsFormat::Micros, true)
@@ -493,17 +494,28 @@ mod test {
         )
         .unwrap();
 
+        let qp = QueryParameters {
+            message_timestamp: Some(message_timestamp),
+            filter: Some(RecordsFilter::default()),
+            date_sort: Some(DateSort::CreatedAscending),
+            pagination: Some(Pagination::default()),
+            ..Default::default()
+        };
+
         let qd = QueryDescriptor {
             message_timestamp,
             filter: Default::default(),
-            pagination: None,
-            date_sort: None,
+            pagination: Some(Pagination::default()),
+            date_sort: Some(DateSort::CreatedAscending),
         };
+
+        let (build_qd, _) = qp.build::<NoSigner>(None).await.unwrap();
 
         let ser = serde_json::to_string(&qd).unwrap();
         let de: QueryDescriptor = serde_json::from_str(&ser).unwrap();
 
         assert_eq!(qd, de);
+        assert_eq!(build_qd, de);
     }
 
     #[test]
