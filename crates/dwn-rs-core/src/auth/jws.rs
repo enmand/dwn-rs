@@ -91,9 +91,7 @@ impl JWS {
     {
         stream::iter(signers)
             .then(|signer| async move {
-                let payload = payload.clone();
                 let result: Result<SignatureEntry, JwsError> = async {
-                    let payload = payload.clone();
                     let signature = signer.sign_into_decoded(payload).await?;
 
                     Ok(SignatureEntry {
