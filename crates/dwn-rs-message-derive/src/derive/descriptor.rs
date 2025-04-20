@@ -109,7 +109,7 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
         fields.named.push(
             syn::Field::parse_named
                 .parse2(quote_spanned!(ast.span() =>
-                        pub method: String
+                   pub method: String
                 ))
                 .expect("failed to parse fields"),
         );
@@ -144,7 +144,8 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
             }
         }
 
-       impl #generics MessageDescriptor for #ident #generics #where_clause {
+        impl #generics MessageDescriptor for #ident #generics #where_clause
+        {
             type Fields = #fields;
             type Parameters = #parameters;
 
@@ -157,52 +158,52 @@ pub(crate) fn impl_descriptor_macro_attr(attrs: DescriptorAttr, input: TokenStre
             }
         }
 
-       #[derive(serde::Deserialize)]
-       struct #deserialize_message_ident<D>
-       where
-           D: crate::interfaces::messages::descriptors::MessageDescriptor + serde::de::DeserializeOwned,
-       {
-           descriptor: #ident,
-           #[serde(flatten)]
-           fields: D::Fields,
-       }
-
-       impl<'de> serde::Deserialize<'de> for crate::Message<#ident>
-       {
-           fn deserialize<Des>(deserializer: Des) -> Result<Self, Des::Error>
-           where
-               Des: serde::Deserializer<'de>,
-           {
-               // Deserialize the internal struct
-               let inner: #deserialize_message_ident<#ident> = serde::Deserialize::deserialize(deserializer)?;
-
-               // Return the message
-               Ok(crate::Message {
-                   descriptor: inner.descriptor,
-                   fields: inner.fields,
-               })
-           }
+        #[derive(serde::Deserialize)]
+        struct #deserialize_message_ident<D>
+        where
+            D: crate::interfaces::messages::descriptors::MessageDescriptor + serde::de::DeserializeOwned,
+        {
+            descriptor: #ident,
+            #[serde(flatten)]
+            fields: D::Fields,
         }
 
-       impl<'de>serde::Deserialize<'de> for crate::MessageEvent<#ident> {
-           fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-           where
-               D: serde::Deserializer<'de>,
-           {
-               #[derive(serde::Deserialize)]
-               struct TempEvent {
-                   pub message: crate::Message<#ident>,
-                   #[serde(rename = "initialWrite")]
-                   pub initial_write: Option<crate::Message<crate::interfaces::messages::descriptors::records::WriteDescriptor>>,
-               }
+        impl<'de> serde::Deserialize<'de> for crate::Message<#ident>
+        {
+            fn deserialize<Des>(deserializer: Des) -> Result<Self, Des::Error>
+            where
+                Des: serde::Deserializer<'de>,
+            {
+                // Deserialize the internal struct
+                let inner: #deserialize_message_ident<#ident> = serde::Deserialize::deserialize(deserializer)?;
+
+                // Return the message
+                Ok(crate::Message {
+                    descriptor: inner.descriptor,
+                    fields: inner.fields,
+                })
+            }
+         }
+
+        impl<'de>serde::Deserialize<'de> for crate::MessageEvent<#ident> {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                #[derive(serde::Deserialize)]
+                struct TempEvent {
+                    pub message: crate::Message<#ident>,
+                    #[serde(rename = "initialWrite")]
+                    pub initial_write: Option<crate::Message<crate::interfaces::messages::descriptors::records::WriteDescriptor>>,
+                }
                 let temp_event = TempEvent::deserialize(deserializer)?;
 
-               Ok(Self {
-                   message: temp_event.message,
-                   initial_write: temp_event.initial_write,
-               })
-           }
-       }
+                Ok(Self {
+                    message: temp_event.message,
+                    initial_write: temp_event.initial_write,
+                })
+            }
+        }
     };
     output
 }
