@@ -9,4 +9,4 @@ package-lock.json
 RESOLVERCACHE/
 crates/dwn-rs-wasm/node_modules
 crates/dwn-rs-wasm/coverage
-.envrc
+.direnv
