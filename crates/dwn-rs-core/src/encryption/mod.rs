@@ -41,7 +41,7 @@ pub enum KeyEncryptionAlgorithmAsymmetric {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum KeyEncryptionAlgorithmSymmetric {
-    #[serde(rename = "A256GCM")] // dwn-sdk-js does aes-gcm but calls the property aes-ctr
+    #[serde(rename = "A256CTR")] // dwn-sdk-js does aes-gcm but calls the property aes-ctr
     AES256CTR,
     #[serde(rename = "A256GCM")]
     AES256GCM,
