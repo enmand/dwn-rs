@@ -6,6 +6,7 @@ use std::collections::TryReserveError;
 
 use crate::auth::{jws, JWS};
 use crate::cid::generate_cid_from_serialized;
+use crate::fields::MessageFields;
 use crate::{auth::Authorization, interfaces::messages::descriptors::MessageParameters};
 use cid::Cid;
 pub use descriptors::Descriptor;
@@ -69,7 +70,24 @@ where
         parameters: D::Parameters,
         signer: Option<S>,
     ) -> Result<Self, ValidationError> {
-        let (descriptor, fields) = parameters.build::<S>(signer).await?;
+        let (descriptor, fields) = parameters.build().await?;
+
+        let auth = if let Some(signer) = signer {
+            Self::create_authorization(
+                &descriptor,
+                signer,
+                parameters.delegated_grant().clone(),
+                parameters.permission_grant_id().clone(),
+                parameters.protocol_rule().clone(),
+            )
+            .await?
+        } else {
+            Authorization::default()
+        };
+
+        // If the fields are None, we create an empty Fields instance.
+        let mut fields = fields.unwrap_or_default();
+        fields.set_authorization(auth);
 
         Ok(Self { descriptor, fields })
     }
@@ -226,7 +244,7 @@ mod test {
         }
     }
 
-    #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+    #[derive(Serialize, Default, Deserialize, Clone, PartialEq, Debug)]
     struct TestFields {
         field1: String,
         field2: i32,

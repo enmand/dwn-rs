@@ -5,6 +5,7 @@ pub mod records;
 
 pub use general::*;
 
+use crate::cid::generate_cid_from_serialized;
 pub use messages::{
     QueryDescriptor as MessagesQueryDescriptor, ReadDescriptor as MessagesReadDescriptor,
     SubscribeDescriptor as MessagesSubscribeDescriptor,
@@ -15,11 +16,8 @@ pub use records::{
     SubscribeDescriptor, WriteDescriptor as RecordsWriteDescriptor,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use ssi_jws::JwsSigner;
 
-use crate::cid::generate_cid_from_serialized;
-
-use super::{fields::MessageFields, Fields};
+use super::{fields::MessageFields, Fields, Message};
 use thiserror::Error;
 
 pub const RECORDS: &str = "Records";
@@ -46,13 +44,22 @@ pub trait MessageParameters {
     type Fields: MessageFields;
 
     #[allow(async_fn_in_trait)]
-    async fn build<S: JwsSigner>(
-        &self,
-        _signer: Option<S>,
-    ) -> Result<(Self::Descriptor, Self::Fields), ValidationError> {
+    async fn build(&self) -> Result<(Self::Descriptor, Option<Self::Fields>), ValidationError> {
         Err(ValidationError {
             message: String::from("not implemented"),
         })
+    }
+
+    fn delegated_grant(&self) -> Option<Message<RecordsWriteDescriptor>> {
+        None
+    }
+
+    fn permission_grant_id(&self) -> Option<String> {
+        None
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        None
     }
 }
 

@@ -2,8 +2,10 @@ use super::{MessageParameters, MessageValidator};
 use crate::auth::Authorization;
 use crate::descriptors::{MessageDescriptor, ValidationError};
 use crate::encryption::asymmetric::publickey::PublicKey;
-use crate::encryption::asymmetric::PublicKeyTrait;
-use crate::encryption::{DerivationScheme, KeyEncryptionAlgorithm};
+use crate::encryption::{
+    DerivationScheme, Encryption, KeyEncryption, KeyEncryptionAlgorithm,
+    KeyEncryptionAlgorithmAsymmetric, KeyEncryptionAlgorithmSymmetric,
+};
 use crate::fields::WriteFields;
 use crate::filters::message_filters::Records as RecordsFilter;
 use crate::interfaces::messages::descriptors::{DELETE, QUERY, READ, RECORDS, SUBSCRIBE, WRITE};
@@ -15,7 +17,6 @@ use base64::prelude::{Engine, BASE64_URL_SAFE_NO_PAD as base64url};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ssi_jwk::JWK;
-use ssi_jws::JwsSigner;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub struct ReadParameters {
@@ -40,28 +41,27 @@ impl MessageParameters for ReadParameters {
     type Descriptor = ReadDescriptor;
     type Fields = crate::auth::Authorization;
 
-    async fn build<S: JwsSigner>(
+    async fn build(
         &self,
-        signer: Option<S>,
-    ) -> Result<(Self::Descriptor, self::Authorization), super::ValidationError> {
+    ) -> Result<(Self::Descriptor, Option<Self::Fields>), super::ValidationError> {
         let descriptor = ReadDescriptor {
             message_timestamp: self.message_timestamp.unwrap_or_else(chrono::Utc::now),
             filter: self.filters.clone(),
         };
 
-        let mut authorization = Authorization::default();
-        if let Some(signer) = signer {
-            authorization = Message::create_authorization(
-                &descriptor,
-                signer,
-                self.delegated_grant.clone(),
-                self.permission_grant_id.clone(),
-                self.protocol_role.clone(),
-            )
-            .await?;
-        }
+        Ok((descriptor, None))
+    }
 
-        Ok((descriptor, authorization))
+    fn delegated_grant(&self) -> Option<Message<WriteDescriptor>> {
+        self.delegated_grant.clone()
+    }
+
+    fn permission_grant_id(&self) -> Option<String> {
+        self.permission_grant_id.clone()
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        self.protocol_role.clone()
     }
 }
 
@@ -121,10 +121,9 @@ impl MessageParameters for QueryParameters {
     type Descriptor = QueryDescriptor;
     type Fields = Authorization;
 
-    async fn build<S: JwsSigner>(
+    async fn build(
         &self,
-        signer: Option<S>,
-    ) -> Result<(Self::Descriptor, Self::Fields), super::ValidationError> {
+    ) -> Result<(Self::Descriptor, Option<Self::Fields>), super::ValidationError> {
         let descriptor = QueryDescriptor {
             message_timestamp: self.message_timestamp.unwrap_or_else(chrono::Utc::now),
             filter: self.filter.clone().unwrap_or_default(),
@@ -132,19 +131,15 @@ impl MessageParameters for QueryParameters {
             pagination: self.pagination.clone(),
         };
 
-        let mut authorization = Authorization::default();
-        if let Some(signer) = signer {
-            authorization = Message::create_authorization(
-                &descriptor,
-                signer,
-                self.delegated_grant.clone(),
-                None,
-                self.protocol_role.clone(),
-            )
-            .await?;
-        }
+        Ok((descriptor, None))
+    }
 
-        Ok((descriptor, authorization))
+    fn delegated_grant(&self) -> Option<Message<WriteDescriptor>> {
+        self.delegated_grant.clone()
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        self.protocol_role.clone()
     }
 }
 
@@ -261,18 +256,21 @@ impl MessageValidator for WriteParameters {
         }
 
         if let Some(encryption_input) = &self.encryption_input {
-            encryption_input.key_encryption_input.iter().map(|input| {
-                match (&input.derivation_schema, &self.protocol, &self.schema) {
-                    (DerivationScheme::ProtocolPath, None, _) => Err(ValidationError {
-                        message: "'protocols' encryption requires a protocol".to_string(),
-                    }),
-                    (DerivationScheme::Schemas, _, None) => Err(ValidationError {
-                        message: "'schemas' encryption requires a schema".to_string(),
-                    }),
-                    (_, Some(_), Some(_)) => Ok(()),
-                    (_, _, _) => Ok(()),
-                }
-            });
+            encryption_input
+                .key_encryption_input
+                .iter()
+                .try_for_each(|input| {
+                    match (&input.derivation_schema, &self.protocol, &self.schema) {
+                        (DerivationScheme::ProtocolPath, None, _) => Err(ValidationError {
+                            message: "'protocols' encryption requires a protocol".to_string(),
+                        }),
+                        (DerivationScheme::Schemas, _, None) => Err(ValidationError {
+                            message: "'schemas' encryption requires a schema".to_string(),
+                        }),
+                        (_, Some(_), Some(_)) => Ok(()),
+                        (_, _, _) => Ok(()),
+                    }
+                })?;
         }
 
         Ok(())
@@ -283,10 +281,9 @@ impl MessageParameters for WriteParameters {
     type Descriptor = WriteDescriptor;
     type Fields = WriteFields;
 
-    async fn build<S: JwsSigner>(
+    async fn build(
         &self,
-        _signer: Option<S>,
-    ) -> Result<(Self::Descriptor, Self::Fields), super::ValidationError> {
+    ) -> Result<(Self::Descriptor, Option<Self::Fields>), super::ValidationError> {
         let data_cid = self.data_cid.clone().unwrap_or(
             crate::cid::generate_cid(self.data.clone().unwrap_or_default())
                 .map_err(|e| ValidationError {
@@ -336,18 +333,77 @@ impl MessageParameters for WriteParameters {
             }
         }
 
+        let mut fields = WriteFields {
+            ..Default::default()
+        };
+
         if let Some(encryption_input) = &self.encryption_input {
-            let key_encryption = encryption_input.key_encryption_input.iter().map(
-                |input| -> Result<(), crate::encryption::asymmetric::Error> {
-                    let jwk = PublicKey::try_from(input.public_key.to_public())?;
-                    let key_enc_output = jwk.encrypt(&encryption_input.key)?;
+            let key_encryption = encryption_input
+                .key_encryption_input
+                .iter()
+                .map(
+                    |input| -> Result<KeyEncryption, crate::encryption::asymmetric::Error> {
+                        let jwk = PublicKey::try_from(input.public_key.to_public())?;
+                        let key_enc_output = jwk.encrypt(&encryption_input.key)?;
 
-                    Ok(())
-                },
-            );
+                        let key = base64url
+                            .encode(key_enc_output.ciphertext.as_slice())
+                            .to_string();
+                        let initialization_vector = base64url
+                            .encode(key_enc_output.nonce.as_slice())
+                            .to_string();
+                        let ephemeral_public_key =
+                            PublicKey::from_bytes(key_enc_output.ephemeral_pk.as_slice())?.jwk();
+                        let message_authentication_code =
+                            base64url.encode(key_enc_output.tag.as_slice()).to_string();
+
+                        Ok(KeyEncryption {
+                            algorithm: input.algorithm.clone().unwrap_or(
+                                KeyEncryptionAlgorithm::Asymmetric(
+                                    KeyEncryptionAlgorithmAsymmetric::EciesSecp256k1,
+                                ),
+                            ),
+                            derivation_scheme: input.derivation_schema.clone(),
+                            root_key_id: input.public_key_id.clone(),
+                            ephemeral_public_key,
+                            initialization_vector,
+                            encrypted_key: key,
+                            message_authentication_code,
+                            derived_public_key: match input.derivation_schema {
+                                DerivationScheme::ProtocolContext => Some(input.public_key.clone()),
+                                _ => None,
+                            },
+                        })
+                    },
+                )
+                .filter_map(|result| result.ok())
+                .collect();
+
+            fields.encryption = Some(Encryption {
+                algorithm: encryption_input.clone().algorithm.unwrap_or(
+                    KeyEncryptionAlgorithm::Symmetric(KeyEncryptionAlgorithmSymmetric::AES256GCM),
+                ),
+                initialization_vector: base64url
+                    .encode(encryption_input.initialization_vector.as_slice())
+                    .to_string(),
+                key_encryption,
+            });
         }
+        fields.record_id = self.record_id.clone();
 
-        todo!()
+        Ok((descriptor, Some(fields)))
+    }
+
+    fn delegated_grant(&self) -> Option<Message<WriteDescriptor>> {
+        self.delegated_grant.clone()
+    }
+
+    fn permission_grant_id(&self) -> Option<String> {
+        self.permission_grant_id.clone()
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        self.protocol_role.clone()
     }
 }
 
@@ -397,12 +453,35 @@ pub struct SubscribeParameters {
     #[serde(rename = "protocolRole")]
     pub protocol_role: Option<String>,
     #[serde(rename = "delegatedGrant")]
-    pub delegated_grant: Option<WriteFields>,
+    pub delegated_grant: Option<Message<WriteDescriptor>>,
+}
+
+impl MessageValidator for SubscribeParameters {
+    fn validate(&self) -> Result<(), super::ValidationError> {
+        Ok(())
+    }
 }
 
 impl MessageParameters for SubscribeParameters {
     type Descriptor = SubscribeDescriptor;
     type Fields = Authorization;
+
+    async fn build(&self) -> Result<(Self::Descriptor, Option<Self::Fields>), ValidationError> {
+        let descriptor = SubscribeDescriptor {
+            message_timestamp: self.message_timestamp.unwrap_or_else(chrono::Utc::now),
+            filter: self.filters.clone(),
+        };
+
+        Ok((descriptor, None))
+    }
+
+    fn delegated_grant(&self) -> Option<Message<WriteDescriptor>> {
+        self.delegated_grant.clone()
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        self.protocol_role.clone()
+    }
 }
 
 #[descriptor(interface = RECORDS, method = SUBSCRIBE, fields = crate::auth::Authorization, parameters = SubscribeParameters)]
@@ -412,7 +491,7 @@ pub struct SubscribeDescriptor {
         serialize_with = "crate::ser::serialize_datetime"
     )]
     pub message_timestamp: chrono::DateTime<chrono::Utc>,
-    pub filter: crate::Filters,
+    pub filter: RecordsFilter,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
@@ -426,12 +505,42 @@ pub struct DeleteParameters {
     #[serde(rename = "protocolRole")]
     pub prune: Option<bool>,
     #[serde(rename = "delegatedGrant")]
-    pub delegated_grant: Option<WriteFields>,
+    pub delegated_grant: Option<Message<WriteDescriptor>>,
+}
+
+impl MessageValidator for DeleteParameters {
+    fn validate(&self) -> Result<(), super::ValidationError> {
+        if self.record_id.is_empty() {
+            return Err(super::ValidationError {
+                message: "recordId is required".to_string(),
+            });
+        }
+
+        Ok(())
+    }
 }
 
 impl MessageParameters for DeleteParameters {
     type Descriptor = DeleteDescriptor;
     type Fields = Authorization;
+
+    async fn build(&self) -> Result<(Self::Descriptor, Option<Self::Fields>), ValidationError> {
+        let descriptor = DeleteDescriptor {
+            message_timestamp: self.message_timestamp.unwrap_or_else(chrono::Utc::now),
+            record_id: self.record_id.clone(),
+            prune: self.prune.unwrap_or(false),
+        };
+
+        Ok((descriptor, None))
+    }
+
+    fn delegated_grant(&self) -> Option<Message<WriteDescriptor>> {
+        self.delegated_grant.clone()
+    }
+
+    fn protocol_rule(&self) -> Option<String> {
+        self.protocol_role.clone()
+    }
 }
 
 #[descriptor(interface = RECORDS, method = DELETE, fields = crate::auth::Authorization, parameters = DeleteParameters)]
@@ -452,8 +561,6 @@ mod test {
 
     use chrono::{DateTime, SecondsFormat, Utc};
 
-    use crate::auth::jws::NoSigner;
-
     use super::*;
 
     #[tokio::test]
@@ -471,7 +578,7 @@ mod test {
             ..Default::default()
         };
 
-        let (build_rd, _) = rp.build::<NoSigner>(None).await.unwrap();
+        let (build_rd, _) = rp.build().await.unwrap();
 
         let rd = ReadDescriptor {
             message_timestamp,
@@ -509,7 +616,7 @@ mod test {
             date_sort: Some(DateSort::CreatedAscending),
         };
 
-        let (build_qd, _) = qp.build::<NoSigner>(None).await.unwrap();
+        let (build_qd, _) = qp.build().await.unwrap();
 
         let ser = serde_json::to_string(&qd).unwrap();
         let de: QueryDescriptor = serde_json::from_str(&ser).unwrap();
