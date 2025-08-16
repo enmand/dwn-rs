@@ -30,6 +30,7 @@
 
         nativeBuildInputs = with pkgs; [
           rustToolchain
+          cargo-make
           pkg-config
           openssl
           protobuf
@@ -111,8 +112,7 @@
               export HOME=$TMPDIR
               ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (name: value: "export ${name}=\"${toString value}\"") wasmEnv)}
               
-              cd crates/dwn-rs-wasm
-              wasm-pack build --target ${target} --out-dir ${outDir}
+              cargo make build-wasm -- --out-dir ${outDir}
               ${extraBuildCommands}
             '';
 
@@ -208,7 +208,6 @@
               cargo-audit
               cargo-deny
               cargo-outdated
-              cargo-make
 
               # Documentation tools
               mdbook
