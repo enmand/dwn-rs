@@ -177,7 +177,9 @@ mod test {
             filter: RecordsFilter::default(),
         }));
         let serialized = json!(&desc);
-        let expected = json!({"interface": RECORDS,"method": READ, "messageTimestamp": now, "filter": RecordsFilter::default()});
+
+        let formatted_timestamp = now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true);
+        let expected = json!({"interface": RECORDS,"method": READ, "messageTimestamp": formatted_timestamp, "filter": RecordsFilter::default()});
 
         assert_eq!(serialized, expected);
     }
