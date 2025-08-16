@@ -21,4 +21,11 @@ pub struct Authorization {
     pub owner_delegated_grant: Option<Box<Message<WriteDescriptor>>>,
 }
 
-impl MessageFields for Authorization {}
+impl MessageFields for Authorization {
+    fn set_authorization(&mut self, authorization: Authorization) {
+        self.signature = authorization.signature;
+        self.author_delegated_grant = authorization.author_delegated_grant;
+        self.owner_signature = authorization.owner_signature;
+        self.owner_delegated_grant = authorization.owner_delegated_grant;
+    }
+}
