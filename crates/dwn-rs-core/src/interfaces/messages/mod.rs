@@ -280,9 +280,10 @@ mod test {
 
         let message = Message::new(desc, fields).unwrap();
         let serialized = json!(&message);
+        let fmt_now = now.to_rfc3339_opts(chrono::SecondsFormat::Micros, true);
         let expected = json!({
                 "descriptor": {
-                    "messageTimestamp": now,
+                    "messageTimestamp": fmt_now,
                     "filter": crate::filters::Records::default(),
                     "interface":"Records","method":"Read"
                 },
