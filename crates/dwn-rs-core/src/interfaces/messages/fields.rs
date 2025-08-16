@@ -12,7 +12,7 @@ use super::{descriptors::records::WriteDescriptor, Message};
 /// MessageFields is a trait that all message fields must implement.
 /// It provides the interface and method for the message fields. The generic `Fields`
 /// implements this trait for use when the concrete type is not known.
-pub trait MessageFields {
+pub trait MessageFields: Default {
     /// encoded_data returns the encoded data for the message fields (if any),
     /// and removes the encoded data fields from the Message Fields.
     fn encoded_data(&mut self) -> Option<Value> {
@@ -23,6 +23,10 @@ pub trait MessageFields {
     fn encode_data(&mut self, _data: Value) {
         // no-op
     }
+
+    fn set_authorization(&mut self, mut _authorization: Authorization) {
+        unimplemented!("set_authorization not implemented for this message fields type");
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -31,6 +35,19 @@ pub enum Fields {
     Write(WriteFields),
     InitialWriteField(InitialWriteField),
     Authorization(Authorization),
+}
+
+impl Default for Fields {
+    fn default() -> Self {
+        Fields::Write(WriteFields {
+            authorization: Authorization::default(),
+            record_id: None,
+            context_id: None,
+            encryption: None,
+            attestation: None,
+            encoded_data: None,
+        })
+    }
 }
 
 impl MessageFields for Fields {
@@ -46,11 +63,42 @@ impl MessageFields for Fields {
             encoded_write.encoded_data = Some(data.to_string());
         }
     }
+
+    fn set_authorization(&mut self, authorization: Authorization) {
+        match self {
+            Fields::Write(write_fields) => write_fields.authorization = authorization,
+            Fields::InitialWriteField(initial_write_field) => {
+                initial_write_field.write_fields.authorization = authorization
+            }
+            Fields::Authorization(auth) => *auth = authorization,
+        }
+    }
+}
+
+impl MessageFields for Option<Fields> {
+    fn encoded_data(&mut self) -> Option<Value> {
+        match self {
+            Some(fields) => fields.encoded_data(),
+            None => None,
+        }
+    }
+
+    fn encode_data(&mut self, data: Value) {
+        if let Some(fields) = self {
+            fields.encode_data(data);
+        }
+    }
+
+    fn set_authorization(&mut self, authorization: Authorization) {
+        if let Some(fields) = self {
+            fields.set_authorization(authorization);
+        }
+    }
 }
 
 // InitialWriteField represents the RecordsWrite interface method response that includes
 // the `initialWrite` data field if the original record was not the initial write.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Default, Deserialize, Debug, PartialEq, Clone)]
 pub struct InitialWriteField {
     #[serde(flatten)]
     pub write_fields: WriteFields,
@@ -58,7 +106,11 @@ pub struct InitialWriteField {
     pub initial_write: Option<Box<Message<WriteDescriptor>>>,
 }
 
-impl MessageFields for InitialWriteField {}
+impl MessageFields for InitialWriteField {
+    fn set_authorization(&mut self, authorization: Authorization) {
+        self.write_fields.authorization = authorization;
+    }
+}
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -86,6 +138,10 @@ impl MessageFields for WriteFields {
 
     fn encode_data(&mut self, data: Value) {
         self.encoded_data = Some(data.to_string());
+    }
+
+    fn set_authorization(&mut self, authorization: Authorization) {
+        self.authorization = authorization;
     }
 }
 
