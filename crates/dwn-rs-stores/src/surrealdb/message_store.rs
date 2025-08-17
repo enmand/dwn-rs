@@ -116,7 +116,7 @@ impl MessageStore for SurrealDB {
         qb.from(MESSAGES_TABLE)
             .filter(&filters)?
             .sort(sort)
-            .page(pagination.clone());
+            .page(pagination.as_ref());
 
         let (ms, cursor) = match qb.query().await {
             Ok(ms) => ms,

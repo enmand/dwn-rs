@@ -67,7 +67,7 @@ where
             self.cipher
                 .encrypt_in_place(iv, b"", &mut data)
                 .map_err(Error::EncryptError)?;
-            Ok(data.0.clone().freeze())
+            Ok(data.0.split().freeze())
         } else {
             Err(Error::NoIVError.into())
         }
@@ -79,7 +79,7 @@ where
             self.cipher
                 .decrypt_in_place(iv, b"", &mut data)
                 .map_err(Error::EncryptError)?;
-            Ok(data.0.clone().freeze())
+            Ok(data.0.split().freeze())
         } else {
             Err(Error::NoIVError.into())
         }

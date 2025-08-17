@@ -169,7 +169,7 @@ where
     where
         S: Into<String>;
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, errors::FilterError>;
-    fn page(&mut self, pagination: Option<Pagination>) -> &mut Self;
+    fn page(&mut self, pagination: Option<&Pagination>) -> &mut Self;
     fn always_cursor(&mut self) -> &mut Self;
     fn sort(&mut self, sort: Option<T>) -> &mut Self;
     fn query(

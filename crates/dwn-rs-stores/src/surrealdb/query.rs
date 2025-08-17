@@ -89,7 +89,7 @@ where
     {
         self.from = table.into();
 
-        let what = Table::from(self.from.clone()).into();
+        let what = Table::from(self.from.as_str()).into();
 
         let mut values = Values::default();
         values.0.push(what);
@@ -106,7 +106,7 @@ where
     ///
     /// This function will overwrite any previous filters set on this query.
     fn filter(&mut self, filters: &Filters) -> Result<&mut Self, FilterError> {
-        let filters = Into::<FilterSet<Alias>>::into(filters.clone() as Filters)
+        let filters = Into::<FilterSet<Alias>>::into(filters)
             .into_iter()
             .filter_map(|f| {
                 f.into_iter()
@@ -115,21 +115,22 @@ where
                             FilterKey::Tag(_) => format!("tags.{}", fk),
                             _ => fk.to_string(),
                         };
+                        let param_name = format!("${}", alias);
 
                         match val {
                             Filter::Prefix(v) => {
-                                self.binds.insert(alias.clone(), v);
+                                self.binds.insert(alias, v);
 
                                 Ok(Value::Function(Box::new(Function::Normal(
                                     "string::startsWith".into(),
-                                    vec![Idiom::from(k).into(), format!("${}", alias).into()],
+                                    vec![Idiom::from(k).into(), param_name.into()],
                                 )))
                                 .into())
                             }
                             Filter::Equal(v) => {
-                                self.binds.insert(alias.clone(), v);
+                                self.binds.insert(alias, v);
 
-                                Ok((k, Operator::Equal, format!("${}", alias)).try_into()?)
+                                Ok((k, Operator::Equal, param_name).try_into()?)
                             }
                             Filter::Range(range) => match range {
                                 RangeFilter::Criterion(lower, upper)
@@ -145,9 +146,9 @@ where
                                 }
                             },
                             Filter::OneOf(v) => {
-                                self.binds.insert(alias.clone(), v.into());
+                                self.binds.insert(alias, v.into());
 
-                                Ok((k, Operator::Inside, format!("${}", alias)).try_into()?)
+                                Ok((k, Operator::Inside, param_name).try_into()?)
                             }
                         }
                     })
@@ -178,7 +179,7 @@ where
     // the message_cid field is the cid of the message to start the query from.
     // If the message_cid field is not set, the query will start from the beginning.
     // If the limit field is not set, the query will return all messages.
-    fn page(&mut self, pagination: Option<Pagination>) -> &mut Self {
+    fn page(&mut self, pagination: Option<&Pagination>) -> &mut Self {
         if let Some(p) = pagination {
             if let Some(l) = p.limit {
                 self.limit = Some(l);
@@ -187,8 +188,8 @@ where
                 self.stmt.limit = Some(limit);
             }
 
-            if let Some(c) = p.cursor {
-                self.cursor = Some(c);
+            if let Some(c) = &p.cursor {
+                self.cursor = Some(c.clone());
             }
         }
 
@@ -252,7 +253,7 @@ where
 
         let mut q = self
             .db
-            .query(stmt.clone())
+            .query(stmt)
             .bind(binds)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
@@ -318,28 +319,33 @@ where
 
     match (lower, upper) {
         (Some((l_op, l)), Some((u_op, u))) => {
-            let l_cond = SCond::try_from((fk.clone(), l_op, format!("${}_lower", alias)))?;
-            let u_cond = SCond::try_from((fk.clone(), u_op, format!("${}_upper", alias)))?;
+            let lower_key = format!("{}_lower", alias);
+            let upper_key = format!("{}_upper", alias);
+            
+            let l_cond = SCond::try_from((fk.clone(), l_op, format!("${}", lower_key)))?;
+            let u_cond = SCond::try_from((fk, u_op, format!("${}", upper_key)))?;
 
             let mut binds = MapValue::new();
-            binds.insert(format!("{}_lower", alias), l.clone());
-            binds.insert(format!("{}_upper", alias), u.clone());
+            binds.insert(lower_key, l.clone());
+            binds.insert(upper_key, u.clone());
 
             Ok((l_cond.and(u_cond), binds))
         }
         (Some((l_op, l)), None) => {
-            let l_cond = SCond::try_from((fk, l_op, format!("${}_lower", alias)))?;
+            let lower_key = format!("{}_lower", alias);
+            let l_cond = SCond::try_from((fk, l_op, format!("${}", lower_key)))?;
 
             let mut binds = MapValue::new();
-            binds.insert(format!("{}_lower", alias), l.clone());
+            binds.insert(lower_key, l.clone());
 
             Ok((l_cond, binds))
         }
         (None, Some((u_op, u))) => {
-            let u_cond = SCond::try_from((fk, u_op, format!("${}_upper", alias)))?;
+            let upper_key = format!("{}_upper", alias);
+            let u_cond = SCond::try_from((fk, u_op, format!("${}", upper_key)))?;
 
             let mut binds = MapValue::new();
-            binds.insert(format!("{}_upper", alias), u.clone());
+            binds.insert(upper_key, u.clone());
 
             Ok((u_cond, binds))
         }

@@ -81,7 +81,7 @@ impl EventLog for SurrealDB {
             .filter(&filters)?
             .sort(Some(MessageWatermark::default()))
             .always_cursor()
-            .page(Some(page));
+            .page(Some(&page));
 
         let (events, cursor) = qb.query().await?;
 
