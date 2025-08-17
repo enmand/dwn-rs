@@ -26,7 +26,7 @@ futures-util = { version = "0.3.30", default-features = false, features = [
     "async-await-macro",
 ] }
 js-sys = "0.3.70"
-serde = { version = "1.0.183", default-fatures = false, features = [
+serde = { version = "1.0.183", default-features = false, features = [
     "derive",
     "alloc",
 ] }
