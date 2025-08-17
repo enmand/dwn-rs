@@ -10,7 +10,20 @@ use surrealdb::{
     sql::{Datetime, Value as SurrealValue},
     RecordId,
 };
+use thiserror::Error;
 use ulid::Ulid;
+
+#[derive(Error, Debug)]
+pub enum ValidationError {
+    #[error("Invalid CID format '{cid}': {source}")]
+    InvalidCid {
+        cid: String,
+        #[source]
+        source: cid::Error,
+    },
+    #[error("Missing required index '{index}' for message CID '{cid}'")]
+    MissingIndex { index: String, cid: String },
+}
 
 use super::CursorValue;
 
@@ -39,16 +52,29 @@ pub(crate) struct GetEncodedMessage {
 }
 
 impl CursorValue<MessageSort> for GetEncodedMessage {
-    fn cursor_value(&self, sort: MessageSort) -> Value {
-        match sort {
-            MessageSort::DateCreated(_) => self.indexes.get("dateCreated").unwrap().clone(),
-            MessageSort::DatePublished(_) => self.indexes.get("datePublished").unwrap().clone(),
-            MessageSort::Timestamp(_) => self.indexes.get("messageTimestamp").unwrap().clone(),
-        }
+    type Error = ValidationError;
+
+    fn cursor_value(&self, sort: MessageSort) -> Result<Value, Self::Error> {
+        let index_key = match sort {
+            MessageSort::DateCreated(_) => "dateCreated",
+            MessageSort::DatePublished(_) => "datePublished",
+            MessageSort::Timestamp(_) => "messageTimestamp",
+        };
+
+        self.indexes
+            .get(index_key)
+            .cloned()
+            .ok_or_else(|| ValidationError::MissingIndex {
+                index: index_key.to_string(),
+                cid: self.cid.clone(),
+            })
     }
 
-    fn cid(&self) -> Cid {
-        Cid::from_str(&self.cid).unwrap()
+    fn cid(&self) -> Result<Cid, Self::Error> {
+        Cid::from_str(&self.cid).map_err(|source| ValidationError::InvalidCid {
+            cid: self.cid.clone(),
+            source,
+        })
     }
 }
 
@@ -121,12 +147,17 @@ pub(crate) struct ExtendedTask {
 }
 
 impl CursorValue<MessageWatermark> for GetEvent {
-    fn cursor_value(&self, _: MessageWatermark) -> Value {
-        Value::String(self.watermark.to_string())
+    type Error = ValidationError;
+
+    fn cursor_value(&self, _: MessageWatermark) -> Result<Value, Self::Error> {
+        Ok(Value::String(self.watermark.to_string()))
     }
 
-    fn cid(&self) -> Cid {
-        Cid::from_str(&self.cid.to_string()).unwrap()
+    fn cid(&self) -> Result<Cid, Self::Error> {
+        Cid::from_str(&self.cid.to_string()).map_err(|source| ValidationError::InvalidCid {
+            cid: self.cid.to_string(),
+            source,
+        })
     }
 }
 
@@ -134,11 +165,13 @@ impl<T> CursorValue<NoSort> for T
 where
     T: Serialize + Sync + Send,
 {
-    fn cursor_value(&self, _: NoSort) -> Value {
-        Value::Null
+    type Error = ValidationError;
+
+    fn cursor_value(&self, _: NoSort) -> Result<Value, Self::Error> {
+        Ok(Value::Null)
     }
 
-    fn cid(&self) -> Cid {
-        Cid::default()
+    fn cid(&self) -> Result<Cid, Self::Error> {
+        Ok(Cid::default())
     }
 }

@@ -66,8 +66,10 @@ where
 }
 
 pub trait CursorValue<T> {
-    fn cid(&self) -> Cid;
-    fn cursor_value(&self, sort: T) -> dwn_rs_core::value::Value;
+    type Error: std::error::Error + Send + Sync + 'static;
+    
+    fn cid(&self) -> Result<Cid, Self::Error>;
+    fn cursor_value(&self, sort: T) -> Result<dwn_rs_core::value::Value, Self::Error>;
 }
 
 impl<U, T> Query<U, T> for SurrealQuery<U, T>
@@ -268,9 +270,17 @@ where
                     res.pop();
                 }
 
-                res.last().map(|r| Cursor {
-                    cursor: r.cid(),
-                    value: Some(r.cursor_value(o).clone()),
+                res.last().and_then(|r| {
+                    match (r.cid(), r.cursor_value(o)) {
+                        (Ok(cid), Ok(value)) => Some(Cursor {
+                            cursor: cid,
+                            value: Some(value.clone()),
+                        }),
+                        (Err(err), _) | (_, Err(err)) => {
+                            tracing::error!("Failed to create cursor: {}", err);
+                            None
+                        }
+                    }
                 })
             } else {
                 None
@@ -368,12 +378,18 @@ fn cursor_cond<T: Ordorable + Directional>(
             dwn_rs_core::value::Value::String(c.to_string()),
         );
 
+        let order_field = stmt.order
+            .as_ref()
+            .and_then(|ord| ord.0.first())
+            .map(|ord_item| ord_item.order.clone())
+            .ok_or_else(|| ValueError::UnparseableValue("Missing order field in statement".to_string()))?;
+
         let cur_cond = Value::Subquery(Box::new(Subquery::Value(
             Expression::Binary {
                 l: Value::Subquery(Box::new(Subquery::Value(
                     Expression::Binary {
                         l: Expression::Binary {
-                            l: stmt.order.clone().unwrap().0[0].order.clone().into(),
+                            l: order_field.clone().into(),
                             o: Operator::Equal,
                             r: value("$_cursor_val")?,
                         }
@@ -390,7 +406,7 @@ fn cursor_cond<T: Ordorable + Directional>(
                 ))),
                 o: Operator::Or,
                 r: Expression::Binary {
-                    l: stmt.order.clone().unwrap().0[0].order.clone().into(),
+                    l: order_field.into(),
                     o: op,
                     r: value("$_cursor_val")?,
                 }
