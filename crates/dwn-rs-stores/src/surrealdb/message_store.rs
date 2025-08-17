@@ -77,8 +77,7 @@ impl MessageStore for SurrealDB {
                 db.select((MESSAGES_TABLE, cid.to_string()))
                     .await
                     .map_err(SurrealDBError::from)
-                    .map_err(StoreError::from)
-                    .expect("failed to fetch from database")
+                    .map_err(StoreError::from)?
                     .ok_or(StoreError::NotFound)
             })
             .await?;

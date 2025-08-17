@@ -42,7 +42,7 @@ pub struct Payload {
 
 impl JwsPayload for Payload {
     fn payload_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
-        let payload = serde_json::to_vec(self).expect("could not serialize payload");
+        let payload = serde_json::to_vec(self).expect("JWS Payload serialization failed.");
         std::borrow::Cow::Owned(payload)
     }
 }
@@ -55,7 +55,8 @@ pub struct AttestationPayload {
 
 impl JwsPayload for AttestationPayload {
     fn payload_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
-        let payload = serde_json::to_vec(self).expect("could not serialize attestation payload");
+        let payload =
+            serde_json::to_vec(self).expect("JWS AttestationPayload serialization failed.");
         std::borrow::Cow::Owned(payload)
     }
 }
