@@ -2,9 +2,7 @@ use ssi_jwk::{Params, JWK};
 
 use crate::encryption::HashAlgorithm;
 
-use super::{
-    publickey::PublicKey, secp256k1, x25519, DeriveKey, Error, PrivateKeyError, SecretKeyTrait,
-};
+use super::{publickey::PublicKey, secp256k1, x25519, Error, PrivateKeyError, SecretKeyTrait, DeriveKey};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SecretKey {
