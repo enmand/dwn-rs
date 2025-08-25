@@ -16,7 +16,20 @@ surrealdb-wasm = ["surrealdb", "dwn-rs-stores/surreal-wasm"]
 no-std = []
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = true
+wasm-opt = [
+    "-Oz",                               # Balanced size optimization (safer than -Oz)
+    "--enable-bulk-memory",
+    "--enable-nontrapping-float-to-int",
+    "--enable-sign-ext",
+    "--strip-debug",                     # Remove debug info
+    "--strip-producers",                 # Remove producers section
+    "--dce",                             # Dead code elimination
+    "--vacuum",                          # Remove unused sections
+    "--remove-unused-module-elements",   # Remove unused exports/imports
+]
+
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = false
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
@@ -48,14 +61,8 @@ tracing = { version = "0.1.40", default-features = false, features = [
 ] }
 tracing-subscriber-wasm = "0.1.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = [
-    "ansi",
     "fmt",
     "smallvec",
-    "tracing-log",
-    "chrono",
-    "json",
-    "serde",
-    "serde_json",
 ] }
 futures-core = { version = "0.3.30", default-features = false, features = [
     "alloc",

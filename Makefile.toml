@@ -84,8 +84,8 @@ args = [
     "--features",
     "no-std",
 ]
-
 dependencies = ["install-wasm-pack"]
+
 [tasks.install-npm-deps]
 workspace = false
 cwd = "crates/dwn-rs-wasm"
@@ -97,19 +97,21 @@ workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "node"
 args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
-dependencies = ["build-wasm-no-opt", "install-npm-deps"]
-
+dependencies = ["build-wasm", "install-npm-deps"]
 
 [tasks.test-store-js-browser]
 workspace = false
 cwd = "crates/dwn-rs-wasm"
 command = "npx"
 args = ["wtr"]
-dependencies = [
-    "build-wasm-browser-no-opt",
-    "install-npm-deps",
-    "_playwright-install",
-]
+dependencies = ["build-wasm-browser", "install-npm-deps", "_playwright-install"]
+
+[tasks.test-store-js-no-opt]
+workspace = false
+cwd = "crates/dwn-rs-wasm"
+command = "node"
+args = ["node_modules/mocha/bin/mocha.js", "tests/test.js", "--bail", "--exit"]
+dependencies = ["build-wasm-no-opt", "install-npm-deps"]
 
 [tasks._playwright-install]
 args = ["playwright", "install", "--with-deps"]
@@ -120,4 +122,44 @@ dependencies = ["install-npm-deps"]
 
 [tasks.test-cargo]
 command = "cargo"
-args = ["test", "--", "--nocapture"]
+args = ["test", "--profile", "dev-fast", "--", "--nocapture"]
+
+[tasks.test-cargo-ci]
+command = "cargo"
+args = ["test", "--profile", "ci", "--", "--nocapture"]
+
+[tasks.test-cargo-release]
+command = "cargo"
+args = ["test", "--profile", "release", "--", "--nocapture"]
+
+[tasks.build-dev-fast]
+command = "cargo"
+args = ["build", "--profile", "dev-fast"]
+
+[tasks.build-release]
+command = "cargo"
+args = ["build", "--profile", "release"]
+
+[tasks.bench]
+command = "cargo"
+args = ["bench", "--profile", "bench"]
+
+[tasks.dev]
+dependencies = ["build-dev-fast", "test-cargo"]
+
+[tasks.dev-wasm]
+dependencies = ["build-dev-fast", "test-cargo", "build-wasm", "test-store-js"]
+
+[tasks.build-all]
+dependencies = ["build-release", "build-wasm", "build-wasm-browser"]
+
+[tasks.test-all]
+dependencies = ["test-cargo-release", "test-store-js", "test-store-js"]
+
+[tasks.ci]
+dependencies = ["build-release", "test-cargo-ci", "build-wasm", "test-store-js"]
+
+[tasks.install-wasm-pack]
+command = "cargo"
+args = ["install", "wasm-pack"]
+condition = { files_not_exist = ["${CARGO_HOME}/bin/wasm-pack"] }
