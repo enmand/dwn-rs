@@ -107,12 +107,23 @@ pub trait SecretKeyTrait: Sized {
         let nonce_end = nonce_start + nonce_size;
 
         let nonce = GenericArray::from_slice(&data[nonce_start..nonce_end]).to_owned();
-        let ciphertext = &data[nonce_end..];
+
+        let tag_size = <<<Self::PublicKey as PublicKeyTrait>::SymmetricEncryption as Encryption>::TagSize as Unsigned>::USIZE;
+        let tag_start = nonce_end;
+        let tag_end = tag_start + tag_size;
+        let ciphertext_start = tag_end;
+
+        let tag = &data[tag_start..tag_end];
+        let ciphertext_only = &data[ciphertext_start..];
+
+        let mut ciphertext_with_tag = Vec::new();
+        ciphertext_with_tag.extend_from_slice(ciphertext_only);
+        ciphertext_with_tag.extend_from_slice(tag);
 
         let key = self.encapsulate(&ephemeral_pk)?;
 
         let mut ciper = <Self::PublicKey as PublicKeyTrait>::SymmetricEncryption::new(key)?;
-        let mut buf = BytesMut::from(ciphertext);
+        let mut buf = BytesMut::from(&ciphertext_with_tag[..]);
         let plaintext = ciper.with_iv(nonce)?.decrypt(&mut buf)?;
 
         Ok(plaintext.to_vec())
@@ -162,9 +173,8 @@ pub trait PublicKeyTrait: Sized {
         let tag_start = ciphertext_len - tag_len;
         let tag_end = ciphertext_len;
         let tag = &ciphertext[tag_start..tag_end];
-
-        res.extend_from_slice(&ciphertext[..tag_start]);
         res.extend_from_slice(tag);
+        res.extend_from_slice(&ciphertext[..tag_start]);
 
         Ok(EncryptOut {
             ciphertext: res,
@@ -356,5 +366,23 @@ mod tests {
 
         // Ensure the shared secrets match
         assert_eq!(shared_secret1, shared_secret2);
+    }
+}
+#[cfg(test)]
+mod test_key_compression {
+    use crate::encryption::asymmetric::{secp256k1, PublicKeyTrait, SecretKeyTrait};
+
+    #[test]
+    fn test_ephemeral_key_size_in_ecies() {
+        let (_, ephemeral_pk) = secp256k1::SecretKey::generate_keypair();
+
+        // Test the encrypt function format
+        let plaintext = b"test message";
+        let encrypt_result = ephemeral_pk.encrypt(plaintext).unwrap();
+
+        // Verify ephemeral key matches what's embedded in ciphertext
+        let embedded_ephemeral = &encrypt_result.ciphertext[0..33];
+        assert_eq!(embedded_ephemeral, encrypt_result.ephemeral_pk);
+        println!("✓ Ephemeral key correctly embedded in ciphertext");
     }
 }

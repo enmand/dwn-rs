@@ -53,6 +53,21 @@ impl From<Filters> for FilterSet<Alias> {
     fn from(filters: Filters) -> Self {
         filters
             .set
+            .into_iter()
+            .enumerate()
+            .map(|(i, k)| {
+                k.into_iter()
+                    .map(|(k, v)| (k.count_set(i), v))
+                    .collect::<ValueFilter<Alias>>()
+            })
+            .collect::<FilterSet<Alias>>()
+    }
+}
+
+impl From<&Filters> for FilterSet<Alias> {
+    fn from(filters: &Filters) -> Self {
+        filters
+            .set
             .iter()
             .enumerate()
             .map(|(i, k)| {

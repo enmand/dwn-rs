@@ -9,8 +9,27 @@ members = [
 ]
 
 [profile.release]
-lto = true
-opt-level = 'z'
-trip = true
-panic = 'abort'
+lto = "fat"
+opt-level = 3
 codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false
+
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 1
+debug = 1
+incremental = true
+
+[profile.bench]
+inherits = "release"
+debug = true
+strip = false
+
+[profile.ci]
+inherits = "test"
+opt-level = 1
+debug = false
+incremental = false
+overflow-checks = true

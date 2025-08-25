@@ -93,17 +93,13 @@ pub struct QueryParameters {
 
 impl MessageValidator for QueryParameters {
     fn validate(&self) -> Result<(), super::ValidationError> {
-        if let Some(filter) = self.filter.clone() {
+        if let Some(ref filter) = self.filter {
             if let Some(published) = filter.published {
-                if let Some(date_sort) = self.date_sort.clone() {
-                    if date_sort == DateSort::PublishedAscending && !published {
-                        return Err(super::ValidationError {
-                            message: "Cannot sort by publish date when published is false"
-                                .to_string(),
-                        });
-                    }
-
-                    if date_sort == DateSort::PublishedDescending && !published {
+                if let Some(date_sort) = &self.date_sort {
+                    if (*date_sort == DateSort::PublishedAscending
+                        || *date_sort == DateSort::PublishedDescending)
+                        && !published
+                    {
                         return Err(super::ValidationError {
                             message: "Cannot sort by publish date when published is false"
                                 .to_string(),
@@ -284,13 +280,16 @@ impl MessageParameters for WriteParameters {
     async fn build(
         &self,
     ) -> Result<(Self::Descriptor, Option<Self::Fields>), super::ValidationError> {
-        let data_cid = self.data_cid.clone().unwrap_or(
-            crate::cid::generate_cid(self.data.clone().unwrap_or_default())
-                .map_err(|e| ValidationError {
-                    message: e.to_string(),
-                })?
-                .to_string(),
-        );
+        let data_cid = match &self.data_cid {
+            Some(cid) => cid.clone(),
+            None => {
+                crate::cid::generate_cid(self.data.as_ref().map(|d| d.as_slice()).unwrap_or(&[]))
+                    .map_err(|e| ValidationError {
+                        message: e.to_string(),
+                    })?
+                    .to_string()
+            }
+        };
         let data_size = self.data_size.unwrap_or_else(|| {
             self.data
                 .as_ref()
@@ -303,20 +302,18 @@ impl MessageParameters for WriteParameters {
         let mut descriptor = WriteDescriptor {
             protocol: self
                 .protocol
-                .clone()
-                .and_then(|url| normalize_url(&url).ok()),
+                .as_ref()
+                .and_then(|url| normalize_url(url).ok()),
             protocol_path: self.protocol_path.clone(),
             recipient: self.recipient.clone(),
-            schema: self.schema.clone().and_then(|url| normalize_url(&url).ok()),
+            schema: self.schema.as_ref().and_then(|url| normalize_url(url).ok()),
             tags: self.tags.clone(),
-            parent_id: self.parent_context_id.clone().and_then(|context_id| {
-                Some(
-                    context_id
-                        .split("/")
-                        .filter(|segment| !segment.is_empty())
-                        .last()?
-                        .to_string(),
-                )
+            parent_id: self.parent_context_id.as_ref().and_then(|context_id| {
+                context_id
+                    .split("/")
+                    .filter(|segment| !segment.is_empty())
+                    .last()
+                    .map(|s| s.to_string())
             }),
             data_cid,
             data_size,
@@ -380,7 +377,7 @@ impl MessageParameters for WriteParameters {
                 .collect();
 
             fields.encryption = Some(Encryption {
-                algorithm: encryption_input.clone().algorithm.unwrap_or(
+                algorithm: encryption_input.algorithm.clone().unwrap_or(
                     KeyEncryptionAlgorithm::Symmetric(KeyEncryptionAlgorithmSymmetric::AES256GCM),
                 ),
                 initialization_vector: base64url

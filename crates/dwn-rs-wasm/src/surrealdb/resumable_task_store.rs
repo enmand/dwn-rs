@@ -58,7 +58,6 @@ impl SurrealResumableTaskStore {
 
     #[wasm_bindgen]
     pub async fn grab(&self, count: u32) -> Result<JsManagedResumableTaskArray, JsValue> {
-
         let t = self
             .store
             .grab::<Value>(count as u64)

@@ -98,8 +98,12 @@ impl DataStore for SurrealDB {
 
                     tracing::trace!(relate = relate.to_string(), chunk = chunk.len());
 
+                    let chunk_id = u.id.clone().ok_or_else(|| {
+                        StoreError::InternalException("Created data chunk missing ID".to_string())
+                    })?;
+
                     db.query(relate)
-                        .bind(("chunk", u.id.clone().unwrap()))
+                        .bind(("chunk", chunk_id))
                         .bind(("data", id.clone()))
                         .bind(("offset", offset))
                         .await
