@@ -117,13 +117,11 @@ where
 
 impl HTTPTransport {
     pub fn new(uri: String) -> Result<Self, JSONRpcError> {
-        let content_type = "application/json-rpc"
-            .parse()
-            .map_err(|e| JSONRpcError {
-                code: JSONRpcErrorCodes::InternalError,
-                message: format!("Failed to parse Content-Type header: {}", e),
-                data: None,
-            })?;
+        let content_type = "application/json-rpc".parse().map_err(|e| JSONRpcError {
+            code: JSONRpcErrorCodes::InternalError,
+            message: format!("Failed to parse Content-Type header: {}", e),
+            data: None,
+        })?;
 
         let c = reqwest::ClientBuilder::new()
             .user_agent(USER_AGENT)

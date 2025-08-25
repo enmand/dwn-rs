@@ -96,7 +96,10 @@ impl MessageValidator for QueryParameters {
         if let Some(ref filter) = self.filter {
             if let Some(published) = filter.published {
                 if let Some(date_sort) = &self.date_sort {
-                    if (*date_sort == DateSort::PublishedAscending || *date_sort == DateSort::PublishedDescending) && !published {
+                    if (*date_sort == DateSort::PublishedAscending
+                        || *date_sort == DateSort::PublishedDescending)
+                        && !published
+                    {
                         return Err(super::ValidationError {
                             message: "Cannot sort by publish date when published is false"
                                 .to_string(),
@@ -279,11 +282,13 @@ impl MessageParameters for WriteParameters {
     ) -> Result<(Self::Descriptor, Option<Self::Fields>), super::ValidationError> {
         let data_cid = match &self.data_cid {
             Some(cid) => cid.clone(),
-            None => crate::cid::generate_cid(self.data.as_ref().map(|d| d.as_slice()).unwrap_or(&[]))
-                .map_err(|e| ValidationError {
-                    message: e.to_string(),
-                })?
-                .to_string(),
+            None => {
+                crate::cid::generate_cid(self.data.as_ref().map(|d| d.as_slice()).unwrap_or(&[]))
+                    .map_err(|e| ValidationError {
+                        message: e.to_string(),
+                    })?
+                    .to_string()
+            }
         };
         let data_size = self.data_size.unwrap_or_else(|| {
             self.data

@@ -67,7 +67,7 @@ where
 
 pub trait CursorValue<T> {
     type Error: std::error::Error + Send + Sync + 'static;
-    
+
     fn cid(&self) -> Result<Cid, Self::Error>;
     fn cursor_value(&self, sort: T) -> Result<dwn_rs_core::value::Value, Self::Error>;
 }
@@ -271,16 +271,14 @@ where
                     res.pop();
                 }
 
-                res.last().and_then(|r| {
-                    match (r.cid(), r.cursor_value(o)) {
-                        (Ok(cid), Ok(value)) => Some(Cursor {
-                            cursor: cid,
-                            value: Some(value.clone()),
-                        }),
-                        (Err(err), _) | (_, Err(err)) => {
-                            tracing::error!("Failed to create cursor: {}", err);
-                            None
-                        }
+                res.last().and_then(|r| match (r.cid(), r.cursor_value(o)) {
+                    (Ok(cid), Ok(value)) => Some(Cursor {
+                        cursor: cid,
+                        value: Some(value.clone()),
+                    }),
+                    (Err(err), _) | (_, Err(err)) => {
+                        tracing::error!("Failed to create cursor: {}", err);
+                        None
                     }
                 })
             } else {
@@ -321,7 +319,7 @@ where
         (Some((l_op, l)), Some((u_op, u))) => {
             let lower_key = format!("{}_lower", alias);
             let upper_key = format!("{}_upper", alias);
-            
+
             let l_cond = SCond::try_from((fk.clone(), l_op, format!("${}", lower_key)))?;
             let u_cond = SCond::try_from((fk, u_op, format!("${}", upper_key)))?;
 
@@ -384,11 +382,14 @@ fn cursor_cond<T: Ordorable + Directional>(
             dwn_rs_core::value::Value::String(c.to_string()),
         );
 
-        let order_field = stmt.order
+        let order_field = stmt
+            .order
             .as_ref()
             .and_then(|ord| ord.0.first())
             .map(|ord_item| ord_item.order.clone())
-            .ok_or_else(|| ValueError::UnparseableValue("Missing order field in statement".to_string()))?;
+            .ok_or_else(|| {
+                ValueError::UnparseableValue("Missing order field in statement".to_string())
+            })?;
 
         let cur_cond = Value::Subquery(Box::new(Subquery::Value(
             Expression::Binary {
