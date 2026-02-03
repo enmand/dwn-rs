@@ -79,4 +79,4 @@ async-std = { version = "1.12.0", default-features = false, features = [
     "kv-log-macro",
     "pin-project-lite",
 ] }
-bytes = { version = "1.8.0", features = ["serde"] }
+bytes = { version = "1.11.1", features = ["serde"] }
