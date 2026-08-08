@@ -2,6 +2,10 @@
 
 dwn-rs is a Rust-based implementation of the Decentralized Web Node (DWN) specification. This library provides the core traits and implementations necessary to interact with DWN services, designed to be used by other libraries and applications. It can be compiled for WebAssembly for use in web browsers or run natively.
 
+## Notice
+
+This project is no longer actively maintained. In general, it has migrated to [enboxorg/enbox-rust-core](https://github.com/enboxorg/enbox-rust-core). All new development will happen there under the Enbox banner.
+
 ## Project Description 📝
 
 dwn-rs aims to facilitate the development of decentralized web applications and services by providing a robust and easy-to-use DWN core library. Key features include:
