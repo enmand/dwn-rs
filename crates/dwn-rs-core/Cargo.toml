@@ -43,7 +43,7 @@ serde_json = "1.0.113"
 tracing = "0.1.40"
 tracing-test = { version = "0.2.5", features = ["no-env-filter"] }
 bytes = "1.8.0"
-rand = "0.8.5"
+rand = "0.9.2"
 partially = { version = "0.2.1", features = ["derive"] }
 multicodec = { git = "https://github.com/cryptidtech/rust-multicodec.git" } # Use moden fork, see gnunicorn/rust-multicodec#1
 multihash = { version = "0.19.1", features = ["serde"] }
